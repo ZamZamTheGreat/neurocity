@@ -6,8 +6,38 @@ export const merchants = sqliteTable("merchants", {
   slug: text("slug").notNull(),
   category: text("category").notNull(),
   status: text("status").notNull().default("pilot"),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  website: text("website"),
+  pickupLocation: text("pickup_location"),
+  deliveryMode: text("delivery_mode").notNull().default("merchant_managed"),
+  setupStep: integer("setup_step").notNull().default(1),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 }, (table) => [uniqueIndex("idx_merchants_slug").on(table.slug)]);
+
+export const merchantMemberships = sqliteTable("merchant_memberships", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  merchantId: integer("merchant_id").notNull().references(() => merchants.id),
+  userRef: text("user_ref").notNull(),
+  email: text("email").notNull(),
+  displayName: text("display_name").notNull(),
+  role: text("role").notNull().default("staff"),
+  status: text("status").notNull().default("active"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => [uniqueIndex("idx_membership_merchant_user").on(table.merchantId, table.userRef), index("idx_membership_user").on(table.userRef)]);
+
+export const merchantInvitations = sqliteTable("merchant_invitations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  merchantId: integer("merchant_id").notNull().references(() => merchants.id),
+  codeHash: text("code_hash").notNull(),
+  role: text("role").notNull().default("staff"),
+  invitedEmail: text("invited_email"),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  acceptedAt: integer("accepted_at", { mode: "timestamp" }),
+  createdBy: text("created_by").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+}, (table) => [uniqueIndex("idx_invitation_code_hash").on(table.codeHash), index("idx_invitation_merchant").on(table.merchantId)]);
 
 export const products = sqliteTable("products", {
   id: integer("id").primaryKey({ autoIncrement: true }),

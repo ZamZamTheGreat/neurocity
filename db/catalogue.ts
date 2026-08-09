@@ -1,8 +1,8 @@
 import { env } from "cloudflare:workers";
 
 const merchantInsert = `
-  INSERT OR IGNORE INTO merchants (id, name, slug, category, status, created_at)
-  VALUES (1, 'LightWork Clothing', 'lightwork-clothing', 'Fashion / streetwear', 'pilot', unixepoch())
+  INSERT OR IGNORE INTO merchants (id, name, slug, category, status, contact_name, contact_email, contact_phone, website, pickup_location, delivery_mode, setup_step, created_at)
+  VALUES (1, 'LightWork Clothing', 'lightwork-clothing', 'Fashion / streetwear', 'pilot', 'Zephan Stadhauer', 'lightworkclothing.na@gmail.com', '0814953446', 'https://lightworkclothing.com', 'Baines Centre, Pioneerspark, Windhoek', 'merchant_managed', 2, unixepoch())
 `;
 
 const productSeeds = [
