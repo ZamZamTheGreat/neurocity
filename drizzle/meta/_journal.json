@@ -8,6 +8,13 @@
       "when": 1786304855168,
       "tag": "0000_previous_queen_noir",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1786306332788,
+      "tag": "0001_gifted_patch",
+      "breakpoints": true
     }
   ]
 }

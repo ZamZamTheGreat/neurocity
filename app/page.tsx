@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Product = {
   id: number;
@@ -11,7 +11,7 @@ type Product = {
   badge: string;
 };
 
-const products: Product[] = [
+const starterProducts: Product[] = [
   { id: 1, name: "Crown V1 Cuffed Tracksuit", collection: "Crown V1", price: 1249.99, image: "/lightwork-crown-v1.png", badge: "Price to confirm" },
   { id: 2, name: "Metallic 23 Longsleeve", collection: "Metallic 23", price: null, image: "/lightwork-metallic-23.jpeg", badge: "Coming to the pilot" },
   { id: 3, name: "Majesteric Zip Hoodie", collection: "Majesteric Edition", price: null, image: "/lightwork-majesteric.jpeg", badge: "4 colourways" },
@@ -25,18 +25,35 @@ const categories = [
 ];
 
 function money(value: number | null) {
-  return value === null ? "Confirm with store" : new Intl.NumberFormat("en-NA", { style: "currency", currency: "NAD" }).format(value);
+  return value === null ? "Confirm with store" : `N$${new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
 }
 
 export default function Home() {
   const [view, setView] = useState<"mall" | "store" | "merchant">("mall");
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<number[]>([]);
+  const [catalogue, setCatalogue] = useState<Product[]>(starterProducts);
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [fulfillment, setFulfillment] = useState<"pickup" | "merchant_delivery">("pickup");
+  const [payment, setPayment] = useState<"online" | "pay_on_collection">("pay_on_collection");
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [merchantStats, setMerchantStats] = useState({ products: 4, publishedProducts: 0, orders: 0, readiness: 42 });
   const [notice, setNotice] = useState("");
 
-  const filtered = useMemo(() => products.filter((p) => `${p.name} ${p.collection}`.toLowerCase().includes(query.toLowerCase())), [query]);
-  const cartTotal = cart.reduce((sum, id) => sum + (products.find((p) => p.id === id)?.price ?? 0), 0);
+  useEffect(() => {
+    fetch("/api/catalogue").then((response) => response.ok ? response.json() : Promise.reject()).then((data) => {
+      if (Array.isArray(data.products)) setCatalogue(data.products.map((product: Product & { imageUrl?: string }) => ({ ...product, image: product.imageUrl ?? product.image })));
+    }).catch(() => setNotice("Using the private pilot catalogue while the hosted database initializes."));
+  }, []);
+
+  useEffect(() => {
+    if (view !== "merchant") return;
+    fetch("/api/merchant/overview").then((response) => response.ok ? response.json() : Promise.reject()).then(setMerchantStats).catch(() => undefined);
+  }, [view]);
+
+  const filtered = useMemo(() => catalogue.filter((p) => `${p.name} ${p.collection}`.toLowerCase().includes(query.toLowerCase())), [query, catalogue]);
+  const cartTotal = cart.reduce((sum, id) => sum + (catalogue.find((p) => p.id === id)?.price ?? 0), 0);
 
   function addToCart(product: Product) {
     if (product.price === null) {
@@ -44,8 +61,24 @@ export default function Home() {
       setAssistantOpen(true);
       return;
     }
-    setCart((current) => [...current, product.id]);
+    setCart((current) => current.includes(product.id) ? current : [...current, product.id]);
     setNotice(`${product.name} added to your LightWork order.`);
+  }
+
+  async function placeOrder() {
+    setPlacingOrder(true);
+    try {
+      const response = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ productIds: cart, fulfillmentMethod: fulfillment, paymentMethod: payment }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Order creation failed");
+      setCart([]);
+      setCheckoutOpen(false);
+      setNotice(`${data.order.reference} created · ${data.order.status.replaceAll("_", " ")}.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Order creation failed");
+    } finally {
+      setPlacingOrder(false);
+    }
   }
 
   return (
@@ -61,7 +94,7 @@ export default function Home() {
         </nav>
         <div className="header-actions">
           <button className="city-pill">Windhoek <span>•</span></button>
-          <button className="cart-button" onClick={() => setNotice(cart.length ? `${cart.length} item${cart.length === 1 ? "" : "s"} from LightWork · ${money(cartTotal)}` : "Your mall basket is empty.")}>
+          <button className="cart-button" onClick={() => cart.length ? setCheckoutOpen(true) : setNotice("Your mall basket is empty.")}>
             Bag <b>{cart.length}</b>
           </button>
         </div>
@@ -103,7 +136,7 @@ export default function Home() {
 
           <section className="section featured">
             <div className="section-heading"><div><p className="eyebrow">First pilot storefront</p><h2>LightWork Clothing</h2></div><button className="text-link" onClick={() => setView("store")}>View the store →</button></div>
-            <div className="product-grid">{products.slice(0, 3).map((p) => <ProductCard key={p.id} product={p} onAdd={addToCart} />)}</div>
+            <div className="product-grid">{catalogue.slice(0, 3).map((p) => <ProductCard key={p.id} product={p} onAdd={addToCart} />)}</div>
           </section>
         </>
       )}
@@ -123,16 +156,17 @@ export default function Home() {
         <section className="dashboard-shell">
           <aside><div className="merchant-mark"><img src="/lightwork-logo.png" alt="" /><div><b>LightWork</b><span>Pilot workspace</span></div></div>{["Overview", "Orders", "Products", "Inventory", "Storefront", "AI conversations", "Reports"].map((item, i) => <button className={i === 0 ? "active" : ""} key={item}>{item}<span>{item === "Products" ? "4" : item === "Orders" ? "0" : ""}</span></button>)}<div className="pilot-status"><span /><b>Pilot setup</b><small>42% complete</small></div></aside>
           <div className="dashboard-main"><div className="dashboard-head"><div><p className="eyebrow">Merchant overview</p><h1>Good evening, Zephan.</h1><p>Your storefront is in private pilot setup. Complete the catalogue before accepting orders.</p></div><button onClick={() => setView("store")}>Preview storefront ↗</button></div>
-            <div className="metric-grid"><Metric label="Published products" value="0" note="4 need confirmation" tone="gold" /><Metric label="Orders today" value="0" note="Payments not live" /><Metric label="Store readiness" value="42%" note="7 details remaining" tone="violet" /><Metric label="AI catalogue coverage" value="0%" note="Publish products first" /></div>
+            <div className="metric-grid"><Metric label="Published products" value={String(merchantStats.publishedProducts)} note={`${merchantStats.products} need confirmation`} tone="gold" /><Metric label="Orders recorded" value={String(merchantStats.orders)} note="Persistent merchant orders" /><Metric label="Store readiness" value={`${merchantStats.readiness}%`} note="7 details remaining" tone="violet" /><Metric label="AI catalogue coverage" value="0%" note="Publish products first" /></div>
             <div className="dashboard-columns"><div className="task-panel"><div className="panel-title"><div><h3>Launch checklist</h3><p>What LightWork needs before pilot review</p></div><b>3 of 7</b></div>{[
               ["Business and pickup location", "Complete", true], ["Brand logo and website", "Complete", true], ["Starter product evidence", "Complete", true], ["Current prices and sizes", "Required", false], ["Branch stock or confirmation mode", "Required", false], ["Delivery zones and fees", "Required", false], ["Returns and exchange policy", "Required", false]
             ].map(([task, status, done]) => <div className="task-row" key={String(task)}><span className={done ? "done" : ""}>{done ? "✓" : ""}</span><b>{task}</b><small>{status}</small></div>)}</div>
-              <div className="activity-panel"><div className="panel-title"><div><h3>Catalogue health</h3><p>Confirmation required</p></div></div>{products.map((p) => <div className="mini-product" key={p.id}><img src={p.image} alt="" /><div><b>{p.name}</b><span>{p.price ? "Historic price recorded" : "Price missing"}</span></div><em>Review</em></div>)}</div></div>
+              <div className="activity-panel"><div className="panel-title"><div><h3>Catalogue health</h3><p>Confirmation required</p></div></div>{catalogue.map((p) => <div className="mini-product" key={p.id}><img src={p.image} alt="" /><div><b>{p.name}</b><span>{p.price ? "Historic price recorded" : "Price missing"}</span></div><em>Review</em></div>)}</div></div>
           </div>
         </section>
       )}
 
       {notice && <button className="notice" onClick={() => setNotice("")} aria-label="Dismiss notification"><span>{notice}</span><b>×</b></button>}
+      {checkoutOpen && <div className="checkout-backdrop" onClick={() => setCheckoutOpen(false)}><section className="checkout-panel" onClick={(event) => event.stopPropagation()}><header><div><small>LIGHTWORK ORDER</small><h2>Review your order</h2></div><button onClick={() => setCheckoutOpen(false)}>×</button></header><div className="checkout-items">{cart.map((id, index) => { const product = catalogue.find((item) => item.id === id); return product ? <div className="checkout-item" key={`${id}-${index}`}><img src={product.image} alt="" /><div><b>{product.name}</b><span>{product.collection}</span></div><strong>{money(product.price)}</strong></div> : null; })}</div><fieldset><legend>How would you like it?</legend><label className={fulfillment === "pickup" ? "selected" : ""}><input type="radio" checked={fulfillment === "pickup"} onChange={() => setFulfillment("pickup")} /><span><b>Pickup at Baines Centre</b><small>Timing confirmed by LightWork</small></span></label><label className={fulfillment === "merchant_delivery" ? "selected" : ""}><input type="radio" checked={fulfillment === "merchant_delivery"} onChange={() => setFulfillment("merchant_delivery")} /><span><b>Merchant delivery</b><small>Zone and fee confirmed before fulfillment</small></span></label></fieldset><fieldset><legend>Payment preference</legend><label className={payment === "pay_on_collection" ? "selected" : ""}><input type="radio" checked={payment === "pay_on_collection"} onChange={() => setPayment("pay_on_collection")} /><span><b>Pay on collection</b><small>Available during the controlled pilot</small></span></label><label className={payment === "online" ? "selected" : ""}><input type="radio" checked={payment === "online"} onChange={() => setPayment("online")} /><span><b>Online payment</b><small>Provider connection pending</small></span></label></fieldset><div className="checkout-total"><span>Total</span><b>{money(cartTotal)}</b></div><button className="place-order" disabled={placingOrder} onClick={placeOrder}>{placingOrder ? "Creating order…" : payment === "online" ? "Create order and continue to payment" : "Place pilot order"}</button><p className="checkout-note">This creates a real private pilot order. Products awaiting merchant confirmation cannot be ordered.</p></section></div>}
       <button className="ai-fab" onClick={() => setAssistantOpen(true)} aria-label="Open shopping assistant">✦</button>
       {assistantOpen && <div className="assistant-backdrop" onClick={() => setAssistantOpen(false)}><section className="assistant" onClick={(e) => e.stopPropagation()}><header><div><span>✦</span><div><b>{view === "store" ? "LightWork assistant" : "Neuro concierge"}</b><small>Catalogue-grounded pilot</small></div></div><button onClick={() => setAssistantOpen(false)}>×</button></header><div className="assistant-body"><p className="ai-message">Hi—tell me what you are looking for, your size and your budget. I’ll only suggest products confirmed in the pilot catalogue.</p><div className="suggestions"><button onClick={() => setQuery("black")}>Black outfit under N$1,500</button><button onClick={() => setQuery("hoodie")}>Show me hoodies</button><button onClick={() => setNotice("A human LightWork enquiry would be created here once messaging is connected.")}>Ask a human</button></div></div><footer><input placeholder="Describe what you need..." /><button onClick={() => setNotice("AI messaging will connect after the catalogue tools are implemented.")}>Send</button></footer></section></div>}
     </main>

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -17,5 +18,9 @@ test("renders the NeuroCity pilot experience", async () => {
   assert.match(html, /Your city/);
   assert.match(html, /LightWork Clothing/);
   assert.match(html, /Merchant portal/);
+  const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /Review your order/);
+  assert.match(source, /Pay on collection/);
+  assert.match(source, /\/api\/orders/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|react-loading-skeleton/);
 });
