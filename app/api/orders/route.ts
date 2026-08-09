@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const db = getDb();
     const selected = await db.select().from(products).where(and(eq(products.merchantId, 1), inArray(products.id, productIds)));
     if (selected.length !== productIds.length) return Response.json({ error: "One or more products are unavailable." }, { status: 409 });
-    if (selected.some((product) => product.price === null)) return Response.json({ error: "Products awaiting merchant confirmation cannot be ordered yet." }, { status: 409 });
+    if (selected.some((product) => product.price === null || product.status !== "published")) return Response.json({ error: "Products awaiting merchant confirmation cannot be ordered yet." }, { status: 409 });
 
     const total = selected.reduce((sum, product) => sum + Number(product.price), 0);
     const [order] = await db.insert(orders).values({
