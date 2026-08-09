@@ -29,7 +29,7 @@ export const inventory = sqliteTable("inventory", {
   onHand: integer("on_hand"),
   reserved: integer("reserved").notNull().default(0),
   safetyStock: integer("safety_stock").notNull().default(0),
-});
+}, (table) => [uniqueIndex("idx_inventory_product_branch").on(table.productId, table.branch)]);
 
 export const orders = sqliteTable("orders", {
   id: integer("id").primaryKey({ autoIncrement: true }),

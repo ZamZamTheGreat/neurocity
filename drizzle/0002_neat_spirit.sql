@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `idx_inventory_product_branch` ON `inventory` (`product_id`,`branch`);

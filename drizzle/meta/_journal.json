@@ -15,6 +15,13 @@
       "when": 1786306332788,
       "tag": "0001_gifted_patch",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786307475278,
+      "tag": "0002_neat_spirit",
+      "breakpoints": true
     }
   ]
 }
