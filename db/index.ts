@@ -1,14 +1,20 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as schema from "./schema";
 
-let client: ReturnType<typeof postgres> | undefined;
+let pool: Pool | undefined;
 let database: ReturnType<typeof drizzle<typeof schema>> | undefined;
 
 export function getDb() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL is not configured.");
-  if (!client) client = postgres(connectionString, { max: 10, ssl: process.env.NODE_ENV === "production" ? "require" : false });
-  if (!database) database = drizzle(client, { schema });
+  if (!pool) {
+    pool = new Pool({
+      connectionString,
+      max: 10,
+      ssl: connectionString.includes("localhost") ? false : true,
+    });
+  }
+  if (!database) database = drizzle(pool, { schema });
   return database;
 }
