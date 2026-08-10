@@ -1,16 +1,15 @@
-import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { applicationDocuments, auditEvents, merchantApplications, merchantMemberships, merchants, users } from "../../../../db/schema";
 import { sendMail } from "../../../../lib/mail";
-import { getR2 } from "../../../../lib/r2";
+import { createPresignedR2Url } from "../../../../lib/r2";
 import { getChatGPTUser } from "../../../chatgpt-auth";
 
 const allowed = new Set(["under_review", "more_information_required", "approved", "rejected"]);
 const slugify = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 180);
+const documentViewUrl = (storageKey: string, originalName: string | null) => { try { return createPresignedR2Url("GET", storageKey, 300, `inline; filename="${(originalName ?? "document").replace(/["\\]/g, "-")}"`); } catch { return null; } };
 
-export async function GET() { const user = await getChatGPTUser(); if (user?.platformRole !== "administrator") return Response.json({ error: "Administrator access required." }, { status: 403 }); const db = getDb(); const applications = await db.select().from(merchantApplications).orderBy(desc(merchantApplications.submittedAt)); const merchantList = await db.select().from(merchants).orderBy(desc(merchants.createdAt)); const documents = applications.length ? await db.select().from(applicationDocuments).where(inArray(applicationDocuments.applicationId, applications.map((item) => item.id))) : []; let storage: ReturnType<typeof getR2> | null = null; try { storage = getR2(); } catch { /* storage links remain unavailable until configured */ } const withDocuments = await Promise.all(applications.map(async (application) => ({ ...application, documents: await Promise.all(documents.filter((document) => document.applicationId === application.id).map(async (document) => ({ ...document, viewUrl: storage && document.status === "uploaded" && document.storageKey ? await getSignedUrl(storage.client, new GetObjectCommand({ Bucket: storage.bucket, Key: document.storageKey, ResponseContentDisposition: `inline; filename="${document.originalName ?? "document"}"` }), { expiresIn: 300 }) : null }))) }))); return Response.json({ applications: withDocuments, merchants: merchantList }); }
+export async function GET() { const user = await getChatGPTUser(); if (user?.platformRole !== "administrator") return Response.json({ error: "Administrator access required." }, { status: 403 }); const db = getDb(); const applications = await db.select().from(merchantApplications).orderBy(desc(merchantApplications.submittedAt)); const merchantList = await db.select().from(merchants).orderBy(desc(merchants.createdAt)); const documents = applications.length ? await db.select().from(applicationDocuments).where(inArray(applicationDocuments.applicationId, applications.map((item) => item.id))) : []; const withDocuments = applications.map((application) => ({ ...application, documents: documents.filter((document) => document.applicationId === application.id).map((document) => ({ ...document, viewUrl: document.status === "uploaded" && document.storageKey ? documentViewUrl(document.storageKey, document.originalName) : null })) })); return Response.json({ applications: withDocuments, merchants: merchantList }); }
 
 export async function PATCH(request: Request) {
   const user = await getChatGPTUser();
