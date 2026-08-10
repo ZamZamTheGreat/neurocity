@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import MerchantWorkspace from "./components/MerchantWorkspace";
+import { merchantCategories } from "../lib/merchant-categories";
 
 type Product = {
   id: number;
@@ -12,11 +13,7 @@ type Product = {
   badge: string;
 };
 
-const categories = [
-  { name: "Fashion", detail: "Streetwear, essentials and local labels", count: "Pilot open", icon: "F" },
-  { name: "Beauty & care", detail: "Everyday care from trusted local stores", count: "Recruiting", icon: "B" },
-  { name: "Gifts & living", detail: "Thoughtful finds for home and occasions", count: "Recruiting", icon: "G" },
-];
+const categories = merchantCategories.map((category) => ({ ...category, detail: category.includes, count: category.name === "Fashion & Clothing" ? "Pilot open" : "Recruiting" }));
 
 function money(value: number | null) {
   return value === null ? "Confirm with store" : `N$${new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
@@ -125,7 +122,7 @@ export default function Home() {
           <section className="section">
             <div className="section-heading"><div><p className="eyebrow">Explore the city</p><h2>One mall. Distinct local stores.</h2></div><p>NeuroCity gives every merchant a real storefront—not just a listing.</p></div>
             <div className="category-grid">
-              {categories.map((category) => <button className="category-card" key={category.name} onClick={() => category.name === "Fashion" && storeAvailable ? openPilotStore() : setNotice(`${category.name} merchants are being recruited for the pilot.`)}><span className="category-icon">{category.icon}</span><div><small>{category.name === "Fashion" && !storeAvailable ? "Recruiting" : category.count}</small><h3>{category.name}</h3><p>{category.detail}</p></div><b>↗</b></button>)}
+              {categories.map((category) => <button className="category-card" key={category.name} onClick={() => category.name === "Fashion & Clothing" && storeAvailable ? openPilotStore() : setNotice(`${category.name} merchants are being recruited for the pilot.`)}><span className="category-icon">{category.icon}</span><div><small>{category.name === "Fashion & Clothing" && !storeAvailable ? "Recruiting" : category.count}</small><h3>{category.name}</h3><p>{category.detail}</p></div><b>↗</b></button>)}
             </div>
           </section>
 

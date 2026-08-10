@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { applicationDocuments, merchantApplications } from "../../../db/schema";
 import { sendMail } from "../../../lib/mail";
+import { isMerchantCategory } from "../../../lib/merchant-categories";
 
 const requiredDocuments = ["business_registration", "representative_identification", "proof_of_business_address", "bank_confirmation_letter"];
 const required = ["legalName", "tradingName", "registrationNumber", "businessType", "category", "description", "representativeName", "representativeRole", "email", "phone", "physicalAddress", "branchLocations", "productSummary", "returnsPolicy"];
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
   try {
     const data = await request.json() as Record<string, unknown>;
     for (const field of required) if (!String(data[field] ?? "").trim()) return Response.json({ error: `${field} is required.` }, { status: 400 });
+    if (!isMerchantCategory(data.category)) return Response.json({ error: "Select a valid main category." }, { status: 400 });
     if (!String(data.email).includes("@") || data.termsAccepted !== true || data.privacyAccepted !== true) return Response.json({ error: "A valid email and acceptance of the merchant terms and privacy notice are required." }, { status: 400 });
     const reference = `NCA-${new Date().getFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`;
     const db = getDb();
