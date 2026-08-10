@@ -19,5 +19,9 @@ export async function POST(request: Request) {
     const session = await createSession(user.id);
     (await cookies()).set(SESSION_COOKIE, session.token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", expires: session.expiresAt });
     return Response.json({ user: { email: user.email, displayName: user.displayName, platformRole: user.platformRole } }, { status: 201 });
-  } catch { return Response.json({ error: "Registration is temporarily unavailable." }, { status: 500 }); }
+  } catch (error) {
+    const incident = crypto.randomUUID();
+    console.error("administrator registration failed", { incident, error });
+    return Response.json({ error: `Registration is temporarily unavailable. Reference: ${incident}` }, { status: 500 });
+  }
 }
