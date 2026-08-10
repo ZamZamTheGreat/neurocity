@@ -15,6 +15,13 @@
       "when": 1786399533700,
       "tag": "0001_freezing_steel_serpent",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786400355046,
+      "tag": "0002_nosy_barracuda",
+      "breakpoints": true
     }
   ]
 }
