@@ -8,6 +8,13 @@
       "when": 1786388698247,
       "tag": "0000_crazy_lady_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786399533700,
+      "tag": "0001_freezing_steel_serpent",
+      "breakpoints": true
     }
   ]
 }

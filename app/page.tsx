@@ -53,6 +53,7 @@ export default function Home() {
 
   const filtered = useMemo(() => catalogue.filter((p) => `${p.name} ${p.collection}`.toLowerCase().includes(query.toLowerCase())), [query, catalogue]);
   const cartTotal = cart.reduce((sum, id) => sum + (catalogue.find((p) => p.id === id)?.price ?? 0), 0);
+  const openPilotStore = () => { window.location.href = "/stores/lightwork-clothing"; };
 
   function addToCart(product: Product) {
     if (product.price === null) {
@@ -88,7 +89,7 @@ export default function Home() {
         </button>
         <nav className="desktop-nav" aria-label="Primary navigation">
           <button className={view === "mall" ? "active" : ""} onClick={() => setView("mall")}>Discover</button>
-          {storeAvailable && <button className={view === "store" ? "active" : ""} onClick={() => setView("store")}>Stores</button>}
+          {storeAvailable && <button onClick={openPilotStore}>Stores</button>}
           <button onClick={() => { setView("mall"); requestAnimationFrame(() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })); }}>How it works</button>
         </nav>
         <div className="header-actions">
@@ -107,15 +108,15 @@ export default function Home() {
               <p className="eyebrow"><span /> Your Windhoek mall, online</p>
               <h1>Your city.<br />Your stores.<br /><em>One place.</em></h1>
               <p className="hero-lede">Discover and shop trusted Windhoek businesses from one convenient local marketplace.</p>
-              <div className="hero-actions">{storeAvailable && <button onClick={() => setView("store")}>Explore the pilot store</button>}<a href="/apply">Sell on NeuroCity</a></div>
+              <div className="hero-actions">{storeAvailable && <button onClick={openPilotStore}>Explore the pilot store</button>}<a href="/apply">Sell on NeuroCity</a></div>
               <div className="search-shell">
-                <span aria-hidden="true">⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products and local stores" aria-label="Search NeuroCity" /><button onClick={() => storeAvailable ? setView("store") : setNotice("No public storefronts are available right now.")}>Search</button>
+                <span aria-hidden="true">⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products and local stores" aria-label="Search NeuroCity" /><button onClick={() => storeAvailable ? openPilotStore() : setNotice("No public storefronts are available right now.")}>Search</button>
               </div>
               <div className="trust-row"><span>Curated stores</span><span>Local pickup</span><span>Merchant delivery</span></div>
             </div>
             <div className="hero-city" aria-label="NeuroCity marketplace summary">
               <div className="city-orbit orbit-one" /><div className="city-orbit orbit-two" />
-              {storeAvailable ? <div className="city-card main-card"><span>PILOT STORE 01</span><img src="/lightwork-logo.png" alt="LightWork Clothing" /><small>Baines Centre · Pioneerspark</small><button onClick={() => setView("store")}>Enter store →</button></div> : <div className="city-card main-card marketplace-card"><span>WINDHOEK MARKETPLACE</span><strong>NeuroCity</strong><small>{storeAvailable === null ? "Loading local storefronts…" : "New storefronts coming soon"}</small></div>}
+              {storeAvailable ? <div className="city-card main-card"><span>PILOT STORE 01</span><img src="/lightwork-logo.png" alt="LightWork Clothing" /><small>Baines Centre · Pioneerspark</small><button onClick={openPilotStore}>Enter store →</button></div> : <div className="city-card main-card marketplace-card"><span>WINDHOEK MARKETPLACE</span><strong>NeuroCity</strong><small>{storeAvailable === null ? "Loading local storefronts…" : "New storefronts coming soon"}</small></div>}
               <div className="float-card top-float"><b>3</b><span>pilot categories</span></div>
               <div className="float-card bottom-float"><i /> <span>Merchant delivery<br /><b>Windhoek</b></span></div>
             </div>
@@ -124,7 +125,7 @@ export default function Home() {
           <section className="section">
             <div className="section-heading"><div><p className="eyebrow">Explore the city</p><h2>One mall. Distinct local stores.</h2></div><p>NeuroCity gives every merchant a real storefront—not just a listing.</p></div>
             <div className="category-grid">
-              {categories.map((category) => <button className="category-card" key={category.name} onClick={() => category.name === "Fashion" && storeAvailable ? setView("store") : setNotice(`${category.name} merchants are being recruited for the pilot.`)}><span className="category-icon">{category.icon}</span><div><small>{category.name === "Fashion" && !storeAvailable ? "Recruiting" : category.count}</small><h3>{category.name}</h3><p>{category.detail}</p></div><b>↗</b></button>)}
+              {categories.map((category) => <button className="category-card" key={category.name} onClick={() => category.name === "Fashion" && storeAvailable ? openPilotStore() : setNotice(`${category.name} merchants are being recruited for the pilot.`)}><span className="category-icon">{category.icon}</span><div><small>{category.name === "Fashion" && !storeAvailable ? "Recruiting" : category.count}</small><h3>{category.name}</h3><p>{category.detail}</p></div><b>↗</b></button>)}
             </div>
           </section>
 
@@ -139,7 +140,7 @@ export default function Home() {
           </section>
 
           {storeAvailable && <section className="section featured">
-            <div className="section-heading"><div><p className="eyebrow">First pilot storefront</p><h2>LightWork Clothing</h2></div><button className="text-link" onClick={() => setView("store")}>View the store →</button></div>
+            <div className="section-heading"><div><p className="eyebrow">First pilot storefront</p><h2>LightWork Clothing</h2></div><button className="text-link" onClick={openPilotStore}>View the store →</button></div>
             <div className="product-grid">{catalogue.slice(0, 3).map((p) => <ProductCard key={p.id} product={p} onAdd={addToCart} />)}</div>
           </section>}
 
