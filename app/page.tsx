@@ -12,13 +12,6 @@ type Product = {
   badge: string;
 };
 
-const starterProducts: Product[] = [
-  { id: 1, name: "Crown V1 Cuffed Tracksuit", collection: "Crown V1", price: 1249.99, image: "/lightwork-crown-v1.png", badge: "Price to confirm" },
-  { id: 2, name: "Metallic 23 Longsleeve", collection: "Metallic 23", price: null, image: "/lightwork-metallic-23.jpeg", badge: "Coming to the pilot" },
-  { id: 3, name: "Majesteric Zip Hoodie", collection: "Majesteric Edition", price: null, image: "/lightwork-majesteric.jpeg", badge: "4 colourways" },
-  { id: 4, name: "Esoteric Tee & Shorts", collection: "Esoteric", price: null, image: "/lightwork-esoteric.jpeg", badge: "Details to confirm" },
-];
-
 const categories = [
   { name: "Fashion", detail: "Streetwear, essentials and local labels", count: "Pilot open", icon: "F" },
   { name: "Beauty & care", detail: "Everyday care from trusted local stores", count: "Recruiting", icon: "B" },
@@ -33,7 +26,8 @@ export default function Home() {
   const [view, setView] = useState<"mall" | "store" | "merchant">("mall");
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<number[]>([]);
-  const [catalogue, setCatalogue] = useState<Product[]>(starterProducts);
+  const [catalogue, setCatalogue] = useState<Product[]>([]);
+  const [storeAvailable, setStoreAvailable] = useState<boolean | null>(null);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [fulfillment, setFulfillment] = useState<"pickup" | "merchant_delivery">("pickup");
@@ -43,9 +37,13 @@ export default function Home() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    fetch("/api/catalogue").then((response) => response.ok ? response.json() : Promise.reject()).then((data) => {
+    fetch("/api/catalogue").then(async (response) => {
+      if (!response.ok) throw new Error(response.status === 404 ? "store_unavailable" : "catalogue_unavailable");
+      return response.json();
+    }).then((data) => {
+      setStoreAvailable(true);
       if (Array.isArray(data.products)) setCatalogue(data.products.map((product: Product & { imageUrl?: string }) => ({ ...product, image: product.imageUrl ?? product.image })));
-    }).catch(() => setNotice("Using the private pilot catalogue while the hosted database initializes."));
+    }).catch(() => { setStoreAvailable(false); setCatalogue([]); });
   }, []);
 
   useEffect(() => {
@@ -90,7 +88,7 @@ export default function Home() {
         </button>
         <nav className="desktop-nav" aria-label="Primary navigation">
           <button className={view === "mall" ? "active" : ""} onClick={() => setView("mall")}>Discover</button>
-          <button className={view === "store" ? "active" : ""} onClick={() => setView("store")}>Stores</button>
+          {storeAvailable && <button className={view === "store" ? "active" : ""} onClick={() => setView("store")}>Stores</button>}
           <button onClick={() => { setView("mall"); requestAnimationFrame(() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })); }}>How it works</button>
         </nav>
         <div className="header-actions">
@@ -109,15 +107,15 @@ export default function Home() {
               <p className="eyebrow"><span /> Your Windhoek mall, online</p>
               <h1>Your city.<br />Your stores.<br /><em>One place.</em></h1>
               <p className="hero-lede">Discover and shop trusted Windhoek businesses from one convenient local marketplace.</p>
-              <div className="hero-actions"><button onClick={() => setView("store")}>Explore the pilot store</button><a href="/apply">Sell on NeuroCity</a></div>
+              <div className="hero-actions">{storeAvailable && <button onClick={() => setView("store")}>Explore the pilot store</button>}<a href="/apply">Sell on NeuroCity</a></div>
               <div className="search-shell">
-                <span aria-hidden="true">⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products and local stores" aria-label="Search NeuroCity" /><button onClick={() => setView("store")}>Search</button>
+                <span aria-hidden="true">⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search products and local stores" aria-label="Search NeuroCity" /><button onClick={() => storeAvailable ? setView("store") : setNotice("No public storefronts are available right now.")}>Search</button>
               </div>
               <div className="trust-row"><span>Curated stores</span><span>Local pickup</span><span>Merchant delivery</span></div>
             </div>
-            <div className="hero-city" aria-label="NeuroCity pilot summary">
+            <div className="hero-city" aria-label="NeuroCity marketplace summary">
               <div className="city-orbit orbit-one" /><div className="city-orbit orbit-two" />
-              <div className="city-card main-card"><span>PILOT STORE 01</span><img src="/lightwork-logo.png" alt="LightWork Clothing" /><small>Baines Centre · Pioneerspark</small><button onClick={() => setView("store")}>Enter store →</button></div>
+              {storeAvailable ? <div className="city-card main-card"><span>PILOT STORE 01</span><img src="/lightwork-logo.png" alt="LightWork Clothing" /><small>Baines Centre · Pioneerspark</small><button onClick={() => setView("store")}>Enter store →</button></div> : <div className="city-card main-card marketplace-card"><span>WINDHOEK MARKETPLACE</span><strong>NeuroCity</strong><small>{storeAvailable === null ? "Loading local storefronts…" : "New storefronts coming soon"}</small></div>}
               <div className="float-card top-float"><b>3</b><span>pilot categories</span></div>
               <div className="float-card bottom-float"><i /> <span>Merchant delivery<br /><b>Windhoek</b></span></div>
             </div>
@@ -126,7 +124,7 @@ export default function Home() {
           <section className="section">
             <div className="section-heading"><div><p className="eyebrow">Explore the city</p><h2>One mall. Distinct local stores.</h2></div><p>NeuroCity gives every merchant a real storefront—not just a listing.</p></div>
             <div className="category-grid">
-              {categories.map((category) => <button className="category-card" key={category.name} onClick={() => category.name === "Fashion" ? setView("store") : setNotice(`${category.name} merchants are being recruited for the pilot.`)}><span className="category-icon">{category.icon}</span><div><small>{category.count}</small><h3>{category.name}</h3><p>{category.detail}</p></div><b>↗</b></button>)}
+              {categories.map((category) => <button className="category-card" key={category.name} onClick={() => category.name === "Fashion" && storeAvailable ? setView("store") : setNotice(`${category.name} merchants are being recruited for the pilot.`)}><span className="category-icon">{category.icon}</span><div><small>{category.name === "Fashion" && !storeAvailable ? "Recruiting" : category.count}</small><h3>{category.name}</h3><p>{category.detail}</p></div><b>↗</b></button>)}
             </div>
           </section>
 
@@ -140,16 +138,16 @@ export default function Home() {
             <button onClick={() => setAssistantOpen(true)}><span>✦</span><div><small>Ask NeuroCity</small><b>“I need a local streetwear look under N$1,500.”</b></div><i>→</i></button>
           </section>
 
-          <section className="section featured">
+          {storeAvailable && <section className="section featured">
             <div className="section-heading"><div><p className="eyebrow">First pilot storefront</p><h2>LightWork Clothing</h2></div><button className="text-link" onClick={() => setView("store")}>View the store →</button></div>
             <div className="product-grid">{catalogue.slice(0, 3).map((p) => <ProductCard key={p.id} product={p} onAdd={addToCart} />)}</div>
-          </section>
+          </section>}
 
           <section className="merchant-public-cta"><div><p className="eyebrow light">For Windhoek businesses</p><h2>Bring your store into NeuroCity.</h2><p>Apply online, submit your business documents securely, and receive a merchant dashboard after approval.</p></div><div><a className="merchant-cta-primary" href="/apply">Start an application</a><a href="/application-status">Track an existing application</a></div></section>
         </>
       )}
 
-      {view === "store" && (
+      {view === "store" && storeAvailable && (
         <>
           <section className="store-hero">
             <div className="store-branding"><span>NEUROCITY / FASHION / LIGHTWORK</span><img src="/lightwork-logo.png" alt="LightWork Clothing logo" /><p>Global established movement. Windhoek streetwear from Baines Centre, Pioneerspark.</p><div><button onClick={() => setAssistantOpen(true)}>✦ Ask the store AI</button><button className="ghost" onClick={() => setNotice("Pickup details will be confirmed with LightWork before launch.")}>Pickup information</button></div></div>
@@ -178,7 +176,7 @@ export default function Home() {
       {checkoutOpen && <div className="checkout-backdrop" onClick={() => setCheckoutOpen(false)}><section className="checkout-panel" onClick={(event) => event.stopPropagation()}><header><div><small>LIGHTWORK ORDER</small><h2>Review your order</h2></div><button onClick={() => setCheckoutOpen(false)}>×</button></header><div className="checkout-items">{cart.map((id, index) => { const product = catalogue.find((item) => item.id === id); return product ? <div className="checkout-item" key={`${id}-${index}`}><img src={product.image} alt="" /><div><b>{product.name}</b><span>{product.collection}</span></div><strong>{money(product.price)}</strong></div> : null; })}</div><fieldset><legend>How would you like it?</legend><label className={fulfillment === "pickup" ? "selected" : ""}><input type="radio" checked={fulfillment === "pickup"} onChange={() => setFulfillment("pickup")} /><span><b>Pickup at Baines Centre</b><small>Timing confirmed by LightWork</small></span></label><label className={fulfillment === "merchant_delivery" ? "selected" : ""}><input type="radio" checked={fulfillment === "merchant_delivery"} onChange={() => setFulfillment("merchant_delivery")} /><span><b>Merchant delivery</b><small>Zone and fee confirmed before fulfillment</small></span></label></fieldset><fieldset><legend>Payment preference</legend><label className={payment === "pay_on_collection" ? "selected" : ""}><input type="radio" checked={payment === "pay_on_collection"} onChange={() => setPayment("pay_on_collection")} /><span><b>Pay on collection</b><small>Available during the controlled pilot</small></span></label><label className={payment === "online" ? "selected" : ""}><input type="radio" checked={payment === "online"} onChange={() => setPayment("online")} /><span><b>Online payment</b><small>Provider connection pending</small></span></label></fieldset><div className="checkout-total"><span>Total</span><b>{money(cartTotal)}</b></div><button className="place-order" disabled={placingOrder} onClick={placeOrder}>{placingOrder ? "Creating order…" : payment === "online" ? "Create order and continue to payment" : "Place pilot order"}</button><p className="checkout-note">This creates a real private pilot order. Products awaiting merchant confirmation cannot be ordered.</p></section></div>}
       <button className="ai-fab" onClick={() => setAssistantOpen(true)} aria-label="Open shopping assistant">✦</button>
       {assistantOpen && <div className="assistant-backdrop" onClick={() => setAssistantOpen(false)}><section className="assistant" onClick={(e) => e.stopPropagation()}><header><div><span>✦</span><div><b>{view === "store" ? "LightWork assistant" : "Neuro concierge"}</b><small>Catalogue-grounded pilot</small></div></div><button onClick={() => setAssistantOpen(false)}>×</button></header><div className="assistant-body"><p className="ai-message">Hi—tell me what you are looking for, your size and your budget. I’ll only suggest products confirmed in the pilot catalogue.</p><div className="suggestions"><button onClick={() => setQuery("black")}>Black outfit under N$1,500</button><button onClick={() => setQuery("hoodie")}>Show me hoodies</button><button onClick={() => setNotice("A human LightWork enquiry would be created here once messaging is connected.")}>Ask a human</button></div></div><footer><input placeholder="Describe what you need..." /><button onClick={() => setNotice("AI messaging will connect after the catalogue tools are implemented.")}>Send</button></footer></section></div>}
-      {view !== "merchant" && <footer className="public-footer"><a href="/" className="brand"><span>Neuro</span><strong>City</strong></a><p>Windhoek’s local digital mall.</p><nav><button onClick={() => setView("store")}>Stores</button><a href="/apply">Become a merchant</a><a href="/application-status">Application status</a><a href="/login">Sign in</a></nav><small>© {new Date().getFullYear()} NeuroCity · Windhoek, Namibia</small></footer>}
+      {view !== "merchant" && <footer className="public-footer"><a href="/" className="brand"><span>Neuro</span><strong>City</strong></a><p>Windhoek’s local digital mall.</p><nav>{storeAvailable && <button onClick={() => setView("store")}>Stores</button>}<a href="/apply">Become a merchant</a><a href="/application-status">Application status</a><a href="/login">Sign in</a></nav><small>© {new Date().getFullYear()} NeuroCity · Windhoek, Namibia</small></footer>}
     </main>
   );
 }

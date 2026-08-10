@@ -16,7 +16,6 @@ test("renders the NeuroCity pilot experience", async () => {
   const html = await response.text();
   assert.match(html, /NeuroCity/);
   assert.match(html, /Your city/);
-  assert.match(html, /LightWork Clothing/);
   assert.match(html, /Sell on NeuroCity/);
   assert.match(html, /How it works/);
   const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");

@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
-import { auditEvents, orderItems, orders, products } from "../../../db/schema";
+import { auditEvents, merchants, orderItems, orders, products } from "../../../db/schema";
 
 const fulfillmentMethods = new Set(["pickup", "merchant_delivery"]);
 const paymentMethods = new Set(["online", "pay_on_collection"]);
@@ -18,6 +18,8 @@ export async function POST(request: Request) {
     if (!paymentMethods.has(payload.paymentMethod ?? "")) return Response.json({ error: "Choose a valid payment method." }, { status: 400 });
 
     const db = getDb();
+    const [merchant] = await db.select({ status: merchants.status }).from(merchants).where(eq(merchants.id, 1)).limit(1);
+    if (!merchant || merchant.status === "suspended" || merchant.status === "removed") return Response.json({ error: "This storefront is currently unavailable." }, { status: 409 });
     const selected = await db.select().from(products).where(and(eq(products.merchantId, 1), inArray(products.id, productIds)));
     if (selected.length !== productIds.length) return Response.json({ error: "One or more products are unavailable." }, { status: 409 });
     if (selected.some((product) => product.price === null || product.status !== "published")) return Response.json({ error: "Products awaiting merchant confirmation cannot be ordered yet." }, { status: 409 });
