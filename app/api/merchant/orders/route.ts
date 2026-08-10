@@ -1,7 +1,6 @@
-import { env } from "cloudflare:workers";
 import { desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { orderItems, orders } from "../../../../db/schema";
+import { auditEvents, orderItems, orders } from "../../../../db/schema";
 import { requirePilotMerchant } from "../auth";
 
 const transitions: Record<string, string[]> = {
@@ -34,10 +33,10 @@ export async function PATCH(request: Request) {
     const [current] = await db.select().from(orders).where(eq(orders.id, payload.orderId!)).limit(1);
     if (!current || current.merchantId !== access.merchantId) return Response.json({ error: "Order not found." }, { status: 404 });
     if (!(transitions[current.status] ?? []).includes(payload.status)) return Response.json({ error: `Cannot move an order from ${current.status} to ${payload.status}.` }, { status: 409 });
-    await env.DB.batch([
-      env.DB.prepare("UPDATE orders SET status = ? WHERE id = ? AND merchant_id = ? AND status = ?").bind(payload.status, current.id, access.merchantId, current.status),
-      env.DB.prepare("INSERT INTO audit_events (actor_ref, action, resource_type, resource_id, metadata, created_at) VALUES (?, 'order.status_changed', 'order', ?, ?, unixepoch())").bind(access.user.userId, String(current.id), JSON.stringify({ from: current.status, to: payload.status })),
-    ]);
+    await db.transaction(async (tx) => {
+      await tx.update(orders).set({ status: payload.status! }).where(eq(orders.id, current.id));
+      await tx.insert(auditEvents).values({ actorRef: access.user.userId, action: "order.status_changed", resourceType: "order", resourceId: String(current.id), metadata: { from: current.status, to: payload.status }, createdAt: new Date() });
+    });
     return Response.json({ order: { ...current, status: payload.status, allowedTransitions: transitions[payload.status] ?? [] } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Order update failed" }, { status: 500 });

@@ -5,9 +5,11 @@ services:
     plan: free
     branch: main
     autoDeploy: true
-    buildCommand: npm ci --include=dev && npm run build
+    buildCommand: npm ci --include=dev && npm run db:migrate && npm run build
     startCommand: npm start
     healthCheckPath: /
     envVars:
       - key: NODE_VERSION
         value: 22.19.0
+      - key: ADMIN_EMAIL
+        value: sergejwitbooi@gmail.com

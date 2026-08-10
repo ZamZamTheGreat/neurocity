@@ -11,10 +11,14 @@
     "start": "vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "drizzle-orm": "0.45.2",
+    "jose": "^6.1.3",
+    "postgres": "^3.4.8",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },

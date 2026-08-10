@@ -92,6 +92,7 @@ export default function Home() {
           <button className={view === "mall" ? "active" : ""} onClick={() => setView("mall")}>Discover</button>
           <button className={view === "store" ? "active" : ""} onClick={() => setView("store")}>LightWork</button>
           <button className={view === "merchant" ? "active" : ""} onClick={() => setView("merchant")}>Merchant portal</button>
+          <button onClick={() => { window.location.href = "/apply"; }}>Apply to sell</button>
         </nav>
         <div className="header-actions">
           <button className="city-pill">Windhoek <span>•</span></button>

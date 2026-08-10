@@ -1,23 +1,18 @@
-import { env } from "cloudflare:workers";
-
-const merchantInsert = `
-  INSERT OR IGNORE INTO merchants (id, name, slug, category, status, contact_name, contact_email, contact_phone, website, pickup_location, delivery_mode, setup_step, created_at)
-  VALUES (1, 'LightWork Clothing', 'lightwork-clothing', 'Fashion / streetwear', 'pilot', 'Zephan Stadhauer', 'lightworkclothing.na@gmail.com', '0814953446', 'https://lightworkclothing.com', 'Baines Centre, Pioneerspark, Windhoek', 'merchant_managed', 2, unixepoch())
-`;
+import { eq } from "drizzle-orm";
+import { getDb } from ".";
+import { merchants, products } from "./schema";
 
 const productSeeds = [
-  ["LW-CROWN-V1", "Crown V1 Cuffed Tracksuit", "Crown V1", "Black tracksuit. Product description and current sale status require merchant confirmation.", 1249.99, "needs_confirmation", "/lightwork-crown-v1.png", "Price to confirm"],
-  ["LW-MET23-LS", "Metallic 23 Longsleeve", "Metallic 23", "Maroon long-sleeve. Material, sizes, current price and stock require merchant confirmation.", null, "needs_confirmation", "/lightwork-metallic-23.jpeg", "Coming to the pilot"],
-  ["LW-MAJ-EDIT", "Majesteric Zip Hoodie", "Majesteric Edition", "Black zip hoodie shown in four colourways. Official variants require merchant confirmation.", null, "needs_confirmation", "/lightwork-majesteric.jpeg", "4 colourways"],
-  ["LW-ESO-SET", "Esoteric Tee & Shorts", "Esoteric", "T-shirt and shorts shown in several colours. Set structure, sizes, prices and stock require confirmation.", null, "needs_confirmation", "/lightwork-esoteric.jpeg", "Details to confirm"],
-] as const;
+  { sku: "LW-CROWN-V1", name: "Crown V1 Cuffed Tracksuit", collection: "Crown V1", description: "Black tracksuit. Product description and current sale status require merchant confirmation.", price: 1249.99, status: "needs_confirmation", imageUrl: "/lightwork-crown-v1.png", badge: "Price to confirm" },
+  { sku: "LW-MET23-LS", name: "Metallic 23 Longsleeve", collection: "Metallic 23", description: "Maroon long-sleeve. Material, sizes, current price and stock require merchant confirmation.", price: null, status: "needs_confirmation", imageUrl: "/lightwork-metallic-23.jpeg", badge: "Coming to the pilot" },
+  { sku: "LW-MAJ-EDIT", name: "Majesteric Zip Hoodie", collection: "Majesteric Edition", description: "Black zip hoodie shown in four colourways. Official variants require merchant confirmation.", price: null, status: "needs_confirmation", imageUrl: "/lightwork-majesteric.jpeg", badge: "4 colourways" },
+  { sku: "LW-ESO-SET", name: "Esoteric Tee & Shorts", collection: "Esoteric", description: "T-shirt and shorts shown in several colours. Set structure, sizes, prices and stock require confirmation.", price: null, status: "needs_confirmation", imageUrl: "/lightwork-esoteric.jpeg", badge: "Details to confirm" },
+];
 
 export async function ensurePilotCatalogue() {
-  const db = env.DB;
-  await db.prepare(merchantInsert).run();
-  await db.batch(productSeeds.map((product) => db.prepare(`
-    INSERT OR IGNORE INTO products
-      (merchant_id, sku, name, collection, description, price, status, image_url, badge)
-    VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(...product)));
+  const db = getDb();
+  let [merchant] = await db.select().from(merchants).where(eq(merchants.slug, "lightwork-clothing")).limit(1);
+  if (!merchant) [merchant] = await db.insert(merchants).values({ name: "LightWork Clothing", slug: "lightwork-clothing", category: "Fashion / streetwear", status: "pilot", contactName: "Zephan Stadhauer", contactEmail: "lightworkclothing.na@gmail.com", contactPhone: "0814953446", website: "https://lightworkclothing.com", pickupLocation: "Baines Centre, Pioneerspark, Windhoek", deliveryMode: "merchant_managed", setupStep: 2 }).returning();
+  for (const product of productSeeds) await db.insert(products).values({ ...product, merchantId: merchant.id }).onConflictDoNothing();
+  return merchant;
 }
