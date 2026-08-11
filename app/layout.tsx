@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./catalogue.css";
 
 export const metadata: Metadata = {
   title: "NeuroCity | Your city. Your stores. One place.",
