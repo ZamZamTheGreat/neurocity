@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { auditEvents, products } from "../../../../db/schema";
+import { auditEvents, productVariants, products } from "../../../../db/schema";
 import { requirePilotMerchant } from "../auth";
 
 const statuses = new Set(["needs_confirmation", "draft", "published", "archived"]);
@@ -66,6 +66,12 @@ export async function PATCH(request: Request) {
     if (imageUrl?.startsWith("r2://") && !imageUrl.slice(5).startsWith(`merchants/${access.merchantId}/products/${current.id}/`)) return Response.json({ error: "Invalid product image." }, { status: 403 });
 
     const [updated] = await db.update(products).set({ name, sku, collection, category, brand, description, price, salePrice, status, availability, imageUrl, badge }).where(and(eq(products.id, current.id), eq(products.merchantId, access.merchantId))).returning();
+    const existingVariants = await db.select().from(productVariants).where(eq(productVariants.productId, current.id));
+    if (price !== null && existingVariants.length === 0) {
+      await db.insert(productVariants).values({ productId: current.id, sku: `M${access.merchantId}-${sku}-DEFAULT`, title: "Standard", attributes: { inventoryMode: "merchant_confirmed" }, price, salePrice, status: status === "published" ? "active" : "draft", imageUrl });
+    } else if (existingVariants.length === 1 && existingVariants[0].attributes && (existingVariants[0].attributes as Record<string, unknown>).inventoryMode === "merchant_confirmed") {
+      await db.update(productVariants).set({ sku: `M${access.merchantId}-${sku}-DEFAULT`, price: price ?? existingVariants[0].price, salePrice, status: status === "published" ? "active" : status === "archived" ? "archived" : "draft", imageUrl }).where(eq(productVariants.id, existingVariants[0].id));
+    }
     await db.insert(auditEvents).values({ actorRef: access.user.userId, action: "product.updated", resourceType: "product", resourceId: String(current.id), metadata: JSON.stringify({ before: current, after: updated }), createdAt: new Date() });
     return Response.json({ product: updated });
   } catch (error) {
