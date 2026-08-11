@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./catalogue.css";
 import "./header.css";
+import "./storefront-v2.css";
 
 export const metadata: Metadata = {
   title: "NeuroCity | Your city. Your stores. One place.",
