@@ -65,8 +65,8 @@ export default function Home() {
       setAssistantOpen(true);
       return;
     }
-    setCart((current) => current.includes(product.id) ? current : [...current, product.id]);
-    setNotice(`${product.name} added to your LightWork order.`);
+    setNotice(`Choose the size and colour for ${product.name} in the LightWork storefront.`);
+    window.location.href = "/stores/lightwork-clothing#shop";
   }
 
   async function placeOrder() {

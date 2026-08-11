@@ -3,6 +3,7 @@ import "./globals.css";
 import "./catalogue.css";
 import "./header.css";
 import "./storefront-v2.css";
+import "./checkout.css";
 
 export const metadata: Metadata = {
   title: "NeuroCity | Your city. Your stores. One place.",

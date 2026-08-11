@@ -29,6 +29,13 @@
       "when": 1786401206731,
       "tag": "0003_silent_enchantress",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786413735384,
+      "tag": "0004_thin_thunderbird",
+      "breakpoints": true
     }
   ]
 }
