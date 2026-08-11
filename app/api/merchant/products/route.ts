@@ -22,11 +22,20 @@ export async function POST(request: Request) {
     const payload = await request.json() as Record<string, unknown>;
     const name = text(payload.name);
     const sku = text(payload.sku).toUpperCase();
-    if (!name || !sku) return Response.json({ error: "Product name and SKU are required." }, { status: 400 });
+    const category = optionalText(payload.category);
+    const brand = optionalText(payload.brand);
+    const collection = optionalText(payload.collection);
+    const description = text(payload.description);
+    const badge = optionalText(payload.badge);
+    const price = payload.price === null || payload.price === undefined ? null : Number(payload.price);
+    const salePrice = payload.salePrice === null || payload.salePrice === undefined || payload.salePrice === "" ? null : Number(payload.salePrice);
+    if (!name || !sku || !category || !description || price === null) return Response.json({ error: "Name, SKU, category, description and regular price are required." }, { status: 400 });
+    if (!Number.isFinite(price) || price < 0) return Response.json({ error: "Price must be a valid non-negative amount." }, { status: 400 });
+    if (salePrice !== null && (!Number.isFinite(salePrice) || salePrice < 0 || salePrice >= price)) return Response.json({ error: "Sale price must be lower than the regular price." }, { status: 400 });
     const db = getDb();
     const [duplicate] = await db.select({ id: products.id }).from(products).where(and(eq(products.merchantId, access.merchantId), eq(products.sku, sku))).limit(1);
     if (duplicate) return Response.json({ error: "That SKU is already used in your catalogue." }, { status: 409 });
-    const [created] = await db.insert(products).values({ merchantId: access.merchantId, name, sku, description: "", status: "draft", availability: "available" }).returning();
+    const [created] = await db.insert(products).values({ merchantId: access.merchantId, name, sku, category, brand, collection, description, price, salePrice, badge, status: "draft", availability: "available" }).returning();
     await db.insert(auditEvents).values({ actorRef: access.user.userId, action: "product.created", resourceType: "product", resourceId: String(created.id), metadata: JSON.stringify({ name, sku }), createdAt: new Date() });
     return Response.json({ product: created }, { status: 201 });
   } catch (error) {
