@@ -7,7 +7,8 @@ export async function GET(_request: Request, context: { params: Promise<{ slug: 
   await ensurePilotCatalogue();
   const { slug } = await context.params; const db = getDb();
   const [store] = await db.select().from(merchants).where(and(eq(merchants.slug, slug), inArray(merchants.status, ["pilot", "onboarding", "active"]))).limit(1);
-  if (!store || !store.isPublic) return Response.json({ error: "Store not found." }, { status: 404 });
+  const setupComplete = store && store.name && store.category && store.tagline && store.description && store.logoUrl && store.bannerUrl && store.contactEmail && Array.isArray(store.fulfillmentMethods) && store.fulfillmentMethods.length > 0 && Boolean((store.policies as Record<string, string> | null)?.returns);
+  if (!store || !store.isPublic || !setupComplete) return Response.json({ error: "Store not found." }, { status: 404 });
   const catalogue = await db.select().from(products).where(eq(products.merchantId, store.id)).orderBy(asc(products.id));
   const variants = catalogue.length ? await db.select().from(productVariants).where(inArray(productVariants.productId, catalogue.map((product) => product.id))).orderBy(asc(productVariants.id)) : [];
   const branches = await db.select().from(storeBranches).where(eq(storeBranches.merchantId, store.id)).orderBy(asc(storeBranches.id));
