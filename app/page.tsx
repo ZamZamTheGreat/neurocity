@@ -98,7 +98,7 @@ export default function Home() {
         </nav>
         <div className="header-actions">
           <span className="city-pill">Windhoek <span>•</span></span>
-          <details className="account-menu"><summary>Account</summary><div><a href="/account">My account</a><button onClick={() => setView("merchant")}>Merchant dashboard</button><a href="/application-status">Track application</a><a href="/login">Sign in</a></div></details>
+          <details className="account-menu"><summary>Account</summary><div onClick={(event) => event.currentTarget.parentElement?.removeAttribute("open")}><a href="/account">My account</a><button onClick={() => setView("merchant")}>Merchant dashboard</button><a href="/application-status">Track application</a><a href="/login">Sign in</a></div></details>
           <button className="cart-button" onClick={() => cart.length ? setCheckoutOpen(true) : setNotice("Your mall basket is empty.")}>
             Bag <b>{cart.length}</b>
           </button>
