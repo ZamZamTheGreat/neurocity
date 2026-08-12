@@ -1,7 +1,8 @@
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { auditEvents, orderItems, orders, orderStatusEvents, variantInventory } from "../../../../db/schema";
+import { auditEvents, merchants, orderItems, orders, orderStatusEvents, variantInventory } from "../../../../db/schema";
 import { requirePilotMerchant } from "../auth";
+import { sendOrderStatusNotification } from "../../../../lib/order-mail";
 
 const transitions: Record<string, string[]> = {
   pending_merchant_confirmation: ["accepted", "rejected"],
@@ -52,6 +53,8 @@ export async function PATCH(request: Request) {
       await tx.insert(orderStatusEvents).values({ orderId: current.id, status: payload.status!, actorRef: access.user.userId, note: payload.note?.trim().slice(0, 500) || null });
       await tx.insert(auditEvents).values({ actorRef: access.user.userId, action: "order.status_changed", resourceType: "order", resourceId: String(current.id), metadata: { from: current.status, to: payload.status }, createdAt: new Date() });
     });
+    const [merchant] = await db.select({ name: merchants.name }).from(merchants).where(eq(merchants.id, current.merchantId)).limit(1);
+    if (current.customerEmail) await sendOrderStatusNotification({ reference: `NC-${String(current.id).padStart(6, "0")}`, storeName: merchant?.name ?? "The store", customerName: current.customerName ?? "Customer", customerEmail: current.customerEmail, status: payload.status, total: current.total, fulfillmentMethod: current.fulfillmentMethod ?? "pickup", note: payload.note });
     return Response.json({ order: { ...current, status: payload.status, allowedTransitions: transitions[payload.status] ?? [] } });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Order update failed" }, { status: 500 });

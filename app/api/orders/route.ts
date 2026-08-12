@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
 import { auditEvents, customerAddresses, customerCartItems, merchants, orderItems, orders, orderStatusEvents, productVariants, products, variantInventory } from "../../../db/schema";
+import { sendOrderPlacedNotifications } from "../../../lib/order-mail";
 
 const fulfillmentMethods = new Set(["pickup", "merchant_delivery"]);
 const paymentMethods = new Set(["pay_on_collection", "eft"]);
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
       await tx.insert(auditEvents).values({ actorRef: user.userId, action: "order.created", resourceType: "order", resourceId: String(created.id), metadata: { merchantId, paymentMethod: created.paymentMethod, fulfillmentMethod: created.fulfillmentMethod, itemCount: cart.length, subtotal }, createdAt: new Date() });
       return created;
     });
+    await sendOrderPlacedNotifications({ reference: `NC-${String(order.id).padStart(6, "0")}`, storeName: merchant.name, customerName: order.customerName ?? user.displayName, customerEmail: order.customerEmail ?? user.email, merchantEmail: merchant.contactEmail, status: order.status, total: order.total, fulfillmentMethod: order.fulfillmentMethod ?? payload.fulfillmentMethod!, lines: cart.map((item) => ({ name: item.productName, option: [item.size, item.color].filter(Boolean).join(" / ") || item.variantTitle, quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity })) });
     return Response.json({ order: { id: order.id, status: order.status, paymentStatus: order.paymentStatus, total: order.total, reference: `NC-${String(order.id).padStart(6, "0")}` } }, { status: 201 });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Order creation failed." }, { status: 500 });
