@@ -5,6 +5,7 @@ import "./header.css";
 import "./storefront-v2.css";
 import "./checkout.css";
 import "./dashboard-enhancements.css";
+import "./payment-workflow.css";
 
 export const metadata: Metadata = {
   title: "NeuroCity | Your city. Your stores. One place.",

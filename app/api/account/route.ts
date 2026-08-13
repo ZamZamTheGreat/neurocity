@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { customerAddresses, customerCartItems, customerSavedStores, customerWishlists, merchants, orderItems, orders, orderStatusEvents, productVariants, products } from "../../../db/schema";
+import { customerAddresses, customerCartItems, customerSavedStores, customerWishlists, merchants, orderItems, orders, orderStatusEvents, paymentProofs, productVariants, products } from "../../../db/schema";
 import { getChatGPTUser } from "../../chatgpt-auth";
 
 export async function GET() {
@@ -12,7 +12,8 @@ export async function GET() {
   const customerOrders = await db.select({ id: orders.id, status: orders.status, paymentStatus: orders.paymentStatus, total: orders.total, subtotal: orders.subtotal, deliveryFee: orders.deliveryFee, fulfillmentMethod: orders.fulfillmentMethod, paymentMethod: orders.paymentMethod, createdAt: orders.createdAt, storeName: merchants.name, storeSlug: merchants.slug }).from(orders).innerJoin(merchants, eq(merchants.id, orders.merchantId)).where(eq(orders.customerRef, user.userId)).orderBy(desc(orders.createdAt));
   const items = customerOrders.length ? await db.select().from(orderItems).where(inArray(orderItems.orderId, customerOrders.map((order) => order.id))) : [];
   const events = customerOrders.length ? await db.select().from(orderStatusEvents).where(inArray(orderStatusEvents.orderId, customerOrders.map((order) => order.id))).orderBy(desc(orderStatusEvents.createdAt)) : [];
-  return Response.json({ user, addresses, wishlist, savedStores, cart, orders: customerOrders.map((order) => ({ ...order, reference: `NC-${String(order.id).padStart(6, "0")}`, items: items.filter((item) => item.orderId === order.id), events: events.filter((event) => event.orderId === order.id) })) });
+  const proofs = customerOrders.length ? await db.select({ id: paymentProofs.id, orderId: paymentProofs.orderId, status: paymentProofs.status, originalName: paymentProofs.originalName, reviewNote: paymentProofs.reviewNote }).from(paymentProofs).where(inArray(paymentProofs.orderId, customerOrders.map((order) => order.id))) : [];
+  return Response.json({ user, addresses, wishlist, savedStores, cart, orders: customerOrders.map((order) => ({ ...order, reference: `NC-${String(order.id).padStart(6, "0")}`, items: items.filter((item) => item.orderId === order.id), events: events.filter((event) => event.orderId === order.id), paymentProof: proofs.find((proof) => proof.orderId === order.id) ?? null })) });
 }
 
 export async function POST(request: Request) {

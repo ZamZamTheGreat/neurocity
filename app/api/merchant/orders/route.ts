@@ -1,6 +1,6 @@
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { auditEvents, merchants, orderItems, orders, orderStatusEvents, variantInventory } from "../../../../db/schema";
+import { auditEvents, merchants, orderItems, orders, orderStatusEvents, paymentProofs, variantInventory } from "../../../../db/schema";
 import { requirePilotMerchant } from "../auth";
 import { sendOrderStatusNotification } from "../../../../lib/order-mail";
 
@@ -22,7 +22,8 @@ export async function GET() {
   const rows = await db.select().from(orders).where(eq(orders.merchantId, access.merchantId)).orderBy(desc(orders.createdAt), desc(orders.id)).limit(100);
   const items = rows.length ? await db.select().from(orderItems).where(inArray(orderItems.orderId, rows.map((order) => order.id))) : [];
   const events = rows.length ? await db.select().from(orderStatusEvents).where(inArray(orderStatusEvents.orderId, rows.map((order) => order.id))).orderBy(desc(orderStatusEvents.createdAt)) : [];
-  return Response.json({ orders: rows.map((order) => ({ ...order, reference: `NC-${String(order.id).padStart(6, "0")}`, items: items.filter((item) => item.orderId === order.id), events: events.filter((event) => event.orderId === order.id), allowedTransitions: transitions[order.status] ?? [] })) });
+  const proofs = rows.length ? await db.select().from(paymentProofs).where(inArray(paymentProofs.orderId, rows.map((order) => order.id))) : [];
+  return Response.json({ orders: rows.map((order) => ({ ...order, reference: `NC-${String(order.id).padStart(6, "0")}`, items: items.filter((item) => item.orderId === order.id), events: events.filter((event) => event.orderId === order.id), paymentProof: proofs.find((proof) => proof.orderId === order.id) ?? null, allowedTransitions: transitions[order.status] ?? [] })) });
 }
 
 export async function PATCH(request: Request) {
@@ -60,3 +61,5 @@ export async function PATCH(request: Request) {
     return Response.json({ error: error instanceof Error ? error.message : "Order update failed" }, { status: 500 });
   }
 }
+
+export async function PUT(request: Request) { const access = await requirePilotMerchant(["owner", "manager"]); if (!access) return Response.json({ error: "Owner or manager access required." }, { status: 403 }); const payload = await request.json() as { orderId?: number; paymentStatus?: string; note?: string }; if (!Number.isInteger(payload.orderId) || !["paid", "failed"].includes(payload.paymentStatus ?? "")) return Response.json({ error: "Valid order and payment decision required." }, { status: 400 }); const db = getDb(); const [order] = await db.select().from(orders).where(and(eq(orders.id, payload.orderId!), eq(orders.merchantId, access.merchantId))).limit(1); if (!order) return Response.json({ error: "Order not found." }, { status: 404 }); const [proof] = await db.select().from(paymentProofs).where(eq(paymentProofs.orderId, order.id)).limit(1); if (order.paymentMethod === "eft" && !proof) return Response.json({ error: "No payment proof has been submitted." }, { status: 409 }); await db.transaction(async (tx) => { await tx.update(orders).set({ paymentStatus: payload.paymentStatus!, updatedAt: new Date() }).where(eq(orders.id, order.id)); if (proof) await tx.update(paymentProofs).set({ status: payload.paymentStatus === "paid" ? "verified" : "rejected", reviewNote: payload.note?.trim().slice(0, 500) || null, reviewedBy: access.user.userId, reviewedAt: new Date() }).where(eq(paymentProofs.id, proof.id)); await tx.insert(auditEvents).values({ actorRef: access.user.userId, action: `payment.${payload.paymentStatus}`, resourceType: "order", resourceId: String(order.id), metadata: { previousStatus: order.paymentStatus, note: payload.note?.trim() || null } }); }); return Response.json({ ok: true, paymentStatus: payload.paymentStatus }); }

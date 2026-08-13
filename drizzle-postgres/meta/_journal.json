@@ -36,6 +36,13 @@
       "when": 1786413735384,
       "tag": "0004_thin_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786638679088,
+      "tag": "0005_careful_owl",
+      "breakpoints": true
     }
   ]
 }
