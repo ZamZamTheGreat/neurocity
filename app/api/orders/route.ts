@@ -1,11 +1,12 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
-import { auditEvents, customerAddresses, customerCartItems, merchants, orderItems, orders, orderStatusEvents, productVariants, products, variantInventory } from "../../../db/schema";
+import { auditEvents, customerAddresses, customerCartItems, merchantDeliveryZones, merchants, orderItems, orders, orderStatusEvents, productVariants, products, variantInventory } from "../../../db/schema";
 import { sendOrderPlacedNotifications } from "../../../lib/order-mail";
 
 const fulfillmentMethods = new Set(["pickup", "merchant_delivery"]);
 const paymentMethods = new Set(["pay_on_collection", "eft"]);
+const normalized = (value: string | null | undefined) => value?.trim().replace(/\s+/g, " ").toLocaleLowerCase("en") ?? "";
 
 export async function POST(request: Request) {
   const user = await getChatGPTUser();
@@ -27,10 +28,15 @@ export async function POST(request: Request) {
     if (cart.some((item) => item.productStatus !== "published" || item.variantStatus !== "active" || item.quantity < 1)) return Response.json({ error: "One or more bag items are no longer available." }, { status: 409 });
 
     let address: typeof customerAddresses.$inferSelect | null = null;
+    let deliveryZone: typeof merchantDeliveryZones.$inferSelect | null = null;
     if (payload.fulfillmentMethod === "merchant_delivery") {
       if (!Number.isInteger(payload.addressId)) return Response.json({ error: "Choose a delivery address." }, { status: 400 });
       [address] = await db.select().from(customerAddresses).where(and(eq(customerAddresses.id, payload.addressId!), eq(customerAddresses.userId, userId))).limit(1);
       if (!address) return Response.json({ error: "Delivery address not found." }, { status: 404 });
+      if (!normalized(address.suburb)) return Response.json({ error: "Add a suburb to the selected address so delivery can be confirmed." }, { status: 409 });
+      const zones = await db.select().from(merchantDeliveryZones).where(and(eq(merchantDeliveryZones.merchantId, merchantId), eq(merchantDeliveryZones.active, true)));
+      deliveryZone = zones.find((zone) => normalized(zone.area) === normalized(address!.suburb)) ?? null;
+      if (!deliveryZone) return Response.json({ error: `${merchant.name} does not currently deliver to ${address.suburb}. Choose pickup or another address.` }, { status: 409 });
     } else if (Number.isInteger(payload.addressId)) {
       [address] = await db.select().from(customerAddresses).where(and(eq(customerAddresses.id, payload.addressId!), eq(customerAddresses.userId, userId))).limit(1);
     }
@@ -43,10 +49,10 @@ export async function POST(request: Request) {
     }
 
     const subtotal = cart.reduce((sum, item) => sum + Number(item.salePrice ?? item.variantPrice) * item.quantity, 0);
-    const deliveryFee = 0;
+    const deliveryFee = deliveryZone ? Number(deliveryZone.fee) : 0;
     const notes = payload.customerNotes?.trim().slice(0, 1000) || null;
     const order = await db.transaction(async (tx) => {
-      const [created] = await tx.insert(orders).values({ merchantId, customerRef: user.userId, customerName: address?.recipientName ?? user.displayName, customerEmail: user.email, customerPhone: address?.phone ?? null, status: "pending_merchant_confirmation", paymentStatus: "pending", paymentMethod: payload.paymentMethod, fulfillmentMethod: payload.fulfillmentMethod, addressSnapshot: address ? { label: address.label, recipientName: address.recipientName, phone: address.phone, addressLine1: address.addressLine1, addressLine2: address.addressLine2, suburb: address.suburb, city: address.city, deliveryNotes: address.deliveryNotes } : null, customerNotes: notes, subtotal, deliveryFee, total: subtotal + deliveryFee, createdAt: new Date(), updatedAt: new Date() }).returning();
+      const [created] = await tx.insert(orders).values({ merchantId, customerRef: user.userId, customerName: address?.recipientName ?? user.displayName, customerEmail: user.email, customerPhone: address?.phone ?? null, status: "pending_merchant_confirmation", paymentStatus: "pending", paymentMethod: payload.paymentMethod, fulfillmentMethod: payload.fulfillmentMethod, addressSnapshot: address ? { label: address.label, recipientName: address.recipientName, phone: address.phone, addressLine1: address.addressLine1, addressLine2: address.addressLine2, suburb: address.suburb, city: address.city, deliveryNotes: address.deliveryNotes, deliveryZone: deliveryZone?.area ?? null, deliveryEstimate: deliveryZone?.estimatedTime ?? null } : null, customerNotes: notes, subtotal, deliveryFee, total: subtotal + deliveryFee, createdAt: new Date(), updatedAt: new Date() }).returning();
       await tx.insert(orderItems).values(cart.map((item) => ({ orderId: created.id, productId: item.productId, variantId: item.variantId, skuSnapshot: item.variantSku, nameSnapshot: item.productName, variantSnapshot: item.variantTitle, sizeSnapshot: item.size, colorSnapshot: item.color, unitPrice: Number(item.salePrice ?? item.variantPrice), quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity })));
       for (const item of cart) {
         const rows = inventoryRows.filter((inventory) => inventory.variantId === item.variantId);
@@ -60,7 +66,7 @@ export async function POST(request: Request) {
       }
       await tx.insert(orderStatusEvents).values({ orderId: created.id, status: created.status, actorRef: user.userId, note: "Order placed by customer" });
       await tx.delete(customerCartItems).where(and(eq(customerCartItems.userId, userId), inArray(customerCartItems.id, cart.map((item) => item.cartId))));
-      await tx.insert(auditEvents).values({ actorRef: user.userId, action: "order.created", resourceType: "order", resourceId: String(created.id), metadata: { merchantId, paymentMethod: created.paymentMethod, fulfillmentMethod: created.fulfillmentMethod, itemCount: cart.length, subtotal }, createdAt: new Date() });
+      await tx.insert(auditEvents).values({ actorRef: user.userId, action: "order.created", resourceType: "order", resourceId: String(created.id), metadata: { merchantId, paymentMethod: created.paymentMethod, fulfillmentMethod: created.fulfillmentMethod, itemCount: cart.length, subtotal, deliveryFee, deliveryZone: deliveryZone?.area ?? null }, createdAt: new Date() });
       return created;
     });
     await sendOrderPlacedNotifications({ reference: `NC-${String(order.id).padStart(6, "0")}`, storeName: merchant.name, customerName: order.customerName ?? user.displayName, customerEmail: order.customerEmail ?? user.email, merchantEmail: merchant.contactEmail, status: order.status, total: order.total, fulfillmentMethod: order.fulfillmentMethod ?? payload.fulfillmentMethod!, lines: cart.map((item) => ({ name: item.productName, option: [item.size, item.color].filter(Boolean).join(" / ") || item.variantTitle, quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity })) });
