@@ -20,6 +20,15 @@ export const sessions = pgTable("sessions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("idx_sessions_token_hash").on(table.tokenHash), index("idx_sessions_user").on(table.userId)]);
 
+export const customerCompanionProfiles = pgTable("customer_companion_profiles", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companionName: varchar("companion_name", { length: 40 }).notNull().default("James"),
+  memoryEnabled: boolean("memory_enabled").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("idx_companion_profile_user").on(table.userId)]);
+
 export const merchants = pgTable("merchants", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 200 }).notNull(),
