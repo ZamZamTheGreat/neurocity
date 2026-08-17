@@ -14,6 +14,10 @@ async function administrator() {
 export async function GET() {
   if (!await administrator()) return Response.json({ error: "Administrator access required." }, { status: 403 });
   const db = getDb();
+  let [demo] = await db.select().from(platformTenants).where(eq(platformTenants.slug, "harbour-square-demo")).limit(1);
+  if (!demo) [demo] = await db.insert(platformTenants).values({ name: "Harbour Square", slug: "harbour-square-demo", kind: "mall", status: "active", country: "Namibia", city: "Walvis Bay", tagline: "The coast's favourite stores, now closer.", theme: { primary: "#d6a94f", surface: "#082633", accent: "#f8f1df" }, features: { concierge: true, merchantApplications: true, promotions: true, events: true } }).returning();
+  const [lightwork] = await db.select().from(merchants).where(eq(merchants.slug, "lightwork-clothing")).limit(1);
+  if (demo && lightwork) await db.insert(platformTenantMerchants).values({ tenantId: demo.id, merchantId: lightwork.id, status: "active", featured: true }).onConflictDoNothing();
   const [platforms, domains, assignments, merchantList] = await Promise.all([
     db.select().from(platformTenants).orderBy(asc(platformTenants.name)),
     db.select().from(platformTenantDomains).orderBy(asc(platformTenantDomains.hostname)),

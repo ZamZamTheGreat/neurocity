@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import MerchantWorkspace from "./components/MerchantWorkspace";
 import { NeuroConcierge } from "./components/NeuroConcierge";
 import { merchantCategories } from "../lib/merchant-categories";
@@ -14,7 +14,7 @@ type Product = {
   badge: string;
 };
 type PublicStore = { id: number; name: string; slug: string; category: string; tagline: string | null; description: string | null; logoUrl: string | null; bannerUrl: string | null; fulfillmentMethods: string[]; branchName?: string; branchAddress?: string };
-type PlatformIdentity = { name: string; slug: string; kind: string; country: string; city: string | null; tagline: string | null; logoUrl: string | null; markUrl: string | null };
+type PlatformIdentity = { name: string; slug: string; kind: string; country: string; city: string | null; tagline: string | null; logoUrl: string | null; markUrl: string | null; theme: Record<string, string> };
 
 const categories = merchantCategories.map((category) => ({ ...category, detail: category.includes, count: category.name === "Fashion & Clothing" ? "Pilot open" : "Recruiting" }));
 
@@ -29,7 +29,7 @@ export default function Home() {
   const [catalogue, setCatalogue] = useState<Product[]>([]);
   const [storeAvailable, setStoreAvailable] = useState<boolean | null>(null);
   const [stores, setStores] = useState<PublicStore[]>([]);
-  const [platform, setPlatform] = useState<PlatformIdentity>({ name: "NeuroCity", slug: "neurocity", kind: "marketplace", country: "Namibia", city: null, tagline: "Namibia's intelligent digital mall.", logoUrl: "/branding/neurocity-logo.png", markUrl: "/branding/neurocity-mark.png" });
+  const [platform, setPlatform] = useState<PlatformIdentity>({ name: "NeuroCity", slug: "neurocity", kind: "marketplace", country: "Namibia", city: null, tagline: "Namibia's intelligent digital mall.", logoUrl: "/branding/neurocity-logo.png", markUrl: "/branding/neurocity-mark.png", theme: { primary: "#18c98e", surface: "#07111f" } });
   const [selectedCategory, setSelectedCategory] = useState("");
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -40,7 +40,8 @@ export default function Home() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    fetch("/api/stores").then(async (response) => { if (!response.ok) throw new Error("stores_unavailable"); return response.json(); }).then((data) => { const available = Array.isArray(data.stores) ? data.stores : []; if (data.platform) setPlatform(data.platform); setStores(available); setStoreAvailable(available.length > 0); }).catch(() => { setStores([]); setStoreAvailable(false); });
+    const mall = new URLSearchParams(window.location.search).get("mall"); const tenantQuery = mall ? `?mall=${encodeURIComponent(mall)}` : "";
+    fetch(`/api/stores${tenantQuery}`).then(async (response) => { if (!response.ok) throw new Error("stores_unavailable"); return response.json(); }).then((data) => { const available = Array.isArray(data.stores) ? data.stores : []; if (data.platform) setPlatform(data.platform); setStores(available); setStoreAvailable(available.length > 0); }).catch(() => { setStores([]); setStoreAvailable(false); });
     fetch("/api/catalogue").then(async (response) => {
       if (!response.ok) throw new Error(response.status === 404 ? "store_unavailable" : "catalogue_unavailable");
       return response.json();
@@ -89,10 +90,10 @@ export default function Home() {
   }
 
   return (
-    <main id="main-content">
+    <main id="main-content" className={platform.kind === "mall" ? "white-label-mall" : ""} style={{ "--ink": platform.theme?.surface ?? "#07111f", "--gold": platform.theme?.primary ?? "#18c98e", "--violet": platform.theme?.primary ?? "#18c98e" } as CSSProperties}>
       <header className="topbar">
         <button className="brand header-brand" onClick={() => setView("mall")} aria-label={`Go to ${platform.name} home`}>
-          <img className="brand-symbol" src={platform.markUrl ?? "/branding/neurocity-mark.png"} alt="" aria-hidden="true" /><span className="brand-copy"><span><b>{platform.name}</b></span><small>{platform.tagline ?? `${platform.country}'s digital mall`}</small></span>
+          {platform.markUrl ? <img className="brand-symbol" src={platform.markUrl} alt="" aria-hidden="true" /> : <span className="tenant-monogram" aria-hidden="true">{platform.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</span>}<span className="brand-copy"><span><b>{platform.name}</b></span><small>{platform.tagline ?? `${platform.country}'s digital mall`}</small></span>
         </button>
         <nav className="desktop-nav" aria-label="Primary navigation">
           <button className={view === "mall" ? "active" : ""} onClick={() => setView("mall")}>Discover</button>
@@ -112,32 +113,32 @@ export default function Home() {
         <>
           <section className="hero">
             <div className="hero-copy">
-              <p className="eyebrow"><span /> Namibia&apos;s stores, one connected mall</p>
-              <h1>Your city.<br />Your stores.<br /><em>One place.</em></h1>
-              <p className="hero-lede">Discover and shop trusted Namibian businesses from one convenient national marketplace. Starting in Windhoek, built for every town.</p>
-              <div className="hero-actions">{storeAvailable && <button onClick={() => showStores()}>Explore local stores</button>}<a href="/apply">Sell on NeuroCity</a></div>
+              <p className="eyebrow"><span /> {platform.kind === "mall" ? `${platform.city ?? "Your"} shopping, digitally connected` : "Namibia's stores, one connected mall"}</p>
+              <h1>{platform.kind === "mall" ? <>Your mall.<br />Your favourites.<br /><em>Always open.</em></> : <>Your city.<br />Your stores.<br /><em>One place.</em></>}</h1>
+              <p className="hero-lede">{platform.kind === "mall" ? `${platform.tagline} Browse participating stores, discover what is available and shop before you arrive.` : "Discover and shop trusted Namibian businesses from one convenient national marketplace. Starting in Windhoek, built for every town."}</p>
+              <div className="hero-actions">{storeAvailable && <button onClick={() => showStores()}>Explore stores</button>}<a href="/apply">{platform.kind === "mall" ? "Join this digital mall" : "Sell on NeuroCity"}</a></div>
               <div className="search-shell">
                 <span aria-hidden="true">⌕</span><input value={query} onChange={(e) => { setQuery(e.target.value); setSelectedCategory(""); }} placeholder="Search approved stores, categories and products" aria-label="Search NeuroCity" /><button onClick={() => showStores()}>Search</button>
               </div>
               <div className="trust-row"><span>Curated stores</span><span>Local pickup</span><span>Merchant delivery</span></div>
             </div>
-            <div className="hero-city" aria-label="NeuroCity marketplace summary">
+            <div className="hero-city" aria-label={`${platform.name} marketplace summary`}>
               <div className="city-orbit orbit-one" /><div className="city-orbit orbit-two" />
               {stores[0] ? <div className="city-card main-card"><span>APPROVED LOCAL STORE</span><img src={stores[0].logoUrl ?? "/lightwork-logo.png"} alt={stores[0].name} /><small>{stores[0].branchAddress ?? stores[0].tagline}</small><button onClick={() => openStore(stores[0].slug)}>Enter store →</button></div> : <div className="city-card main-card marketplace-card"><span>NAMIBIAN MARKETPLACE</span><strong>{platform.name}</strong><small>{storeAvailable === null ? "Loading local storefronts…" : "New storefronts coming soon"}</small></div>}
               <div className="float-card top-float"><b>{stores.length}</b><span>stores open now</span></div>
-              <div className="float-card bottom-float"><i /> <span>Merchant delivery<br /><b>Windhoek</b></span></div>
+              <div className="float-card bottom-float"><i /> <span>Merchant delivery<br /><b>{platform.city ?? "Namibia"}</b></span></div>
             </div>
           </section>
 
           <section className="section">
-            <div className="section-heading"><div><p className="eyebrow">Explore the city</p><h2>One mall. Distinct local stores.</h2></div><p>NeuroCity gives every merchant a real storefront—not just a listing.</p></div>
+            <div className="section-heading"><div><p className="eyebrow">Explore {platform.kind === "mall" ? "the mall" : "the city"}</p><h2>One mall. Distinct local stores.</h2></div><p>{platform.name} gives every merchant a real storefront—not just a listing.</p></div>
             <div className="category-grid">
               {categories.map((category) => { const count = categoryCounts[category.name] ?? 0; return <button className="category-card" key={category.name} onClick={() => count ? showStores(category.name) : setNotice(`${category.name} merchants are being recruited.`)}><span className="category-icon">{category.icon}</span><div><small>{count ? `${count} ${count === 1 ? "store" : "stores"} open` : "Recruiting"}</small><h3>{category.name}</h3><p>{category.detail}</p></div><b>↗</b></button>; })}
             </div>
           </section>
 
           <section className="public-stores section" id="stores">
-            <div className="section-heading"><div><p className="eyebrow">Approved and ready</p><h2>Stores open on NeuroCity.</h2></div><p>Only approved merchants that have completed and published their storefront setup appear here.</p></div>
+            <div className="section-heading"><div><p className="eyebrow">Approved and ready</p><h2>Stores open on {platform.name}.</h2></div><p>Only approved merchants that have completed and published their storefront setup appear here.</p></div>
             <div className="store-directory-tools"><div>{selectedCategory && <button onClick={() => setSelectedCategory("")}>{selectedCategory} ×</button>}<span>{visibleStores.length} {visibleStores.length === 1 ? "store" : "stores"}</span></div><label><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search stores" /></label></div>
             {storeAvailable === null ? <div className="public-store-empty"><strong>Loading local stores…</strong></div> : visibleStores.length ? <div className="public-store-grid">{visibleStores.map((store) => <article className="public-store-card" key={store.id}><div className="public-store-art">{store.bannerUrl && <img src={store.bannerUrl} alt="" />}<span>Approved store</span></div><div className="public-store-copy">{store.logoUrl && <img src={store.logoUrl} alt={`${store.name} logo`} />}<small>{store.category}</small><h3>{store.name}</h3><p>{store.tagline ?? store.description}</p><div>{store.fulfillmentMethods?.map((method) => <span key={method}>{method.replaceAll("_", " ")}</span>)}</div><button onClick={() => openStore(store.slug)}>Visit store →</button></div></article>)}</div> : <div className="public-store-empty"><strong>No matching stores</strong><p>{stores.length ? "Try clearing the category or changing your search." : "Approved merchants will appear here as soon as their storefront setup is complete and published."}</p>{(query || selectedCategory) && <button onClick={() => { setQuery(""); setSelectedCategory(""); }}>Clear filters</button>}</div>}
           </section>

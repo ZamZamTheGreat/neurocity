@@ -20,11 +20,12 @@ const normalizeHostname = (value: string | null) => (value ?? "").split(":")[0].
 
 export async function resolvePlatformTenant(request: Request): Promise<PublicPlatformTenant> {
   const db = getDb();
+  const previewSlug = new URL(request.url).searchParams.get("mall")?.trim().toLowerCase();
   const hostname = normalizeHostname(request.headers.get("x-forwarded-host") ?? request.headers.get("host"));
   let tenant;
+  if (previewSlug) [tenant] = await db.select().from(platformTenants).where(eq(platformTenants.slug, previewSlug)).limit(1);
   if (hostname) {
-    const [domainMatch] = await db.select({ tenant: platformTenants }).from(platformTenantDomains).innerJoin(platformTenants, eq(platformTenantDomains.tenantId, platformTenants.id)).where(eq(platformTenantDomains.hostname, hostname)).limit(1);
-    tenant = domainMatch?.tenant;
+    if (!tenant) { const [domainMatch] = await db.select({ tenant: platformTenants }).from(platformTenantDomains).innerJoin(platformTenants, eq(platformTenantDomains.tenantId, platformTenants.id)).where(eq(platformTenantDomains.hostname, hostname)).limit(1); tenant = domainMatch?.tenant; }
   }
   if (!tenant) [tenant] = await db.select().from(platformTenants).where(eq(platformTenants.slug, "neurocity")).limit(1);
   if (!tenant) throw new Error("No active platform tenant is configured.");
