@@ -29,6 +29,32 @@ export const customerCompanionProfiles = pgTable("customer_companion_profiles", 
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("idx_companion_profile_user").on(table.userId)]);
 
+export const platformTenants = pgTable("platform_tenants", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  slug: varchar("slug", { length: 120 }).notNull(),
+  kind: varchar("kind", { length: 32 }).notNull().default("marketplace"),
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  country: varchar("country", { length: 120 }).notNull().default("Namibia"),
+  city: varchar("city", { length: 120 }),
+  tagline: varchar("tagline", { length: 240 }),
+  logoUrl: text("logo_url"),
+  markUrl: text("mark_url"),
+  theme: jsonb("theme").notNull().default({}),
+  features: jsonb("features").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("idx_platform_tenants_slug").on(table.slug)]);
+
+export const platformTenantDomains = pgTable("platform_tenant_domains", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => platformTenants.id, { onDelete: "cascade" }),
+  hostname: varchar("hostname", { length: 255 }).notNull(),
+  isPrimary: boolean("is_primary").notNull().default(false),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("idx_platform_tenant_domains_hostname").on(table.hostname), index("idx_platform_tenant_domains_tenant").on(table.tenantId)]);
+
 export const merchants = pgTable("merchants", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 200 }).notNull(),
@@ -54,6 +80,25 @@ export const merchants = pgTable("merchants", {
   setupStep: integer("setup_step").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("idx_merchants_slug").on(table.slug)]);
+
+export const platformTenantMerchants = pgTable("platform_tenant_merchants", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => platformTenants.id, { onDelete: "cascade" }),
+  merchantId: integer("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  featured: boolean("featured").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("idx_platform_tenant_merchant").on(table.tenantId, table.merchantId), index("idx_platform_tenant_merchants_merchant").on(table.merchantId)]);
+
+export const platformTenantMemberships = pgTable("platform_tenant_memberships", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => platformTenants.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 32 }).notNull().default("manager"),
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("idx_platform_tenant_membership").on(table.tenantId, table.userId), index("idx_platform_tenant_memberships_user").on(table.userId)]);
 
 export const merchantApplications = pgTable("merchant_applications", {
   id: serial("id").primaryKey(),

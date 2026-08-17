@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { getDb } from ".";
-import { merchants, productVariants, products, storeBranches, variantInventory } from "./schema";
+import { merchants, platformTenantMerchants, platformTenants, productVariants, products, storeBranches, variantInventory } from "./schema";
 
 const productSeeds = [
   { sku: "LW-CROWN-V1", name: "Crown V1 Cuffed Tracksuit", collection: "Crown V1", description: "Black tracksuit. Product description and current sale status require merchant confirmation.", price: 1249.99, status: "needs_confirmation", imageUrl: "/lightwork-crown-v1.png", badge: "Price to confirm" },
@@ -14,6 +14,8 @@ export async function ensurePilotCatalogue() {
   let [merchant] = await db.select().from(merchants).where(eq(merchants.slug, "lightwork-clothing")).limit(1);
   const identity = { name: "LightWork Clothing", category: "Fashion / streetwear", contactName: "Zephan Stadhauer", contactEmail: "lightworkclothing.na@gmail.com", contactPhone: "0814953446", website: "https://lightworkclothing.com", pickupLocation: "Baines Centre, Pioneerspark, Windhoek", deliveryMode: "merchant_managed", setupStep: 2, tagline: "Global established movement.", description: "Independent Windhoek streetwear from Baines Centre, Pioneerspark.", logoUrl: "/lightwork-logo.png", bannerUrl: "/lightwork-crown-v1.png", primaryCategory: "Fashion", policies: { returns: "Returns and exchanges are confirmed directly with LightWork during the pilot." }, contactOptions: { phone: "0814953446", email: "lightworkclothing.na@gmail.com", website: "https://lightworkclothing.com" }, fulfillmentMethods: ["pickup", "merchant_delivery"] };
   if (!merchant) [merchant] = await db.insert(merchants).values({ slug: "lightwork-clothing", status: "pilot", isPublic: true, ...identity }).returning(); else [merchant] = await db.update(merchants).set(identity).where(eq(merchants.id, merchant.id)).returning();
+  const [tenant] = await db.select().from(platformTenants).where(eq(platformTenants.slug, "neurocity")).limit(1);
+  if (tenant) await db.insert(platformTenantMerchants).values({ tenantId: tenant.id, merchantId: merchant.id, status: "active", featured: true }).onConflictDoNothing();
   for (const product of productSeeds) await db.insert(products).values({ ...product, merchantId: merchant.id }).onConflictDoNothing();
   let [branch] = await db.select().from(storeBranches).where(eq(storeBranches.merchantId, merchant.id)).limit(1);
   if (!branch) [branch] = await db.insert(storeBranches).values({ merchantId: merchant.id, name: "Baines Centre", address: "Baines Centre, Pioneerspark, Windhoek", city: "Windhoek", phone: merchant.contactPhone, pickupEnabled: true, deliveryEnabled: true, isPrimary: true }).returning();

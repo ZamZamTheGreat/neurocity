@@ -14,6 +14,7 @@ type Product = {
   badge: string;
 };
 type PublicStore = { id: number; name: string; slug: string; category: string; tagline: string | null; description: string | null; logoUrl: string | null; bannerUrl: string | null; fulfillmentMethods: string[]; branchName?: string; branchAddress?: string };
+type PlatformIdentity = { name: string; slug: string; kind: string; country: string; city: string | null; tagline: string | null; logoUrl: string | null; markUrl: string | null };
 
 const categories = merchantCategories.map((category) => ({ ...category, detail: category.includes, count: category.name === "Fashion & Clothing" ? "Pilot open" : "Recruiting" }));
 
@@ -28,6 +29,7 @@ export default function Home() {
   const [catalogue, setCatalogue] = useState<Product[]>([]);
   const [storeAvailable, setStoreAvailable] = useState<boolean | null>(null);
   const [stores, setStores] = useState<PublicStore[]>([]);
+  const [platform, setPlatform] = useState<PlatformIdentity>({ name: "NeuroCity", slug: "neurocity", kind: "marketplace", country: "Namibia", city: null, tagline: "Namibia's intelligent digital mall.", logoUrl: "/branding/neurocity-logo.png", markUrl: "/branding/neurocity-mark.png" });
   const [selectedCategory, setSelectedCategory] = useState("");
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -38,7 +40,7 @@ export default function Home() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    fetch("/api/stores").then(async (response) => { if (!response.ok) throw new Error("stores_unavailable"); return response.json(); }).then((data) => { const available = Array.isArray(data.stores) ? data.stores : []; setStores(available); setStoreAvailable(available.length > 0); }).catch(() => { setStores([]); setStoreAvailable(false); });
+    fetch("/api/stores").then(async (response) => { if (!response.ok) throw new Error("stores_unavailable"); return response.json(); }).then((data) => { const available = Array.isArray(data.stores) ? data.stores : []; if (data.platform) setPlatform(data.platform); setStores(available); setStoreAvailable(available.length > 0); }).catch(() => { setStores([]); setStoreAvailable(false); });
     fetch("/api/catalogue").then(async (response) => {
       if (!response.ok) throw new Error(response.status === 404 ? "store_unavailable" : "catalogue_unavailable");
       return response.json();
@@ -89,8 +91,8 @@ export default function Home() {
   return (
     <main id="main-content">
       <header className="topbar">
-        <button className="brand header-brand" onClick={() => setView("mall")} aria-label="Go to NeuroCity mall home">
-          <img className="brand-symbol" src="/branding/neurocity-mark.png" alt="" aria-hidden="true" /><span className="brand-copy"><span><b>Neuro</b><strong>City</strong></span><small>Windhoek&apos;s digital mall</small></span>
+        <button className="brand header-brand" onClick={() => setView("mall")} aria-label={`Go to ${platform.name} home`}>
+          <img className="brand-symbol" src={platform.markUrl ?? "/branding/neurocity-mark.png"} alt="" aria-hidden="true" /><span className="brand-copy"><span><b>{platform.name}</b></span><small>{platform.tagline ?? `${platform.country}'s digital mall`}</small></span>
         </button>
         <nav className="desktop-nav" aria-label="Primary navigation">
           <button className={view === "mall" ? "active" : ""} onClick={() => setView("mall")}>Discover</button>
@@ -98,7 +100,7 @@ export default function Home() {
           <button onClick={() => { setView("mall"); requestAnimationFrame(() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })); }}>How it works</button>
         </nav>
         <div className="header-actions">
-          <span className="city-pill">Windhoek <span>•</span></span>
+          <span className="city-pill">{platform.city ?? platform.country} <span>•</span></span>
           <details className="account-menu"><summary>Account</summary><div onClick={(event) => event.currentTarget.parentElement?.removeAttribute("open")}><a href="/account">My account</a><button onClick={() => setView("merchant")}>Merchant dashboard</button><a href="/application-status">Track application</a><a href="/login">Sign in</a></div></details>
           <button className="cart-button" onClick={() => cart.length ? setCheckoutOpen(true) : setNotice("Your mall basket is empty.")}>
             Bag <b>{cart.length}</b>
@@ -110,9 +112,9 @@ export default function Home() {
         <>
           <section className="hero">
             <div className="hero-copy">
-              <p className="eyebrow"><span /> Your Windhoek mall, online</p>
+              <p className="eyebrow"><span /> Namibia&apos;s stores, one connected mall</p>
               <h1>Your city.<br />Your stores.<br /><em>One place.</em></h1>
-              <p className="hero-lede">Discover and shop trusted Windhoek businesses from one convenient local marketplace.</p>
+              <p className="hero-lede">Discover and shop trusted Namibian businesses from one convenient national marketplace. Starting in Windhoek, built for every town.</p>
               <div className="hero-actions">{storeAvailable && <button onClick={() => showStores()}>Explore local stores</button>}<a href="/apply">Sell on NeuroCity</a></div>
               <div className="search-shell">
                 <span aria-hidden="true">⌕</span><input value={query} onChange={(e) => { setQuery(e.target.value); setSelectedCategory(""); }} placeholder="Search approved stores, categories and products" aria-label="Search NeuroCity" /><button onClick={() => showStores()}>Search</button>
@@ -121,7 +123,7 @@ export default function Home() {
             </div>
             <div className="hero-city" aria-label="NeuroCity marketplace summary">
               <div className="city-orbit orbit-one" /><div className="city-orbit orbit-two" />
-              {stores[0] ? <div className="city-card main-card"><span>APPROVED LOCAL STORE</span><img src={stores[0].logoUrl ?? "/lightwork-logo.png"} alt={stores[0].name} /><small>{stores[0].branchAddress ?? stores[0].tagline}</small><button onClick={() => openStore(stores[0].slug)}>Enter store →</button></div> : <div className="city-card main-card marketplace-card"><span>WINDHOEK MARKETPLACE</span><strong>NeuroCity</strong><small>{storeAvailable === null ? "Loading local storefronts…" : "New storefronts coming soon"}</small></div>}
+              {stores[0] ? <div className="city-card main-card"><span>APPROVED LOCAL STORE</span><img src={stores[0].logoUrl ?? "/lightwork-logo.png"} alt={stores[0].name} /><small>{stores[0].branchAddress ?? stores[0].tagline}</small><button onClick={() => openStore(stores[0].slug)}>Enter store →</button></div> : <div className="city-card main-card marketplace-card"><span>NAMIBIAN MARKETPLACE</span><strong>{platform.name}</strong><small>{storeAvailable === null ? "Loading local storefronts…" : "New storefronts coming soon"}</small></div>}
               <div className="float-card top-float"><b>{stores.length}</b><span>stores open now</span></div>
               <div className="float-card bottom-float"><i /> <span>Merchant delivery<br /><b>Windhoek</b></span></div>
             </div>
@@ -155,7 +157,7 @@ export default function Home() {
             <div className="product-grid">{catalogue.slice(0, 3).map((p) => <ProductCard key={p.id} product={p} onAdd={addToCart} />)}</div>
           </section>}
 
-          <section className="merchant-public-cta"><div><p className="eyebrow light">For Windhoek businesses</p><h2>Bring your store into NeuroCity.</h2><p>Apply online, submit your business documents securely, and receive a merchant dashboard after approval.</p></div><div><a className="merchant-cta-primary" href="/apply">Start an application</a><a href="/application-status">Track an existing application</a></div></section>
+          <section className="merchant-public-cta"><div><p className="eyebrow light">For Namibian businesses</p><h2>Bring your store into {platform.name}.</h2><p>Apply online, submit your business documents securely, and receive a merchant dashboard after approval.</p></div><div><a className="merchant-cta-primary" href="/apply">Start an application</a><a href="/application-status">Track an existing application</a></div></section>
         </>
       )}
 

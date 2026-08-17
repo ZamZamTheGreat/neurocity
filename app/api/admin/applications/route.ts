@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { applicationDocuments, auditEvents, merchantApplications, merchantMemberships, merchants, users } from "../../../../db/schema";
+import { applicationDocuments, auditEvents, merchantApplications, merchantMemberships, merchants, platformTenantMerchants, platformTenants, users } from "../../../../db/schema";
 import { sendMail } from "../../../../lib/mail";
 import { createPresignedR2Url } from "../../../../lib/r2";
 import { getChatGPTUser } from "../../../chatgpt-auth";
@@ -21,7 +21,7 @@ export async function PATCH(request: Request) {
   let merchantId = application.merchantId;
   await db.transaction(async (tx) => {
     if (status === "approved" && !merchantId) { const [merchant] = await tx.insert(merchants).values({ name: application.tradingName, slug: `${slugify(application.tradingName) || "merchant"}-${application.id}`, category: application.category, status: "onboarding", contactName: application.representativeName, contactEmail: application.email, contactPhone: application.phone, website: application.website, pickupLocation: application.branchLocations, deliveryMode: application.deliveryAvailable ? "merchant_managed" : "pickup_only", setupStep: 1 }).returning(); merchantId = merchant.id; }
-    if (status === "approved" && merchantId) { const [account] = await tx.select().from(users).where(eq(users.email, application.email)).limit(1); if (account) await tx.insert(merchantMemberships).values({ merchantId, userRef: String(account.id), email: account.email, displayName: account.displayName, role: "owner", status: "active" }).onConflictDoNothing(); }
+    if (status === "approved" && merchantId) { const [account] = await tx.select().from(users).where(eq(users.email, application.email)).limit(1); if (account) await tx.insert(merchantMemberships).values({ merchantId, userRef: String(account.id), email: account.email, displayName: account.displayName, role: "owner", status: "active" }).onConflictDoNothing(); const [tenant] = await tx.select().from(platformTenants).where(eq(platformTenants.slug, "neurocity")).limit(1); if (tenant) await tx.insert(platformTenantMerchants).values({ tenantId: tenant.id, merchantId, status: "active" }).onConflictDoNothing(); }
     await tx.update(merchantApplications).set({ status, reviewNotes: notes?.trim() || null, reviewedAt: new Date(), reviewedBy: Number(user.userId), merchantId }).where(and(eq(merchantApplications.id, application.id), eq(merchantApplications.status, application.status)));
     await tx.insert(auditEvents).values({ actorRef: user.userId, action: `application.${status}`, resourceType: "merchant_application", resourceId: String(application.id), metadata: { notes: notes?.trim() || null, merchantId } });
   });
