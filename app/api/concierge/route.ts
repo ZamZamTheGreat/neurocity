@@ -1,7 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { merchants, products, productVariants, variantInventory } from "../../../db/schema";
-import { getChatGPTUser } from "../../chatgpt-auth";
 
 const STOP = new Set(["a", "an", "and", "for", "from", "i", "in", "is", "me", "my", "need", "of", "or", "please", "show", "some", "the", "to", "want", "with"]);
 const COLOURS = ["black", "white", "red", "blue", "green", "purple", "maroon", "grey", "gray", "navy", "brown", "yellow", "pink", "orange"];
@@ -14,8 +13,6 @@ function parseBudget(query: string) {
 
 export async function POST(request: Request) {
   try {
-    const user = await getChatGPTUser();
-    if (!user) return Response.json({ error: "Sign in to use your personal shopping companion." }, { status: 401 });
     const { message = "" } = await request.json() as { message?: string };
     const query = message.trim().toLowerCase();
     if (query.length < 2 || query.length > 300) return Response.json({ error: "Describe what you need in 2 to 300 characters." }, { status: 400 });
