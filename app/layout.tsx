@@ -9,6 +9,7 @@ import "./dashboard-enhancements.css";
 import "./payment-workflow.css";
 import "./ux-consistency.css";
 import "./onboarding.css";
+import "./merchant-dashboard-v2.css";
 
 export const viewport: Viewport = {
   width: "device-width",
