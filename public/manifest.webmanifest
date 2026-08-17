@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "NeuroCity — Windhoek's digital mall",
+  "short_name": "NeuroCity",
+  "description": "Shop trusted Windhoek stores in one place, with pickup and delivery.",
+  "lang": "en-NA",
+  "dir": "ltr",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#f7f5f1",
+  "theme_color": "#17131f",
+  "categories": ["shopping", "business", "lifestyle"],
+  "icons": [
+    { "src": "/icons/neurocity-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/neurocity-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/neurocity-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Browse stores", "short_name": "Stores", "url": "/#stores", "icons": [{ "src": "/icons/neurocity-192.png", "sizes": "192x192" }] },
+    { "name": "My account", "short_name": "Account", "url": "/account", "icons": [{ "src": "/icons/neurocity-192.png", "sizes": "192x192" }] },
+    { "name": "Merchant dashboard", "short_name": "Dashboard", "url": "/dashboard", "icons": [{ "src": "/icons/neurocity-192.png", "sizes": "192x192" }] }
+  ]
+}
