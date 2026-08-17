@@ -89,7 +89,7 @@ export default function Home() {
     <main id="main-content">
       <header className="topbar">
         <button className="brand header-brand" onClick={() => setView("mall")} aria-label="Go to NeuroCity mall home">
-          <span className="brand-symbol" aria-hidden="true">N</span><span className="brand-copy"><span><b>Neuro</b><strong>City</strong></span><small>Windhoek&apos;s digital mall</small></span>
+          <img className="brand-symbol" src="/branding/neurocity-mark.png" alt="" aria-hidden="true" /><span className="brand-copy"><span><b>Neuro</b><strong>City</strong></span><small>Windhoek&apos;s digital mall</small></span>
         </button>
         <nav className="desktop-nav" aria-label="Primary navigation">
           <button className={view === "mall" ? "active" : ""} onClick={() => setView("mall")}>Discover</button>

@@ -1,9 +1,9 @@
-const VERSION = "neurocity-shell-v1";
+const VERSION = "neurocity-shell-v2";
 const OFFLINE_URL = "/offline.html";
 const APP_SHELL = [
   OFFLINE_URL,
   "/manifest.webmanifest",
-  "/favicon.svg",
+  "/branding/neurocity-mark.png",
   "/icons/neurocity-192.png",
   "/icons/neurocity-512.png",
   "/icons/neurocity-maskable-512.png"
