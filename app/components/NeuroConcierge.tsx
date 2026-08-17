@@ -54,9 +54,11 @@ export function NeuroConcierge({ open, onClose }: { open: boolean; onClose: () =
 
   async function ask(message: string) {
     const text = message.trim(); if (!text || busy || !profile) return;
+    const context = messages.slice(-8).map(({ role, text: previous }) => ({ role: role === "companion" ? "assistant" : "user", text: previous }));
     setMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", text }]); setInput(""); setBusy(true);
     try {
-      const response = await fetch("/api/concierge", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ message: text }) });
+      const mall = new URLSearchParams(window.location.search).get("mall"); const tenantQuery = mall ? `?mall=${encodeURIComponent(mall)}` : "";
+      const response = await fetch(`/api/concierge${tenantQuery}`, { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", body: JSON.stringify({ message: text, history: context }) });
       const result = await response.json();
       setMessages((current) => [...current, { id: crypto.randomUUID(), role: "companion", text: response.ok ? result.reply : result.error, matches: response.ok ? result.matches : [] }]);
     } catch { setMessages((current) => [...current, { id: crypto.randomUUID(), role: "companion", text: "I couldn’t reach the live catalogue. Please try again in a moment." }]); }
