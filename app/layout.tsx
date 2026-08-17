@@ -8,6 +8,7 @@ import "./checkout.css";
 import "./dashboard-enhancements.css";
 import "./payment-workflow.css";
 import "./ux-consistency.css";
+import "./onboarding.css";
 
 export const viewport: Viewport = {
   width: "device-width",
