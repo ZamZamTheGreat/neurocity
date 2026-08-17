@@ -6,6 +6,7 @@ import "./storefront-v2.css";
 import "./checkout.css";
 import "./dashboard-enhancements.css";
 import "./payment-workflow.css";
+import "./ux-consistency.css";
 
 export const metadata: Metadata = {
   title: "NeuroCity | Your city. Your stores. One place.",
@@ -21,5 +22,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en"><body><a className="skip-link" href="#main-content">Skip to main content</a>{children}</body></html>;
 }

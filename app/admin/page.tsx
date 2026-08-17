@@ -30,7 +30,7 @@ export default function AdminPage() {
 
   if (!items) return <AdminLogin auth={auth} setAuth={setAuth} mode={mode} setMode={setMode} message={message} authenticate={authenticate} />;
 
-  return <main className="admin-page admin-workspace">
+  return <main id="main-content" className="admin-page admin-workspace">
     <header className="admin-topbar"><a href="/" className="brand"><span>Neuro</span><strong>City</strong></a><div><span className="admin-indicator">Administrator</span><a href="/">View mall ↗</a></div></header>
     <section className="admin-welcome"><div><p className="eyebrow">Operations centre</p><h1>Merchant administration</h1><p>Review new businesses and manage approved merchant access from one place.</p></div><button onClick={load}>Refresh data</button></section>
     {message && <button className="workspace-message" onClick={() => setMessage("")}>{message}<span>×</span></button>}
