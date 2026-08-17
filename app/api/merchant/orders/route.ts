@@ -36,6 +36,8 @@ export async function PATCH(request: Request) {
     const [current] = await db.select().from(orders).where(eq(orders.id, payload.orderId!)).limit(1);
     if (!current || current.merchantId !== access.merchantId) return Response.json({ error: "Order not found." }, { status: 404 });
     if (!(transitions[current.status] ?? []).includes(payload.status)) return Response.json({ error: `Cannot move an order from ${current.status} to ${payload.status}.` }, { status: 409 });
+    if (["rejected", "cancelled", "delivery_failed"].includes(payload.status) && !payload.note?.trim()) return Response.json({ error: "A reason is required for this order decision." }, { status: 400 });
+    if (current.paymentMethod === "eft" && current.paymentStatus !== "paid" && ["preparing", "ready_for_pickup", "dispatched", "collected", "delivered", "completed"].includes(payload.status)) return Response.json({ error: "Verify EFT payment before progressing fulfilment." }, { status: 409 });
     const items = await db.select().from(orderItems).where(eq(orderItems.orderId, current.id));
     await db.transaction(async (tx) => {
       await tx.update(orders).set({ status: payload.status!, updatedAt: new Date() }).where(eq(orders.id, current.id));

@@ -81,3 +81,23 @@ export async function POST(request: Request) {
     return Response.json({ error: error instanceof Error ? error.message : "Order creation failed." }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  const user = await getChatGPTUser();
+  if (!user) return Response.json({ error: "Sign in required." }, { status: 401 });
+  const payload = await request.json() as { orderId?: number; reason?: string };
+  const reason = payload.reason?.trim().slice(0, 500);
+  if (!Number.isInteger(payload.orderId) || !reason) return Response.json({ error: "Order and cancellation reason are required." }, { status: 400 });
+  const db = getDb();
+  const [order] = await db.select().from(orders).where(and(eq(orders.id, payload.orderId!), eq(orders.customerRef, user.userId))).limit(1);
+  if (!order) return Response.json({ error: "Order not found." }, { status: 404 });
+  if (order.status !== "pending_merchant_confirmation") return Response.json({ error: "This order is already being handled. Open an issue if you need assistance." }, { status: 409 });
+  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+  await db.transaction(async (tx) => {
+    await tx.update(orders).set({ status: "cancelled", updatedAt: new Date() }).where(eq(orders.id, order.id));
+    for (const item of items.filter((row) => row.variantId)) { const inventory = await tx.select().from(variantInventory).where(eq(variantInventory.variantId, item.variantId!)); let remaining = item.quantity; for (const row of inventory) { const released = Math.min(remaining, row.reserved); if (released > 0) await tx.update(variantInventory).set({ reserved: sql`greatest(0, ${variantInventory.reserved} - ${released})`, updatedAt: new Date() }).where(eq(variantInventory.id, row.id)); remaining -= released; if (!remaining) break; } }
+    await tx.insert(orderStatusEvents).values({ orderId: order.id, status: "cancelled", actorRef: user.userId, note: `Customer cancellation: ${reason}` });
+    await tx.insert(auditEvents).values({ actorRef: user.userId, action: "order.cancelled_by_customer", resourceType: "order", resourceId: String(order.id), metadata: { reason } });
+  });
+  return Response.json({ ok: true });
+}
