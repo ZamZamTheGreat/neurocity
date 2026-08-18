@@ -4,6 +4,7 @@ import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import MerchantWorkspace from "./components/MerchantWorkspace";
 import { NeuroConcierge } from "./components/NeuroConcierge";
 import { merchantCategories } from "../lib/merchant-categories";
+import NeuroCityNetworkHome from "./components/NeuroCityNetworkHome";
 
 type Product = {
   id: number;
@@ -22,7 +23,7 @@ function money(value: number | null) {
   return value === null ? "Confirm with store" : `N$${new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
 }
 
-export default function Home() {
+export function MarketplaceExperience({ mallSlug }: { mallSlug?: string } = {}) {
   const [view, setView] = useState<"mall" | "store" | "merchant">("mall");
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<number[]>([]);
@@ -40,7 +41,7 @@ export default function Home() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    const mall = new URLSearchParams(window.location.search).get("mall"); const tenantQuery = mall ? `?mall=${encodeURIComponent(mall)}` : "";
+    const mall = mallSlug ?? new URLSearchParams(window.location.search).get("mall"); const tenantQuery = mall ? `?mall=${encodeURIComponent(mall)}` : "";
     fetch(`/api/stores${tenantQuery}`).then(async (response) => { if (!response.ok) throw new Error("stores_unavailable"); return response.json(); }).then((data) => { const available = Array.isArray(data.stores) ? data.stores : []; if (data.platform) setPlatform(data.platform); setStores(available); setStoreAvailable(available.length > 0); }).catch(() => { setStores([]); setStoreAvailable(false); });
     fetch("/api/catalogue").then(async (response) => {
       if (!response.ok) throw new Error(response.status === 404 ? "store_unavailable" : "catalogue_unavailable");
@@ -48,7 +49,7 @@ export default function Home() {
     }).then((data) => {
       if (Array.isArray(data.products)) setCatalogue(data.products.map((product: Product & { imageUrl?: string }) => ({ ...product, image: product.imageUrl ?? product.image })));
     }).catch(() => setCatalogue([]));
-  }, []);
+  }, [mallSlug]);
 
   useEffect(() => {
     if (view !== "merchant") return;
@@ -190,7 +191,7 @@ export default function Home() {
       {notice && <button className="notice" role="status" aria-live="polite" onClick={() => setNotice("")} aria-label="Dismiss notification"><span>{notice}</span><b>×</b></button>}
       {checkoutOpen && <div className="checkout-backdrop" onClick={() => setCheckoutOpen(false)}><section className="checkout-panel" onClick={(event) => event.stopPropagation()}><header><div><small>LIGHTWORK ORDER</small><h2>Review your order</h2></div><button onClick={() => setCheckoutOpen(false)}>×</button></header><div className="checkout-items">{cart.map((id, index) => { const product = catalogue.find((item) => item.id === id); return product ? <div className="checkout-item" key={`${id}-${index}`}><img src={product.image} alt="" /><div><b>{product.name}</b><span>{product.collection}</span></div><strong>{money(product.price)}</strong></div> : null; })}</div><fieldset><legend>How would you like it?</legend><label className={fulfillment === "pickup" ? "selected" : ""}><input type="radio" checked={fulfillment === "pickup"} onChange={() => setFulfillment("pickup")} /><span><b>Pickup at Baines Centre</b><small>Timing confirmed by LightWork</small></span></label><label className={fulfillment === "merchant_delivery" ? "selected" : ""}><input type="radio" checked={fulfillment === "merchant_delivery"} onChange={() => setFulfillment("merchant_delivery")} /><span><b>Merchant delivery</b><small>Zone and fee confirmed before fulfillment</small></span></label></fieldset><fieldset><legend>Payment preference</legend><label className={payment === "pay_on_collection" ? "selected" : ""}><input type="radio" checked={payment === "pay_on_collection"} onChange={() => setPayment("pay_on_collection")} /><span><b>Pay on collection</b><small>Available during the controlled pilot</small></span></label><label className={payment === "online" ? "selected" : ""}><input type="radio" checked={payment === "online"} onChange={() => setPayment("online")} /><span><b>Online payment</b><small>Provider connection pending</small></span></label></fieldset><div className="checkout-total"><span>Total</span><b>{money(cartTotal)}</b></div><button className="place-order" disabled={placingOrder} onClick={placeOrder}>{placingOrder ? "Creating order…" : payment === "online" ? "Create order and continue to payment" : "Place pilot order"}</button><p className="checkout-note">This creates a real private pilot order. Products awaiting merchant confirmation cannot be ordered.</p></section></div>}
       <button className="ai-fab" onClick={() => setAssistantOpen(true)} aria-label="Open shopping assistant">✦</button>
-      <NeuroConcierge open={assistantOpen} onClose={() => setAssistantOpen(false)} />
+      <NeuroConcierge open={assistantOpen} onClose={() => setAssistantOpen(false)} platformSlug={mallSlug} />
       {view !== "merchant" && <footer className="public-footer"><a href="/" className="brand"><span>Neuro</span><strong>City</strong></a><p>Windhoek’s local digital mall.</p><nav><button onClick={() => showStores()}>Stores</button><a href="/account">Customer account</a><a href="/apply">Become a merchant</a><a href="/application-status">Application status</a></nav><small>© {new Date().getFullYear()} NeuroCity · Windhoek, Namibia</small></footer>}
     </main>
   );
@@ -203,3 +204,5 @@ function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product)
 function Metric({ label, value, note, tone = "plain" }: { label: string; value: string; note: string; tone?: string }) {
   return <article className={`metric ${tone}`}><span>{label}</span><b>{value}</b><small>{note}</small></article>;
 }
+
+export default function Home() { return <NeuroCityNetworkHome />; }

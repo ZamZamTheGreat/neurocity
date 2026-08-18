@@ -12,6 +12,7 @@ import "./ux-consistency.css";
 import "./onboarding.css";
 import "./merchant-dashboard-v2.css";
 import "./mall-management.css";
+import "./network-home.css";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -22,8 +23,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   applicationName: "NeuroCity",
-  title: "NeuroCity | Your city. Your stores. One place.",
-  description: "A Windhoek-first digital mall for trusted local storefronts, intelligent discovery, pickup and delivery.",
+  title: "NeuroCity | Namibia's connected shopping network",
+  description: "Explore Namibia's local marketplace, digital malls and live merchant catalogues through one connected shopping network.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -41,11 +42,11 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "NeuroCity",
-    description: "Your city. Your stores. One place.",
+    description: "Namibia's marketplaces, digital malls and local stores—connected.",
     type: "website",
     images: [{ url: "/branding/neurocity-social.png", width: 1254, height: 690, alt: "NeuroCity — your city, your stores, one place" }],
   },
-  twitter: { card: "summary_large_image", title: "NeuroCity", description: "Your city. Your stores. One place.", images: ["/branding/neurocity-social.png"] },
+  twitter: { card: "summary_large_image", title: "NeuroCity", description: "Namibia's connected shopping network.", images: ["/branding/neurocity-social.png"] },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

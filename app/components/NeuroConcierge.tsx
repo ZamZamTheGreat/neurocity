@@ -9,7 +9,7 @@ const prompts = ["Black hoodies under N$1,500", "A complete outfit under N$2,000
 const GUEST_CHAT_KEY = "neurocity_guest_james_chat";
 const money = (value: number | null) => value === null ? "Ask store for price" : `N$${new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
 
-export function NeuroConcierge({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function NeuroConcierge({ open, onClose, platformSlug }: { open: boolean; onClose: () => void; platformSlug?: string }) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -57,7 +57,7 @@ export function NeuroConcierge({ open, onClose }: { open: boolean; onClose: () =
     const context = messages.slice(-8).map(({ role, text: previous }) => ({ role: role === "companion" ? "assistant" : "user", text: previous }));
     setMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", text }]); setInput(""); setBusy(true);
     try {
-      const mall = new URLSearchParams(window.location.search).get("mall"); const tenantQuery = mall ? `?mall=${encodeURIComponent(mall)}` : "";
+      const mall = platformSlug ?? new URLSearchParams(window.location.search).get("mall"); const tenantQuery = mall ? `?mall=${encodeURIComponent(mall)}` : "";
       const response = await fetch(`/api/concierge${tenantQuery}`, { method: "POST", headers: { "content-type": "application/json" }, cache: "no-store", body: JSON.stringify({ message: text, history: context }) });
       const result = await response.json();
       setMessages((current) => [...current, { id: crypto.randomUUID(), role: "companion", text: response.ok ? result.reply : result.error, matches: response.ok ? result.matches : [] }]);
