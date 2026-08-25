@@ -7,7 +7,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   const { slug } = await context.params;
   const type = new URL(request.url).searchParams.get("type");
   if (type !== "logo" && type !== "banner" && type !== "product") return Response.json({ error: "Invalid image type." }, { status: 400 });
-  const [store] = await getDb().select({ id: merchants.id, logoUrl: merchants.logoUrl, bannerUrl: merchants.bannerUrl }).from(merchants).where(and(eq(merchants.slug, slug), eq(merchants.isPublic, true), inArray(merchants.status, ["pilot", "onboarding", "active"]))).limit(1);
+  const [store] = await getDb().select({ id: merchants.id, logoUrl: merchants.logoUrl, bannerUrl: merchants.bannerUrl }).from(merchants).where(and(eq(merchants.slug, slug), eq(merchants.isPublic, true), inArray(merchants.status, ["pilot", "active"]))).limit(1);
   let value = type === "logo" ? store?.logoUrl : store?.bannerUrl;
   if (type === "product" && store) {
     const productId = Number(new URL(request.url).searchParams.get("productId"));

@@ -6,7 +6,7 @@ import { merchants, productVariants, products, storeBranches, storeHours, storeP
 export async function GET(_request: Request, context: { params: Promise<{ slug: string }> }) {
   await ensurePilotCatalogue();
   const { slug } = await context.params; const db = getDb();
-  const [store] = await db.select().from(merchants).where(and(eq(merchants.slug, slug), inArray(merchants.status, ["pilot", "onboarding", "active"]))).limit(1);
+  const [store] = await db.select().from(merchants).where(and(eq(merchants.slug, slug), inArray(merchants.status, ["pilot", "active"]))).limit(1);
   const setupComplete = store && store.name && store.category && store.tagline && store.description && store.logoUrl && store.bannerUrl && store.contactEmail && Array.isArray(store.fulfillmentMethods) && store.fulfillmentMethods.length > 0 && Boolean((store.policies as Record<string, string> | null)?.returns);
   if (!store || !store.isPublic || !setupComplete) return Response.json({ error: "Store not found." }, { status: 404 });
   const catalogue = await db.select().from(products).where(and(eq(products.merchantId, store.id), eq(products.status, "published"))).orderBy(asc(products.id));

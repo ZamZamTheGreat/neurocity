@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     if (!paymentMethods.has(payload.paymentMethod ?? "")) return Response.json({ error: "Choose a valid payment method." }, { status: 400 });
     if (payload.fulfillmentMethod === "merchant_delivery" && payload.paymentMethod === "pay_on_collection") return Response.json({ error: "Delivery orders must be paid by EFT during the pilot." }, { status: 409 });
     const db = getDb();
-    const [merchant] = await db.select().from(merchants).where(and(eq(merchants.id, merchantId), eq(merchants.isPublic, true), inArray(merchants.status, ["pilot", "onboarding", "active"]))).limit(1);
+    const [merchant] = await db.select().from(merchants).where(and(eq(merchants.id, merchantId), eq(merchants.isPublic, true), inArray(merchants.status, ["pilot", "active"]))).limit(1);
     if (!merchant) return Response.json({ error: "This store is not currently available." }, { status: 409 });
     if (!Array.isArray(merchant.fulfillmentMethods) || !merchant.fulfillmentMethods.includes(payload.fulfillmentMethod!)) return Response.json({ error: "This fulfilment option is not offered by the store." }, { status: 409 });
     const paymentSettings = (merchant.paymentSettings ?? {}) as Record<string, unknown>;

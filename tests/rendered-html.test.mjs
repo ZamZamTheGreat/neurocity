@@ -212,3 +212,14 @@ test("supports audited mall lifecycle and manager access", async () => {
   assert.match(route, /platform\.lifecycle|platform\.\$\{body\.action\}/);
   assert.match(resolver, /eq\(platformTenants\.status, "active"\)/);
 });
+
+test("hides non-public merchants and inactive malls across public routes", async () => {
+  const publicRoutes = ["../app/api/stores/route.ts", "../app/api/stores/[slug]/route.ts", "../app/api/catalogue/route.ts", "../app/api/orders/route.ts", "../app/api/conversations/route.ts"];
+  for (const path of publicRoutes) {
+    const source = await readFile(new URL(path, import.meta.url), "utf8");
+    assert.doesNotMatch(source, /\["pilot", "onboarding", "active"\]/, `${path} must not expose onboarding merchants`);
+  }
+  const mallPage = await readFile(new URL("../app/malls/[slug]/page.tsx", import.meta.url), "utf8");
+  assert.match(mallPage, /eq\(platformTenants\.status, "active"\)/);
+  assert.match(mallPage, /This digital mall is not currently open/);
+});
