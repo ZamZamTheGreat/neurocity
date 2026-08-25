@@ -191,3 +191,13 @@ test("sends service booking lifecycle notifications", async () => {
   assert.match(merchantBookings, /sendBookingStatusNotification/);
   assert.match(bookingMail, /SMTP|sendMail/);
 });
+
+test("keeps merchant approval transactional and document-gated", async () => {
+  const source = await readFile(new URL("../app/api/admin/applications/route.ts", import.meta.url), "utf8");
+  const patchHandler = source.slice(source.indexOf("export async function PATCH"), source.indexOf("export async function DELETE"));
+  assert.match(patchHandler, /All four required documents must be uploaded before approval/);
+  assert.match(patchHandler, /tx\.insert\(merchants\)/);
+  assert.match(patchHandler, /tx\.insert\(merchantMemberships\)/);
+  assert.match(patchHandler, /tx\.insert\(platformTenantMerchants\)/);
+  assert.doesNotMatch(patchHandler, /storageKeys/);
+});
