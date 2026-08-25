@@ -9,7 +9,7 @@ const prompts = ["Black hoodies under N$1,500", "A complete outfit under N$2,000
 const GUEST_CHAT_KEY = "neurocity_guest_james_chat";
 const money = (value: number | null) => value === null ? "Ask store for price" : `N$${new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
 
-export function NeuroConcierge({ open, onClose, platformSlug }: { open: boolean; onClose: () => void; platformSlug?: string }) {
+export function NeuroConcierge({ open, onClose, platformSlug, initialPrompt, promptKey = 0 }: { open: boolean; onClose: () => void; platformSlug?: string; initialPrompt?: string; promptKey?: number }) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -20,6 +20,7 @@ export function NeuroConcierge({ open, onClose, platformSlug }: { open: boolean;
   const [profileError, setProfileError] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+  const submittedPromptKey = useRef(0);
 
   useEffect(() => {
     if (!open || profile) return;
@@ -50,6 +51,7 @@ export function NeuroConcierge({ open, onClose, platformSlug }: { open: boolean;
   }, [open, profile]);
   useEffect(() => { if (open) endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [open, messages, busy]);
   useEffect(() => { if (guest && messages.length) sessionStorage.setItem(GUEST_CHAT_KEY, JSON.stringify(messages)); }, [guest, messages]);
+  useEffect(() => { if (!open || !profile || !initialPrompt || !promptKey || submittedPromptKey.current === promptKey) return; submittedPromptKey.current = promptKey; void ask(initialPrompt); }, [open, profile, initialPrompt, promptKey]);
   if (!open) return null;
 
   async function ask(message: string) {
