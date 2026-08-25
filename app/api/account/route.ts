@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { customerAddresses, customerCartItems, customerSavedStores, customerWishlists, merchants, orderIssues, orderItems, orders, orderStatusEvents, paymentProofs, productVariants, products } from "../../../db/schema";
+import { customerAddresses, customerCartItems, customerSavedStores, customerWishlists, merchants, orderIssues, orderItems, orders, orderStatusEvents, paymentProofs, productVariants, products, serviceBookings } from "../../../db/schema";
 import { getChatGPTUser } from "../../chatgpt-auth";
 
 export async function GET() {
@@ -15,7 +15,8 @@ export async function GET() {
   const events = customerOrders.length ? await db.select().from(orderStatusEvents).where(inArray(orderStatusEvents.orderId, customerOrders.map((order) => order.id))).orderBy(desc(orderStatusEvents.createdAt)) : [];
   const proofs = customerOrders.length ? await db.select({ id: paymentProofs.id, orderId: paymentProofs.orderId, status: paymentProofs.status, originalName: paymentProofs.originalName, reviewNote: paymentProofs.reviewNote }).from(paymentProofs).where(inArray(paymentProofs.orderId, customerOrders.map((order) => order.id))) : [];
   const issues = customerOrders.length ? await db.select().from(orderIssues).where(inArray(orderIssues.orderId, customerOrders.map((order) => order.id))).orderBy(desc(orderIssues.createdAt)) : [];
-  return Response.json({ user, addresses, wishlist, savedStores, cart, orders: customerOrders.map((order) => ({ ...order, reference: `NC-${String(order.id).padStart(6, "0")}`, items: items.filter((item) => item.orderId === order.id), events: events.filter((event) => event.orderId === order.id), paymentProof: proofs.find((proof) => proof.orderId === order.id) ?? null, issues: issues.filter((issue) => issue.orderId === order.id) })) });
+  const bookings = await db.select({ id: serviceBookings.id, status: serviceBookings.status, requestedStart: serviceBookings.requestedStart, scheduledStart: serviceBookings.scheduledStart, durationMinutes: serviceBookings.durationMinutes, serviceMode: serviceBookings.serviceMode, priceSnapshot: serviceBookings.priceSnapshot, pricingModel: serviceBookings.pricingModel, customerNotes: serviceBookings.customerNotes, merchantNote: serviceBookings.merchantNote, createdAt: serviceBookings.createdAt, serviceName: products.name, storeName: merchants.name, storeSlug: merchants.slug }).from(serviceBookings).innerJoin(products, eq(products.id, serviceBookings.productId)).innerJoin(merchants, eq(merchants.id, serviceBookings.merchantId)).where(eq(serviceBookings.customerId, userId)).orderBy(desc(serviceBookings.createdAt));
+  return Response.json({ user, addresses, wishlist, savedStores, cart, bookings: bookings.map((booking) => ({ ...booking, reference: `NCB-${String(booking.id).padStart(6, "0")}` })), orders: customerOrders.map((order) => ({ ...order, reference: `NC-${String(order.id).padStart(6, "0")}`, items: items.filter((item) => item.orderId === order.id), events: events.filter((event) => event.orderId === order.id), paymentProof: proofs.find((proof) => proof.orderId === order.id) ?? null, issues: issues.filter((issue) => issue.orderId === order.id) })) });
 }
 
 export async function POST(request: Request) {

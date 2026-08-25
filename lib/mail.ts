@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 
-type Mail = { to: string; subject: string; text: string };
+type Mail = { to: string; subject: string; text: string; html?: string; replyTo?: string };
 
 export async function sendMail(message: Mail) {
   const user = process.env.SMTP_USER;

@@ -60,6 +60,9 @@ export const merchants = pgTable("merchants", {
   name: varchar("name", { length: 200 }).notNull(),
   slug: varchar("slug", { length: 200 }).notNull(),
   category: varchar("category", { length: 120 }).notNull(),
+  offeringType: varchar("offering_type", { length: 24 }).notNull().default("products"),
+  locationType: varchar("location_type", { length: 32 }).notNull().default("physical_store"),
+  mainOperatingArea: varchar("main_operating_area", { length: 240 }),
   status: varchar("status", { length: 32 }).notNull().default("pilot"),
   contactName: varchar("contact_name", { length: 160 }),
   contactEmail: varchar("contact_email", { length: 320 }),
@@ -102,6 +105,7 @@ export const platformTenantMemberships = pgTable("platform_tenant_memberships", 
 
 export const merchantApplications = pgTable("merchant_applications", {
   id: serial("id").primaryKey(),
+  platformTenantId: integer("platform_tenant_id").references(() => platformTenants.id),
   reference: varchar("reference", { length: 32 }).notNull(),
   status: varchar("status", { length: 40 }).notNull().default("submitted"),
   legalName: varchar("legal_name", { length: 200 }).notNull(),
@@ -109,6 +113,9 @@ export const merchantApplications = pgTable("merchant_applications", {
   registrationNumber: varchar("registration_number", { length: 120 }).notNull(),
   businessType: varchar("business_type", { length: 80 }).notNull(),
   category: varchar("category", { length: 120 }).notNull(),
+  offeringType: varchar("offering_type", { length: 24 }).notNull().default("products"),
+  locationType: varchar("location_type", { length: 32 }).notNull().default("physical_store"),
+  mainOperatingArea: varchar("main_operating_area", { length: 240 }).notNull().default(""),
   description: text("description").notNull(),
   representativeName: varchar("representative_name", { length: 160 }).notNull(),
   representativeRole: varchar("representative_role", { length: 120 }).notNull(),
@@ -147,7 +154,7 @@ export const merchantInvitations = pgTable("merchant_invitations", {
   id: serial("id").primaryKey(), merchantId: integer("merchant_id").notNull().references(() => merchants.id), codeHash: text("code_hash").notNull(), role: varchar("role", { length: 32 }).notNull().default("staff"), invitedEmail: varchar("invited_email", { length: 320 }), expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(), acceptedAt: timestamp("accepted_at", { withTimezone: true }), createdBy: text("created_by").notNull(), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("idx_invitation_code_hash").on(table.codeHash), index("idx_invitation_merchant").on(table.merchantId)]);
 
-export const products = pgTable("products", { id: serial("id").primaryKey(), merchantId: integer("merchant_id").notNull().references(() => merchants.id), sku: varchar("sku", { length: 100 }).notNull(), name: varchar("name", { length: 220 }).notNull(), collection: varchar("collection", { length: 160 }), category: varchar("category", { length: 160 }), brand: varchar("brand", { length: 160 }), description: text("description").notNull().default(""), price: doublePrecision("price"), salePrice: doublePrecision("sale_price"), status: varchar("status", { length: 32 }).notNull().default("draft"), availability: varchar("availability", { length: 32 }).notNull().default("available"), imageUrl: text("image_url"), badge: varchar("badge", { length: 120 }) }, (table) => [uniqueIndex("idx_products_merchant_sku").on(table.merchantId, table.sku)]);
+export const products = pgTable("products", { id: serial("id").primaryKey(), merchantId: integer("merchant_id").notNull().references(() => merchants.id), itemType: varchar("item_type", { length: 24 }).notNull().default("product"), sku: varchar("sku", { length: 100 }).notNull(), name: varchar("name", { length: 220 }).notNull(), collection: varchar("collection", { length: 160 }), category: varchar("category", { length: 160 }), brand: varchar("brand", { length: 160 }), description: text("description").notNull().default(""), price: doublePrecision("price"), salePrice: doublePrecision("sale_price"), pricingModel: varchar("pricing_model", { length: 32 }).notNull().default("fixed"), durationMinutes: integer("duration_minutes"), serviceMode: varchar("service_mode", { length: 32 }), bookingRequired: boolean("booking_required").notNull().default(false), status: varchar("status", { length: 32 }).notNull().default("draft"), availability: varchar("availability", { length: 32 }).notNull().default("available"), imageUrl: text("image_url"), badge: varchar("badge", { length: 120 }) }, (table) => [uniqueIndex("idx_products_merchant_sku").on(table.merchantId, table.sku), index("idx_products_item_type").on(table.itemType)]);
 export const storeBranches = pgTable("store_branches", { id: serial("id").primaryKey(), merchantId: integer("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }), name: varchar("name", { length: 180 }).notNull(), address: text("address").notNull(), city: varchar("city", { length: 120 }).notNull().default("Windhoek"), phone: varchar("phone", { length: 80 }), pickupEnabled: boolean("pickup_enabled").notNull().default(false), deliveryEnabled: boolean("delivery_enabled").notNull().default(false), isPrimary: boolean("is_primary").notNull().default(false) }, (table) => [index("idx_store_branches_merchant").on(table.merchantId)]);
 export const merchantDeliveryZones = pgTable("merchant_delivery_zones", { id: serial("id").primaryKey(), merchantId: integer("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }), area: varchar("area", { length: 160 }).notNull(), fee: doublePrecision("fee").notNull().default(0), estimatedTime: varchar("estimated_time", { length: 120 }).notNull(), active: boolean("active").notNull().default(true), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [uniqueIndex("idx_delivery_zones_merchant_area").on(table.merchantId, table.area), index("idx_delivery_zones_merchant_active").on(table.merchantId, table.active)]);
 export const storeHours = pgTable("store_hours", { id: serial("id").primaryKey(), branchId: integer("branch_id").notNull().references(() => storeBranches.id, { onDelete: "cascade" }), dayOfWeek: integer("day_of_week").notNull(), opensAt: varchar("opens_at", { length: 8 }), closesAt: varchar("closes_at", { length: 8 }), closed: boolean("closed").notNull().default(false) }, (table) => [uniqueIndex("idx_store_hours_branch_day").on(table.branchId, table.dayOfWeek)]);
@@ -166,4 +173,21 @@ export const orderItems = pgTable("order_items", { id: serial("id").primaryKey()
 export const orderStatusEvents = pgTable("order_status_events", { id: serial("id").primaryKey(), orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }), status: varchar("status", { length: 48 }).notNull(), actorRef: text("actor_ref").notNull(), note: text("note"), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [index("idx_order_status_events_order").on(table.orderId, table.createdAt)]);
 export const orderIssues = pgTable("order_issues", { id: serial("id").primaryKey(), orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }), customerRef: text("customer_ref").notNull(), category: varchar("category", { length: 80 }).notNull(), description: text("description").notNull(), status: varchar("status", { length: 32 }).notNull().default("open"), resolution: text("resolution"), resolvedBy: text("resolved_by"), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(), resolvedAt: timestamp("resolved_at", { withTimezone: true }) }, (table) => [index("idx_order_issues_order").on(table.orderId), index("idx_order_issues_status").on(table.status)]);
 export const paymentProofs = pgTable("payment_proofs", { id: serial("id").primaryKey(), orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }), storageKey: text("storage_key").notNull(), originalName: text("original_name").notNull(), mimeType: varchar("mime_type", { length: 120 }).notNull(), sizeBytes: integer("size_bytes").notNull(), status: varchar("status", { length: 32 }).notNull().default("upload_pending"), reviewNote: text("review_note"), reviewedBy: text("reviewed_by"), reviewedAt: timestamp("reviewed_at", { withTimezone: true }), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [uniqueIndex("idx_payment_proofs_order").on(table.orderId), index("idx_payment_proofs_status").on(table.status)]);
+export const serviceBookings = pgTable("service_bookings", {
+  id: serial("id").primaryKey(),
+  merchantId: integer("merchant_id").notNull().references(() => merchants.id),
+  productId: integer("product_id").notNull().references(() => products.id),
+  customerId: integer("customer_id").notNull().references(() => users.id),
+  status: varchar("status", { length: 32 }).notNull().default("requested"),
+  requestedStart: timestamp("requested_start", { withTimezone: true }).notNull(),
+  scheduledStart: timestamp("scheduled_start", { withTimezone: true }),
+  durationMinutes: integer("duration_minutes"),
+  serviceMode: varchar("service_mode", { length: 32 }),
+  priceSnapshot: doublePrecision("price_snapshot"),
+  pricingModel: varchar("pricing_model", { length: 32 }).notNull().default("fixed"),
+  customerNotes: text("customer_notes"),
+  merchantNote: text("merchant_note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("idx_service_bookings_merchant_status").on(table.merchantId, table.status), index("idx_service_bookings_customer").on(table.customerId, table.createdAt), index("idx_service_bookings_schedule").on(table.merchantId, table.scheduledStart)]);
 export const auditEvents = pgTable("audit_events", { id: serial("id").primaryKey(), actorRef: text("actor_ref").notNull(), action: varchar("action", { length: 120 }).notNull(), resourceType: varchar("resource_type", { length: 80 }).notNull(), resourceId: text("resource_id").notNull(), metadata: jsonb("metadata").notNull().default({}), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [index("idx_audit_resource").on(table.resourceType, table.resourceId)]);

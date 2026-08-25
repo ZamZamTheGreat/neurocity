@@ -5,6 +5,9 @@ import { requirePilotMerchant } from "../auth";
 
 const statuses = new Set(["needs_confirmation", "draft", "published", "archived"]);
 const availabilityValues = new Set(["available", "preorder", "out_of_stock", "unavailable"]);
+const itemTypes = new Set(["product", "service"]);
+const pricingModels = new Set(["fixed", "from", "quote"]);
+const serviceModes = new Set(["at_business", "at_customer", "remote"]);
 const text = (value: unknown, fallback = "") => typeof value === "string" ? value.trim() : fallback;
 const optionalText = (value: unknown, fallback: string | null = null) => value === null ? null : typeof value === "string" ? value.trim() || null : fallback;
 
@@ -27,15 +30,22 @@ export async function POST(request: Request) {
     const collection = optionalText(payload.collection);
     const description = text(payload.description);
     const badge = optionalText(payload.badge);
+    const itemType = text(payload.itemType, "product");
+    const pricingModel = text(payload.pricingModel, "fixed");
+    const durationMinutes = payload.durationMinutes === null || payload.durationMinutes === undefined || payload.durationMinutes === "" ? null : Number(payload.durationMinutes);
+    const serviceMode = itemType === "service" ? text(payload.serviceMode, "at_business") : null;
+    const bookingRequired = itemType === "service" && payload.bookingRequired !== false;
     const price = payload.price === null || payload.price === undefined ? null : Number(payload.price);
     const salePrice = payload.salePrice === null || payload.salePrice === undefined || payload.salePrice === "" ? null : Number(payload.salePrice);
-    if (!name || !sku || !category || !description || price === null) return Response.json({ error: "Name, SKU, category, description and regular price are required." }, { status: 400 });
-    if (!Number.isFinite(price) || price < 0) return Response.json({ error: "Price must be a valid non-negative amount." }, { status: 400 });
+    if (!itemTypes.has(itemType) || !pricingModels.has(pricingModel) || (serviceMode && !serviceModes.has(serviceMode))) return Response.json({ error: "Choose valid catalogue and service settings." }, { status: 400 });
+    if (!name || !sku || !category || !description || (pricingModel !== "quote" && price === null)) return Response.json({ error: "Name, reference, category, description and price are required unless pricing is by quote." }, { status: 400 });
+    if (durationMinutes !== null && (!Number.isInteger(durationMinutes) || durationMinutes < 5 || durationMinutes > 10080)) return Response.json({ error: "Service duration must be between 5 minutes and 7 days." }, { status: 400 });
+    if (price !== null && (!Number.isFinite(price) || price < 0)) return Response.json({ error: "Price must be a valid non-negative amount." }, { status: 400 });
     if (salePrice !== null && (!Number.isFinite(salePrice) || salePrice < 0 || salePrice >= price)) return Response.json({ error: "Sale price must be lower than the regular price." }, { status: 400 });
     const db = getDb();
     const [duplicate] = await db.select({ id: products.id }).from(products).where(and(eq(products.merchantId, access.merchantId), eq(products.sku, sku))).limit(1);
     if (duplicate) return Response.json({ error: "That SKU is already used in your catalogue." }, { status: 409 });
-    const [created] = await db.insert(products).values({ merchantId: access.merchantId, name, sku, category, brand, collection, description, price, salePrice, badge, status: "draft", availability: "available" }).returning();
+    const [created] = await db.insert(products).values({ merchantId: access.merchantId, itemType, name, sku, category, brand, collection, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, badge, status: "draft", availability: "available" }).returning();
     await db.insert(auditEvents).values({ actorRef: access.user.userId, action: "product.created", resourceType: "product", resourceId: String(created.id), metadata: JSON.stringify({ name, sku }), createdAt: new Date() });
     return Response.json({ product: created }, { status: 201 });
   } catch (error) {
@@ -65,18 +75,25 @@ export async function PATCH(request: Request) {
     const collection = optionalText(payload.collection, current.collection);
     const badge = optionalText(payload.badge, current.badge);
     const imageUrl = optionalText(payload.imageUrl, current.imageUrl);
+    const itemType = text(payload.itemType, current.itemType);
+    const pricingModel = text(payload.pricingModel, current.pricingModel);
+    const durationMinutes = payload.durationMinutes === undefined ? current.durationMinutes : payload.durationMinutes === null || payload.durationMinutes === "" ? null : Number(payload.durationMinutes);
+    const serviceMode = itemType === "service" ? text(payload.serviceMode, current.serviceMode ?? "at_business") : null;
+    const bookingRequired = itemType === "service" && (payload.bookingRequired === undefined ? current.bookingRequired : payload.bookingRequired === true);
     if (!name || !sku) return Response.json({ error: "Product name and SKU are required." }, { status: 400 });
+    if (!itemTypes.has(itemType) || !pricingModels.has(pricingModel) || (serviceMode && !serviceModes.has(serviceMode))) return Response.json({ error: "Choose valid catalogue and service settings." }, { status: 400 });
+    if (durationMinutes !== null && (!Number.isInteger(durationMinutes) || durationMinutes < 5 || durationMinutes > 10080)) return Response.json({ error: "Service duration must be between 5 minutes and 7 days." }, { status: 400 });
     if (!statuses.has(status) || !availabilityValues.has(availability)) return Response.json({ error: "Invalid product status or availability." }, { status: 400 });
     if (price !== null && (!Number.isFinite(price) || price < 0)) return Response.json({ error: "Price must be a valid non-negative amount." }, { status: 400 });
     if (salePrice !== null && (!Number.isFinite(salePrice) || salePrice < 0 || price === null || salePrice >= price)) return Response.json({ error: "Sale price must be lower than the regular price." }, { status: 400 });
     const [duplicate] = await db.select({ id: products.id }).from(products).where(and(eq(products.merchantId, access.merchantId), eq(products.sku, sku))).limit(1);
     if (duplicate && duplicate.id !== current.id) return Response.json({ error: "That SKU is already used in your catalogue." }, { status: 409 });
-    if (status === "published" && (!payload.merchantConfirmed || price === null || !description || !category || !imageUrl)) return Response.json({ error: "Publishing requires confirmation, a price, category, description and product image." }, { status: 409 });
+    if (status === "published" && (!payload.merchantConfirmed || (pricingModel !== "quote" && price === null) || !description || !category || !imageUrl)) return Response.json({ error: "Publishing requires confirmation, pricing, category, description and an image." }, { status: 409 });
     if (imageUrl?.startsWith("r2://") && !imageUrl.slice(5).startsWith(`merchants/${access.merchantId}/products/${current.id}/`)) return Response.json({ error: "Invalid product image." }, { status: 403 });
 
-    const [updated] = await db.update(products).set({ name, sku, collection, category, brand, description, price, salePrice, status, availability, imageUrl, badge }).where(and(eq(products.id, current.id), eq(products.merchantId, access.merchantId))).returning();
+    const [updated] = await db.update(products).set({ itemType, name, sku, collection, category, brand, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, status, availability, imageUrl, badge }).where(and(eq(products.id, current.id), eq(products.merchantId, access.merchantId))).returning();
     const existingVariants = await db.select().from(productVariants).where(eq(productVariants.productId, current.id));
-    if (price !== null && existingVariants.length === 0) {
+    if (itemType === "product" && price !== null && existingVariants.length === 0) {
       await db.insert(productVariants).values({ productId: current.id, sku: `M${access.merchantId}-${sku}-DEFAULT`, title: "Standard", attributes: { inventoryMode: "merchant_confirmed" }, price, salePrice, status: status === "published" ? "active" : "draft", imageUrl });
     } else if (existingVariants.length === 1 && existingVariants[0].attributes && (existingVariants[0].attributes as Record<string, unknown>).inventoryMode === "merchant_confirmed") {
       await db.update(productVariants).set({ sku: `M${access.merchantId}-${sku}-DEFAULT`, price: price ?? existingVariants[0].price, salePrice, status: status === "published" ? "active" : status === "archived" ? "archived" : "draft", imageUrl }).where(eq(productVariants.id, existingVariants[0].id));

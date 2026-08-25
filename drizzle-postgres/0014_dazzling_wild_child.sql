@@ -1,0 +1,2 @@
+ALTER TABLE "merchant_applications" ADD COLUMN "platform_tenant_id" integer;--> statement-breakpoint
+ALTER TABLE "merchant_applications" ADD CONSTRAINT "merchant_applications_platform_tenant_id_platform_tenants_id_fk" FOREIGN KEY ("platform_tenant_id") REFERENCES "public"."platform_tenants"("id") ON DELETE no action ON UPDATE no action;

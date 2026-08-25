@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 
-type Product = { id: number; name: string; sku: string; price: number | null };
+type Product = { id: number; itemType?: string; name: string; sku: string; price: number | null };
 type Variant = { id: number; productId: number; productName: string; sku: string; title: string; size: string | null; color: string | null; price: number; salePrice: number | null; status: string; stock: { branchName: string; onHand: number; reserved: number; safetyStock: number }[] };
 type NewVariant = { sku: string; title: string; size: string; color: string; price: number; salePrice: number | null; onHand: number };
 
 export default function ProductOptionsPanel({ product, variants, onVariantChange, onVariantSave, onVariantCreate }: { product: Product; variants: Variant[]; onVariantChange: (variant: Variant) => void; onVariantSave: (variant: Variant) => Promise<void>; onVariantCreate: (values: NewVariant) => Promise<void> }) {
+  if (product.itemType === "service") return <section className="product-options"><header><div><small>SERVICE REQUESTS</small><h3>No stock options required</h3><p>Customers can request this service directly from the storefront. Requests arrive in your Inbox with their preferred date, time and details.</p></div><span className="option-ready">Booking enabled</span></header></section>;
   const active = variants.filter((variant) => variant.status === "active").length;
   return <section className="product-options"><header><div><small>CUSTOMER OPTIONS</small><h3>Sizes, colours, prices and stock</h3><p>{active ? `${active} active option${active === 1 ? "" : "s"}. Customers can see the price and use Add to bag.` : "Add and activate at least one option to show the price and Add to bag."}</p></div><span className={active ? "option-ready" : "option-blocked"}>{active ? "Storefront ready" : "Action required"}</span></header>{variants.length > 0 && <div className="product-variant-list">{variants.map((variant) => <VariantRow key={variant.id} variant={variant} onChange={onVariantChange} onSave={() => onVariantSave(variant)} />)}</div>}<NewVariantForm product={product} onCreate={onVariantCreate} /></section>;
 }

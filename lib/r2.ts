@@ -17,7 +17,7 @@ const encode = (value: string) => encodeURIComponent(value).replace(/[!'()*]/g, 
 const hmac = (key: Buffer | string, value: string) => createHmac("sha256", key).update(value).digest();
 const sortParameters = ([left]: [string, string], [right]: [string, string]) => left < right ? -1 : left > right ? 1 : 0;
 
-export function createPresignedR2Url(method: "GET" | "PUT" | "HEAD", key: string, expiresIn = 600, responseContentDisposition?: string) {
+export function createPresignedR2Url(method: "GET" | "PUT" | "HEAD" | "DELETE", key: string, expiresIn = 600, responseContentDisposition?: string) {
   const { bucket, endpoint, accessKeyId, secretAccessKey, region } = getR2();
   const now = new Date();
   const date = now.toISOString().replace(/[:-]|\.\d{3}/g, "");
