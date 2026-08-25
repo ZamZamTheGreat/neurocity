@@ -201,3 +201,14 @@ test("keeps merchant approval transactional and document-gated", async () => {
   assert.match(patchHandler, /tx\.insert\(platformTenantMerchants\)/);
   assert.doesNotMatch(patchHandler, /storageKeys/);
 });
+
+test("supports audited mall lifecycle and manager access", async () => {
+  const route = await readFile(new URL("../app/api/admin/platforms/route.ts", import.meta.url), "utf8");
+  const resolver = await readFile(new URL("../lib/platform-tenant.ts", import.meta.url), "utf8");
+  assert.match(route, /status: "onboarding"/);
+  assert.match(route, /body\.action === "lifecycle"/);
+  assert.match(route, /body\.action === "add_manager"/);
+  assert.match(route, /body\.action === "remove_manager"/);
+  assert.match(route, /platform\.lifecycle|platform\.\$\{body\.action\}/);
+  assert.match(resolver, /eq\(platformTenants\.status, "active"\)/);
+});
