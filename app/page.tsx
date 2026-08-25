@@ -92,13 +92,14 @@ export function MarketplaceExperience({ mallSlug }: { mallSlug?: string } = {}) 
   }
 
   return (
-    <main id="main-content" className={platform.kind === "mall" ? "white-label-mall" : ""} style={{ "--ink": platform.theme?.surface ?? "#07111f", "--gold": platform.theme?.primary ?? "#18c98e", "--violet": platform.theme?.primary ?? "#18c98e" } as CSSProperties}>
+    <main id="main-content" className={platform.kind === "mall" ? "white-label-mall" : "neurocity-marketplace"} style={{ "--ink": platform.theme?.surface ?? "#07111f", "--gold": platform.theme?.primary ?? "#18c98e", "--violet": platform.theme?.primary ?? "#18c98e" } as CSSProperties}>
       <header className="topbar">
         <button className="brand header-brand" onClick={() => setView("mall")} aria-label={`Go to ${platform.name} home`}>
-          {platform.markUrl ? <img className="brand-symbol" src={platform.markUrl} alt="" aria-hidden="true" /> : <span className="tenant-monogram" aria-hidden="true">{platform.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</span>}<span className="brand-copy"><span><b>{platform.name}</b></span><small>{platform.tagline ?? `${platform.country}'s digital mall`}</small></span>
+          {platform.markUrl ? <img className="brand-symbol" src={platform.markUrl} alt="" aria-hidden="true" /> : <span className="tenant-monogram" aria-hidden="true">{platform.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</span>}<span className="brand-copy"><span><b>{platform.kind === "mall" ? platform.name : "NeuroCity"}</b>{platform.kind !== "mall" && <em>MARKETPLACE</em>}</span><small>{platform.kind === "mall" ? platform.tagline ?? `${platform.country}'s digital mall` : "Shop independent Namibian businesses"}</small></span>
         </button>
         <nav className="desktop-nav" aria-label="Primary navigation">
-          <button className={view === "mall" ? "active" : ""} onClick={() => setView("mall")}>Discover</button>
+          {platform.kind !== "mall" && <a href="/">NeuroCity network</a>}
+          <button className={view === "mall" ? "active" : ""} onClick={() => setView("mall")}>{platform.kind === "mall" ? "Discover" : "Shop"}</button>
           <button onClick={() => showStores()}>Stores</button>
           <button onClick={() => { setView("mall"); requestAnimationFrame(() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })); }}>How it works</button>
         </nav>
@@ -110,13 +111,14 @@ export function MarketplaceExperience({ mallSlug }: { mallSlug?: string } = {}) 
           </button>
         </div>
       </header>
+      {platform.kind !== "mall" && <div className="marketplace-context-bar"><span><a href="/">NeuroCity</a><b>›</b> Marketplace</span><div><i /> Verified local businesses <i /> One account across the network</div></div>}
 
       {view === "mall" && (
         <>
           <section className="hero">
             <div className="hero-copy">
-              <p className="eyebrow"><span /> {platform.kind === "mall" ? `${platform.city ?? "Your"} shopping, digitally connected` : "Namibia's stores, one connected mall"}</p>
-              <h1>{platform.kind === "mall" ? <>Your mall.<br />Your favourites.<br /><em>Always open.</em></> : <>Your city.<br />Your stores.<br /><em>One place.</em></>}</h1>
+              <p className="eyebrow"><span /> {platform.kind === "mall" ? `${platform.city ?? "Your"} shopping, digitally connected` : "NEUROCITY MARKETPLACE · SHOP LOCAL ONLINE"}</p>
+              <h1>{platform.kind === "mall" ? <>Your mall.<br />Your favourites.<br /><em>Always open.</em></> : <>Namibian stores.<br />Real catalogues.<br /><em>Ready to shop.</em></>}</h1>
               <p className="hero-lede">{platform.kind === "mall" ? `${platform.tagline} Browse participating stores, discover what is available and shop before you arrive.` : "Discover and shop trusted Namibian businesses from one convenient national marketplace. Starting in Windhoek, built for every town."}</p>
               <div className="hero-actions">{storeAvailable && <button onClick={() => showStores()}>Explore stores</button>}<a href={applicationHref}>{platform.kind === "mall" ? "Join this digital mall" : "Sell on NeuroCity"}</a></div>
               <div className="search-shell">
