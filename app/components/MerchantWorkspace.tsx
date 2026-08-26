@@ -2228,6 +2228,29 @@ function MerchantOrderCard({
     order.paymentMethod === "eft" &&
     order.paymentProof &&
     ["uploaded", "rejected"].includes(order.paymentProof.status);
+  const pickup = order.fulfillmentMethod === "pickup";
+  const journey = pickup
+    ? ["pending_merchant_confirmation", "accepted", "preparing", "ready_for_pickup", "collected", "completed"]
+    : ["pending_merchant_confirmation", "accepted", "preparing", "dispatched", "delivered", "completed"];
+  const terminal = ["rejected", "cancelled", "delivery_failed"].includes(order.status);
+  const currentStep = journey.indexOf(order.status);
+  const progress = terminal || currentStep < 0 ? 0 : (currentStep / (journey.length - 1)) * 100;
+  const nextPrimary = order.allowedTransitions.find(
+    (status) => !["rejected", "cancelled", "delivery_failed"].includes(status),
+  );
+  const guidance: Record<string, string> = {
+    pending_merchant_confirmation: "Check the items and confirm that you can fulfil this order.",
+    accepted: order.paymentMethod === "eft" && order.paymentStatus !== "paid" ? "Review the customer's payment proof before preparing the order." : "Payment is clear. Start preparing the customer's items.",
+    preparing: pickup ? "Pack the items, then mark the order ready for collection." : "Pack the items, then mark the order as dispatched.",
+    ready_for_pickup: "Keep the order secure until the customer collects it.",
+    dispatched: "The order is on its way. Mark it delivered after handover.",
+    delivery_failed: "Record what happened, then retry delivery or cancel the order.",
+    collected: "Confirm completion to finalise the sale and deduct stock.",
+    delivered: "Confirm completion to finalise the sale and deduct stock.",
+    completed: "This order is complete and its stock has been deducted.",
+    rejected: "This order was rejected and its reserved stock was released.",
+    cancelled: "This order was cancelled and its reserved stock was released.",
+  };
   return (
     <article className={`merchant-order-card ${open ? "open" : ""}`}>
       <header onClick={() => setOpen(!open)}>
@@ -2252,6 +2275,22 @@ function MerchantOrderCard({
         </div>
       </header>
       {open && (
+        <>
+        <section className={`order-journey ${terminal ? "terminal" : ""}`}>
+          <div className="order-journey-heading">
+            <div><small>NEXT STEP</small><strong>{guidance[order.status] ?? "Review the latest order update."}</strong></div>
+            <span className={`payment-state payment-${order.paymentStatus}`}>Payment · {pretty(order.paymentStatus)}</span>
+          </div>
+          <div className="order-step-track" style={{ "--order-progress": `${progress}%` } as React.CSSProperties}>
+            {journey.map((status, index) => (
+              <div key={status} className={`${index < currentStep ? "done" : ""} ${index === currentStep ? "current" : ""}`}>
+                <i>{index < currentStep ? "✓" : index + 1}</i>
+                <span>{status === "pending_merchant_confirmation" ? "New order" : pretty(status)}</span>
+              </div>
+            ))}
+          </div>
+          {terminal && <p className="order-terminal-note">{pretty(order.status)} · {guidance[order.status]}</p>}
+        </section>
         <div className="merchant-order-detail">
           <section>
             <h4>Customer</h4>
@@ -2329,6 +2368,7 @@ function MerchantOrderCard({
             </ol>
           </section>
         </div>
+        </>
       )}
       {open && order.paymentProof && (
         <section
@@ -2367,7 +2407,11 @@ function MerchantOrderCard({
         </section>
       )}
       <footer>
-        {order.allowedTransitions.map((next) => (
+        <div className="order-action-copy">
+          <small>{nextPrimary ? "RECOMMENDED ACTION" : "ORDER STATUS"}</small>
+          <span>{nextPrimary ? `Move this order to ${pretty(nextPrimary)}.` : guidance[order.status]}</span>
+        </div>
+        {order.allowedTransitions.filter((next) => next !== nextPrimary).map((next) => (
           <button
             className={
               ["rejected", "cancelled", "delivery_failed"].includes(next)
@@ -2380,6 +2424,7 @@ function MerchantOrderCard({
             {pretty(next)}
           </button>
         ))}
+        {nextPrimary && <button className="primary-order-action" onClick={() => transition(nextPrimary)}>{pretty(nextPrimary)} <span aria-hidden="true">→</span></button>}
       </footer>
     </article>
   );
