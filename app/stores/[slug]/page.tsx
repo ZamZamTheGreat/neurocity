@@ -140,14 +140,15 @@ export default function StorefrontPage() {
   return (
     <main id="main-content" className="storefront-v2">
       <header className="store-header">
-        <a href="/" className="store-mall-brand">
-          <b>
-            Neuro<span>City</span>
-          </b>
-          <small>Back to the mall</small>
-        </a>
-        <nav aria-label="Store navigation">
-          <a href="#shop">Shop</a>
+          <a href="/" className="store-mall-brand">
+            <b>
+              Neuro<span>City</span>
+            </b>
+            <small>Marketplace · Local storefront</small>
+          </a>
+          <nav aria-label="Store navigation">
+            <a href="/marketplace">Marketplace</a>
+            <a href="#shop">Shop</a>
           <a href="#about">About</a>
           <button
             onClick={() =>

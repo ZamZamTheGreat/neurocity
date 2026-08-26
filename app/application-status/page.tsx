@@ -27,11 +27,14 @@ export default function StatusPage() {
     setMessage("");
   }
   return (
-    <main className="admin-auth">
-      <a href="/" className="brand">
-        <span>Neuro</span>
-        <strong>City</strong>
-      </a>
+    <main className="admin-auth application-status-page">
+      <header className="platform-public-header">
+        <a href="/" className="brand"><span>Neuro</span><strong>City</strong></a>
+        <nav className="platform-nav" aria-label="Primary navigation">
+          <a href="/">Network</a><a href="/marketplace">Marketplace</a><a href="/malls">Digital malls</a>
+        </nav>
+        <div className="platform-header-actions"><a href="/apply">Apply</a><a className="platform-account-action" href="/login">Account</a></div>
+      </header>
       <form onSubmit={lookup}>
         <p className="eyebrow">Merchant applications</p>
         <h1>Track your application</h1>

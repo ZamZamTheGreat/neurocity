@@ -60,7 +60,15 @@ export default function DocumentsPage() {
           <span>Neuro</span>
           <strong>City</strong>
         </a>
-        <a href="/application-status">Application status</a>
+        <nav className="platform-nav" aria-label="Primary navigation">
+          <a href="/">Network</a>
+          <a href="/marketplace">Marketplace</a>
+          <a href="/malls">Digital malls</a>
+        </nav>
+        <div className="platform-header-actions">
+          <a href="/application-status">Application status</a>
+          <a className="platform-account-action" href="/login">Account</a>
+        </div>
       </header>
       <section className="application-intro">
         <p className="eyebrow">Private document submission</p>

@@ -272,6 +272,11 @@ export default function AdminPage() {
           <span>Neuro</span>
           <strong>City</strong>
         </a>
+        <nav className="platform-nav" aria-label="Platform navigation">
+          <a href="/">Network</a>
+          <a href="/marketplace">Marketplace</a>
+          <a href="/malls">Digital malls</a>
+        </nav>
         <div>
           <span className="admin-indicator">Administrator</span>
           <a href="/">View mall ↗</a>

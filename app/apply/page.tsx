@@ -95,9 +95,15 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
           <span>Neuro</span>
           <strong>City</strong>
         </a>
-        <a href={mallSlug ? `/malls/${mallSlug}` : "/marketplace"}>
-          Return to {mallName || "digital mall"}
-        </a>
+        <nav className="platform-nav" aria-label="Primary navigation">
+          <a href="/">Network</a>
+          <a href="/marketplace">Marketplace</a>
+          <a href="/malls">Digital malls</a>
+        </nav>
+        <div className="platform-header-actions">
+          <a href="/application-status">Track application</a>
+          <a className="platform-account-action" href="/login">Account</a>
+        </div>
       </header>
       <section className="application-intro">
         <p className="eyebrow">Join {mallName || "this digital mall"}</p>

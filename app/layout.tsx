@@ -13,6 +13,7 @@ import "./onboarding.css";
 import "./merchant-dashboard-v2.css";
 import "./mall-management.css";
 import "./network-home.css";
+import "./platform-shell.css";
 
 export const viewport: Viewport = {
   width: "device-width",

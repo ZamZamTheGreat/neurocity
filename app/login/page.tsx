@@ -69,7 +69,7 @@ export default function LoginPage() {
         </Link>
         <div>
           <p className="eyebrow light">Your mall, personalised</p>
-          <h1>Shop Windhoek with a companion who knows your journey.</h1>
+            <h1>Shop Namibia with a companion who knows your journey.</h1>
           <ul className="info-list">
             <li>Keep your shopping bag and orders in one secure account.</li>
             <li>Save favourite stores.</li>
@@ -108,7 +108,7 @@ export default function LoginPage() {
             </li>
           </ol>
         </div>
-        <small>Secure customer access · Windhoek, Namibia</small>
+        <small>Secure customer access · NeuroCity Namibia</small>
       </section>
       <section className="onboarding-access">
         <div className="onboarding-mobile-brand">
