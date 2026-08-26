@@ -1,8 +1,193 @@
 "use client";
 
-export type AdminOrder = { id: number; reference: string; storeName: string; customerName: string | null; customerEmail: string | null; status: string; paymentStatus: string; paymentMethod: string | null; fulfillmentMethod: string | null; total: number; createdAt: string; paymentProof: { status: string; originalName: string; reviewNote: string | null } | null; items: { id: number; nameSnapshot: string; variantSnapshot: string | null; quantity: number; lineTotal: number }[]; issues: { id: number; category: string; description: string; status: string; resolution: string | null; createdAt: string }[] };
-type Analytics = { grossPaid: number; refunded: number; activeOrders: number; openIssues: number; completedOrders: number };
+export type AdminOrder = {
+  id: number;
+  reference: string;
+  storeName: string;
+  customerName: string | null;
+  customerEmail: string | null;
+  status: string;
+  paymentStatus: string;
+  paymentMethod: string | null;
+  fulfillmentMethod: string | null;
+  total: number;
+  createdAt: string;
+  paymentProof: {
+    status: string;
+    originalName: string;
+    reviewNote: string | null;
+  } | null;
+  items: {
+    id: number;
+    nameSnapshot: string;
+    variantSnapshot: string | null;
+    quantity: number;
+    lineTotal: number;
+  }[];
+  issues: {
+    id: number;
+    category: string;
+    description: string;
+    status: string;
+    resolution: string | null;
+    createdAt: string;
+  }[];
+};
+type Analytics = {
+  grossPaid: number;
+  refunded: number;
+  activeOrders: number;
+  openIssues: number;
+  completedOrders: number;
+};
 
-export default function AdminOrderCentre({ orders, analytics, updatePayment, resolveIssue }: { orders: AdminOrder[]; analytics: Analytics; updatePayment: (order: AdminOrder, status: string) => void; resolveIssue: (order: AdminOrder, issueId: number) => void }) {
-  return <div className="admin-order-centre"><section className="transaction-analytics"><article><span>Gross paid</span><strong>N${Number(analytics.grossPaid).toFixed(2)}</strong></article><article><span>Refunded</span><strong>N${Number(analytics.refunded).toFixed(2)}</strong></article><article><span>Active orders</span><strong>{analytics.activeOrders}</strong></article><article><span>Open issues</span><strong>{analytics.openIssues}</strong></article><article><span>Completed</span><strong>{analytics.completedOrders}</strong></article></section>{!orders.length ? <div className="admin-empty"><span>NC</span><h3>No orders recorded</h3><p>Marketplace transactions will appear here.</p></div> : orders.map((order) => <article key={order.id}><header><div><span className={`review-status status-${order.status}`}>{order.status.replaceAll("_", " ")}</span><h3>{order.reference}</h3><p>{order.storeName} · {order.customerName ?? "Customer"}</p></div><div><strong>N${Number(order.total).toFixed(2)}</strong><small>{new Date(order.createdAt).toLocaleString("en-NA")}</small></div></header>{order.issues?.map((issue) => <section className={`admin-order-issue issue-${issue.status}`} key={issue.id}><div><span>{issue.category.replaceAll("_", " ")}</span><b>{issue.description}</b>{issue.resolution && <small>Resolution: {issue.resolution}</small>}</div>{issue.status === "open" && <button onClick={() => resolveIssue(order, issue.id)}>Resolve issue</button>}</section>)}<div className="admin-order-body"><section><h4>Transaction</h4><p><span>Payment</span><b>{order.paymentStatus.replaceAll("_", " ")}</b></p><p><span>Method</span><b>{order.paymentMethod?.replaceAll("_", " ")}</b></p><p><span>Fulfilment</span><b>{order.fulfillmentMethod?.replaceAll("_", " ")}</b></p>{order.paymentProof && <a href={`/api/orders/payment-proof?orderId=${order.id}`} target="_blank" rel="noreferrer">View payment proof ↗</a>}</section><section><h4>Items</h4>{order.items.map((item) => <p key={item.id}><span>{item.quantity}× {item.nameSnapshot}<small>{item.variantSnapshot}</small></span><b>N${Number(item.lineTotal).toFixed(2)}</b></p>)}</section><section><h4>Customer</h4><p>{order.customerName}<br /><a href={`mailto:${order.customerEmail}`}>{order.customerEmail}</a></p></section></div><footer><button onClick={() => updatePayment(order, "failed")}>Mark failed</button>{order.paymentStatus === "paid" && <button onClick={() => updatePayment(order, "refunded")}>Record refund</button>}<button className="primary-action" onClick={() => updatePayment(order, "paid")}>Mark paid</button></footer></article>)}</div>;
+export default function AdminOrderCentre({
+  orders,
+  analytics,
+  updatePayment,
+  resolveIssue,
+}: {
+  orders: AdminOrder[];
+  analytics: Analytics;
+  updatePayment: (order: AdminOrder, status: string) => void;
+  resolveIssue: (order: AdminOrder, issueId: number) => void;
+}) {
+  return (
+    <div className="admin-order-centre">
+      <section className="transaction-analytics">
+        <article>
+          <span>Gross paid</span>
+          <strong>N${Number(analytics.grossPaid).toFixed(2)}</strong>
+        </article>
+        <article>
+          <span>Refunded</span>
+          <strong>N${Number(analytics.refunded).toFixed(2)}</strong>
+        </article>
+        <article>
+          <span>Active orders</span>
+          <strong>{analytics.activeOrders}</strong>
+        </article>
+        <article>
+          <span>Open issues</span>
+          <strong>{analytics.openIssues}</strong>
+        </article>
+        <article>
+          <span>Completed</span>
+          <strong>{analytics.completedOrders}</strong>
+        </article>
+      </section>
+      {!orders.length ? (
+        <div className="admin-empty">
+          <span>NC</span>
+          <h3>No orders recorded</h3>
+          <p>Marketplace transactions will appear here.</p>
+        </div>
+      ) : (
+        orders.map((order) => (
+          <article key={order.id}>
+            <header>
+              <div>
+                <span className={`review-status status-${order.status}`}>
+                  {order.status.replaceAll("_", " ")}
+                </span>
+                <h3>{order.reference}</h3>
+                <p>
+                  {order.storeName} · {order.customerName ?? "Customer"}
+                </p>
+              </div>
+              <div>
+                <strong>N${Number(order.total).toFixed(2)}</strong>
+                <small>
+                  {new Date(order.createdAt).toLocaleString("en-NA")}
+                </small>
+              </div>
+            </header>
+            {order.issues?.map((issue) => (
+              <section
+                className={`admin-order-issue issue-${issue.status}`}
+                key={issue.id}
+              >
+                <div>
+                  <span>{issue.category.replaceAll("_", " ")}</span>
+                  <b>{issue.description}</b>
+                  {issue.resolution && (
+                    <small>Resolution: {issue.resolution}</small>
+                  )}
+                </div>
+                {issue.status === "open" && (
+                  <button onClick={() => resolveIssue(order, issue.id)}>
+                    Resolve issue
+                  </button>
+                )}
+              </section>
+            ))}
+            <div className="admin-order-body">
+              <section>
+                <h4>Transaction</h4>
+                <p>
+                  <span>Payment</span>
+                  <b>{order.paymentStatus.replaceAll("_", " ")}</b>
+                </p>
+                <p>
+                  <span>Method</span>
+                  <b>{order.paymentMethod?.replaceAll("_", " ")}</b>
+                </p>
+                <p>
+                  <span>Fulfilment</span>
+                  <b>{order.fulfillmentMethod?.replaceAll("_", " ")}</b>
+                </p>
+                {order.paymentProof && (
+                  <a
+                    href={`/api/orders/payment-proof?orderId=${order.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View payment proof ↗
+                  </a>
+                )}
+              </section>
+              <section>
+                <h4>Items</h4>
+                {order.items.map((item) => (
+                  <p key={item.id}>
+                    <span>
+                      {item.quantity}× {item.nameSnapshot}
+                      <small>{item.variantSnapshot}</small>
+                    </span>
+                    <b>N${Number(item.lineTotal).toFixed(2)}</b>
+                  </p>
+                ))}
+              </section>
+              <section>
+                <h4>Customer</h4>
+                <p>
+                  {order.customerName}
+                  <br />
+                  <a href={`mailto:${order.customerEmail}`}>
+                    {order.customerEmail}
+                  </a>
+                </p>
+              </section>
+            </div>
+            <footer>
+              <button onClick={() => updatePayment(order, "failed")}>
+                Mark failed
+              </button>
+              {order.paymentStatus === "paid" && (
+                <button onClick={() => updatePayment(order, "refunded")}>
+                  Record refund
+                </button>
+              )}
+              <button
+                className="primary-action"
+                onClick={() => updatePayment(order, "paid")}
+              >
+                Mark paid
+              </button>
+            </footer>
+          </article>
+        ))
+      )}
+    </div>
+  );
 }

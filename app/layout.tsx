@@ -24,7 +24,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   applicationName: "NeuroCity",
   title: "NeuroCity | Namibia's connected shopping network",
-  description: "Explore Namibia's local marketplace, digital malls and live merchant catalogues through one connected shopping network.",
+  description:
+    "Explore Namibia's local marketplace, digital malls and live merchant catalogues through one connected shopping network.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -34,21 +35,52 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
   icons: {
     icon: [
-      { url: "/branding/neurocity-mark.png", sizes: "512x512", type: "image/png" },
+      {
+        url: "/branding/neurocity-mark.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
       { url: "/icons/neurocity-192.png", sizes: "192x192", type: "image/png" },
     ],
     shortcut: "/branding/neurocity-mark.png",
-    apple: [{ url: "/icons/neurocity-180.png", sizes: "180x180", type: "image/png" }],
+    apple: [
+      { url: "/icons/neurocity-180.png", sizes: "180x180", type: "image/png" },
+    ],
   },
   openGraph: {
     title: "NeuroCity",
-    description: "Namibia's marketplaces, digital malls and local stores—connected.",
+    description:
+      "Namibia's marketplaces, digital malls and local stores—connected.",
     type: "website",
-    images: [{ url: "/branding/neurocity-social.png", width: 1254, height: 690, alt: "NeuroCity — your city, your stores, one place" }],
+    images: [
+      {
+        url: "/branding/neurocity-social.png",
+        width: 1254,
+        height: 690,
+        alt: "NeuroCity — your city, your stores, one place",
+      },
+    ],
   },
-  twitter: { card: "summary_large_image", title: "NeuroCity", description: "Namibia's connected shopping network.", images: ["/branding/neurocity-social.png"] },
+  twitter: {
+    card: "summary_large_image",
+    title: "NeuroCity",
+    description: "Namibia's connected shopping network.",
+    images: ["/branding/neurocity-social.png"],
+  },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body><a className="skip-link" href="#main-content">Skip to main content</a>{children}<PwaInstaller /></body></html>;
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="en">
+      <body>
+        <a className="skip-link" href="#main-content">
+          Skip to main content
+        </a>
+        {children}
+        <PwaInstaller />
+      </body>
+    </html>
+  );
 }

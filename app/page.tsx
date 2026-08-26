@@ -14,198 +14,1040 @@ type Product = {
   image: string;
   badge: string;
 };
-type PublicStore = { id: number; name: string; slug: string; category: string; tagline: string | null; description: string | null; logoUrl: string | null; bannerUrl: string | null; fulfillmentMethods: string[]; branchName?: string; branchAddress?: string };
-type PlatformIdentity = { name: string; slug: string; kind: string; country: string; city: string | null; tagline: string | null; logoUrl: string | null; markUrl: string | null; theme: Record<string, string> };
+type PublicStore = {
+  id: number;
+  name: string;
+  slug: string;
+  category: string;
+  tagline: string | null;
+  description: string | null;
+  logoUrl: string | null;
+  bannerUrl: string | null;
+  fulfillmentMethods: string[];
+  branchName?: string;
+  branchAddress?: string;
+};
+type PlatformIdentity = {
+  name: string;
+  slug: string;
+  kind: string;
+  country: string;
+  city: string | null;
+  tagline: string | null;
+  logoUrl: string | null;
+  markUrl: string | null;
+  theme: Record<string, string>;
+};
 
-const categories = merchantCategories.map((category) => ({ ...category, detail: category.includes, count: category.name === "Fashion & Clothing" ? "Pilot open" : "Recruiting" }));
+const categories = merchantCategories.map((category) => ({
+  ...category,
+  detail: category.includes,
+  count: category.name === "Fashion & Clothing" ? "Pilot open" : "Recruiting",
+}));
 
 function money(value: number | null) {
-  return value === null ? "Confirm with store" : `N$${new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
+  return value === null
+    ? "Confirm with store"
+    : `N$${new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
 }
 
-export function MarketplaceExperience({ mallSlug }: { mallSlug?: string } = {}) {
+export function MarketplaceExperience({
+  mallSlug,
+}: { mallSlug?: string } = {}) {
   const [view, setView] = useState<"mall" | "store" | "merchant">("mall");
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<number[]>([]);
   const [catalogue, setCatalogue] = useState<Product[]>([]);
   const [storeAvailable, setStoreAvailable] = useState<boolean | null>(null);
   const [stores, setStores] = useState<PublicStore[]>([]);
-  const [platform, setPlatform] = useState<PlatformIdentity>({ name: "NeuroCity", slug: "neurocity", kind: "marketplace", country: "Namibia", city: null, tagline: "Namibia's intelligent digital mall.", logoUrl: "/branding/neurocity-logo.png", markUrl: "/branding/neurocity-mark.png", theme: { primary: "#18c98e", surface: "#07111f" } });
+  const [platform, setPlatform] = useState<PlatformIdentity>({
+    name: "NeuroCity",
+    slug: "neurocity",
+    kind: "marketplace",
+    country: "Namibia",
+    city: null,
+    tagline: "Namibia's intelligent digital mall.",
+    logoUrl: "/branding/neurocity-logo.png",
+    markUrl: "/branding/neurocity-mark.png",
+    theme: { primary: "#18c98e", surface: "#07111f" },
+  });
   const [selectedCategory, setSelectedCategory] = useState("");
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [fulfillment, setFulfillment] = useState<"pickup" | "merchant_delivery">("pickup");
-  const [payment, setPayment] = useState<"online" | "pay_on_collection">("pay_on_collection");
+  const [fulfillment, setFulfillment] = useState<
+    "pickup" | "merchant_delivery"
+  >("pickup");
+  const [payment, setPayment] = useState<"online" | "pay_on_collection">(
+    "pay_on_collection",
+  );
   const [placingOrder, setPlacingOrder] = useState(false);
-  const [merchantStats, setMerchantStats] = useState({ products: 4, publishedProducts: 0, orders: 0, readiness: 42 });
+  const [merchantStats, setMerchantStats] = useState({
+    products: 4,
+    publishedProducts: 0,
+    orders: 0,
+    readiness: 42,
+  });
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    const mall = mallSlug ?? new URLSearchParams(window.location.search).get("mall"); const tenantQuery = mall ? `?mall=${encodeURIComponent(mall)}` : "";
-    fetch(`/api/stores${tenantQuery}`).then(async (response) => { if (!response.ok) throw new Error("stores_unavailable"); return response.json(); }).then((data) => { const available = Array.isArray(data.stores) ? data.stores : []; if (data.platform) setPlatform(data.platform); setStores(available); setStoreAvailable(available.length > 0); }).catch(() => { setStores([]); setStoreAvailable(false); });
-    fetch("/api/catalogue").then(async (response) => {
-      if (!response.ok) throw new Error(response.status === 404 ? "store_unavailable" : "catalogue_unavailable");
-      return response.json();
-    }).then((data) => {
-      if (Array.isArray(data.products)) setCatalogue(data.products.map((product: Product & { imageUrl?: string }) => ({ ...product, image: product.imageUrl ?? product.image })));
-    }).catch(() => setCatalogue([]));
+    const mall =
+      mallSlug ?? new URLSearchParams(window.location.search).get("mall");
+    const tenantQuery = mall ? `?mall=${encodeURIComponent(mall)}` : "";
+    fetch(`/api/stores${tenantQuery}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("stores_unavailable");
+        return response.json();
+      })
+      .then((data) => {
+        const available = Array.isArray(data.stores) ? data.stores : [];
+        if (data.platform) setPlatform(data.platform);
+        setStores(available);
+        setStoreAvailable(available.length > 0);
+      })
+      .catch(() => {
+        setStores([]);
+        setStoreAvailable(false);
+      });
+    fetch("/api/catalogue")
+      .then(async (response) => {
+        if (!response.ok)
+          throw new Error(
+            response.status === 404
+              ? "store_unavailable"
+              : "catalogue_unavailable",
+          );
+        return response.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data.products))
+          setCatalogue(
+            data.products.map((product: Product & { imageUrl?: string }) => ({
+              ...product,
+              image: product.imageUrl ?? product.image,
+            })),
+          );
+      })
+      .catch(() => setCatalogue([]));
   }, [mallSlug]);
 
   useEffect(() => {
     if (view !== "merchant") return;
-    fetch("/api/merchant/overview").then((response) => response.ok ? response.json() : Promise.reject()).then(setMerchantStats).catch(() => undefined);
+    fetch("/api/merchant/overview")
+      .then((response) => (response.ok ? response.json() : Promise.reject()))
+      .then(setMerchantStats)
+      .catch(() => undefined);
   }, [view]);
 
-  const filtered = useMemo(() => catalogue.filter((p) => `${p.name} ${p.collection}`.toLowerCase().includes(query.toLowerCase())), [query, catalogue]);
-  const visibleStores = useMemo(() => stores.filter((store) => (!selectedCategory || store.category === selectedCategory) && `${store.name} ${store.category} ${store.tagline ?? ""} ${store.description ?? ""}`.toLowerCase().includes(query.toLowerCase())), [stores, selectedCategory, query]);
-  const categoryCounts = useMemo(() => stores.reduce<Record<string, number>>((counts, store) => ({ ...counts, [store.category]: (counts[store.category] ?? 0) + 1 }), {}), [stores]);
-  const cartTotal = cart.reduce((sum, id) => sum + (catalogue.find((p) => p.id === id)?.price ?? 0), 0);
-  const openStore = (slug: string) => { window.location.href = `/stores/${slug}`; };
-  const openPilotStore = () => stores[0] ? openStore(stores[0].slug) : setNotice("No public storefronts are available right now.");
-  const showStores = (category = "") => { setSelectedCategory(category); setView("mall"); requestAnimationFrame(() => document.getElementById("stores")?.scrollIntoView({ behavior: "smooth" })); };
-  const applicationHref = mallSlug ? `/malls/${encodeURIComponent(mallSlug)}/apply` : "/apply";
+  const filtered = useMemo(
+    () =>
+      catalogue.filter((p) =>
+        `${p.name} ${p.collection}`.toLowerCase().includes(query.toLowerCase()),
+      ),
+    [query, catalogue],
+  );
+  const visibleStores = useMemo(
+    () =>
+      stores.filter(
+        (store) =>
+          (!selectedCategory || store.category === selectedCategory) &&
+          `${store.name} ${store.category} ${store.tagline ?? ""} ${store.description ?? ""}`
+            .toLowerCase()
+            .includes(query.toLowerCase()),
+      ),
+    [stores, selectedCategory, query],
+  );
+  const categoryCounts = useMemo(
+    () =>
+      stores.reduce<Record<string, number>>(
+        (counts, store) => ({
+          ...counts,
+          [store.category]: (counts[store.category] ?? 0) + 1,
+        }),
+        {},
+      ),
+    [stores],
+  );
+  const cartTotal = cart.reduce(
+    (sum, id) => sum + (catalogue.find((p) => p.id === id)?.price ?? 0),
+    0,
+  );
+  const openStore = (slug: string) => {
+    window.location.href = `/stores/${slug}`;
+  };
+  const openPilotStore = () =>
+    stores[0]
+      ? openStore(stores[0].slug)
+      : setNotice("No public storefronts are available right now.");
+  const showStores = (category = "") => {
+    setSelectedCategory(category);
+    setView("mall");
+    requestAnimationFrame(() =>
+      document.getElementById("stores")?.scrollIntoView({ behavior: "smooth" }),
+    );
+  };
+  const applicationHref = mallSlug
+    ? `/malls/${encodeURIComponent(mallSlug)}/apply`
+    : "/apply";
 
   function addToCart(product: Product) {
     if (product.price === null) {
-      setNotice(`${product.name} is in pilot review. Ask LightWork to confirm price and availability.`);
+      setNotice(
+        `${product.name} is in pilot review. Ask LightWork to confirm price and availability.`,
+      );
       setAssistantOpen(true);
       return;
     }
-    setNotice(`Choose the size and colour for ${product.name} in the LightWork storefront.`);
+    setNotice(
+      `Choose the size and colour for ${product.name} in the LightWork storefront.`,
+    );
     window.location.href = "/stores/lightwork-clothing#shop";
   }
 
   async function placeOrder() {
     setPlacingOrder(true);
     try {
-      const response = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ productIds: cart, fulfillmentMethod: fulfillment, paymentMethod: payment }) });
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          productIds: cart,
+          fulfillmentMethod: fulfillment,
+          paymentMethod: payment,
+        }),
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Order creation failed");
       setCart([]);
       setCheckoutOpen(false);
-      setNotice(`${data.order.reference} created · ${data.order.status.replaceAll("_", " ")}.`);
+      setNotice(
+        `${data.order.reference} created · ${data.order.status.replaceAll("_", " ")}.`,
+      );
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Order creation failed");
+      setNotice(
+        error instanceof Error ? error.message : "Order creation failed",
+      );
     } finally {
       setPlacingOrder(false);
     }
   }
 
   return (
-    <main id="main-content" className={platform.kind === "mall" ? "white-label-mall" : "neurocity-marketplace"} style={{ "--ink": platform.theme?.surface ?? "#07111f", "--gold": platform.theme?.primary ?? "#18c98e", "--violet": platform.theme?.primary ?? "#18c98e" } as CSSProperties}>
+    <main
+      id="main-content"
+      className={
+        platform.kind === "mall" ? "white-label-mall" : "neurocity-marketplace"
+      }
+      style={
+        {
+          "--ink": platform.theme?.surface ?? "#07111f",
+          "--gold": platform.theme?.primary ?? "#18c98e",
+          "--violet": platform.theme?.primary ?? "#18c98e",
+        } as CSSProperties
+      }
+    >
       <header className="topbar">
-        <button className="brand header-brand" onClick={() => setView("mall")} aria-label={`Go to ${platform.name} home`}>
-          {platform.markUrl ? <img className="brand-symbol" src={platform.markUrl} alt="" aria-hidden="true" /> : <span className="tenant-monogram" aria-hidden="true">{platform.name.split(" ").map((word) => word[0]).join("").slice(0, 2)}</span>}<span className="brand-copy"><span><b>{platform.kind === "mall" ? platform.name : "NeuroCity"}</b>{platform.kind !== "mall" && <em>MARKETPLACE</em>}</span><small>{platform.kind === "mall" ? platform.tagline ?? `${platform.country}'s digital mall` : "Shop independent Namibian businesses"}</small></span>
+        <button
+          className="brand header-brand"
+          onClick={() => setView("mall")}
+          aria-label={`Go to ${platform.name} home`}
+        >
+          {platform.markUrl ? (
+            <img
+              className="brand-symbol"
+              src={platform.markUrl}
+              alt=""
+              aria-hidden="true"
+            />
+          ) : (
+            <span className="tenant-monogram" aria-hidden="true">
+              {platform.name
+                .split(" ")
+                .map((word) => word[0])
+                .join("")
+                .slice(0, 2)}
+            </span>
+          )}
+          <span className="brand-copy">
+            <span>
+              <b>{platform.kind === "mall" ? platform.name : "NeuroCity"}</b>
+              {platform.kind !== "mall" && <em>MARKETPLACE</em>}
+            </span>
+            <small>
+              {platform.kind === "mall"
+                ? (platform.tagline ?? `${platform.country}'s digital mall`)
+                : "Shop independent Namibian businesses"}
+            </small>
+          </span>
         </button>
         <nav className="desktop-nav" aria-label="Primary navigation">
           {platform.kind !== "mall" && <a href="/">NeuroCity network</a>}
-          <button className={view === "mall" ? "active" : ""} onClick={() => setView("mall")}>{platform.kind === "mall" ? "Discover" : "Shop"}</button>
+          <button
+            className={view === "mall" ? "active" : ""}
+            onClick={() => setView("mall")}
+          >
+            {platform.kind === "mall" ? "Discover" : "Shop"}
+          </button>
           <button onClick={() => showStores()}>Stores</button>
-          <button onClick={() => { setView("mall"); requestAnimationFrame(() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })); }}>How it works</button>
+          <button
+            onClick={() => {
+              setView("mall");
+              requestAnimationFrame(() =>
+                document
+                  .getElementById("how-it-works")
+                  ?.scrollIntoView({ behavior: "smooth" }),
+              );
+            }}
+          >
+            How it works
+          </button>
         </nav>
         <div className="header-actions">
-          <span className="city-pill">{platform.city ?? platform.country} <span>•</span></span>
-          <details className="account-menu"><summary>Account</summary><div onClick={(event) => event.currentTarget.parentElement?.removeAttribute("open")}><a href="/account">My account</a><button onClick={() => setView("merchant")}>Merchant dashboard</button><a href="/application-status">Track application</a><a href="/login">Sign in</a></div></details>
-          <button className="cart-button" onClick={() => cart.length ? setCheckoutOpen(true) : setNotice("Your mall basket is empty.")}>
+          <span className="city-pill">
+            {platform.city ?? platform.country} <span>•</span>
+          </span>
+          <details className="account-menu">
+            <summary>Account</summary>
+            <div
+              onClick={(event) =>
+                event.currentTarget.parentElement?.removeAttribute("open")
+              }
+            >
+              <a href="/account">My account</a>
+              <button onClick={() => setView("merchant")}>
+                Merchant dashboard
+              </button>
+              <a href="/application-status">Track application</a>
+              <a href="/login">Sign in</a>
+            </div>
+          </details>
+          <button
+            className="cart-button"
+            onClick={() =>
+              cart.length
+                ? setCheckoutOpen(true)
+                : setNotice("Your mall basket is empty.")
+            }
+          >
             Bag <b>{cart.length}</b>
           </button>
         </div>
       </header>
-      {platform.kind !== "mall" && <div className="marketplace-context-bar"><span><a href="/">NeuroCity</a><b>›</b> Marketplace</span><div><i /> Verified local businesses <i /> One account across the network</div></div>}
+      {platform.kind !== "mall" && (
+        <div className="marketplace-context-bar">
+          <span>
+            <a href="/">NeuroCity</a>
+            <b>›</b> Marketplace
+          </span>
+          <div>
+            <i /> Verified local businesses <i /> One account across the network
+          </div>
+        </div>
+      )}
 
       {view === "mall" && (
         <>
           <section className="hero">
             <div className="hero-copy">
-              <p className="eyebrow"><span /> {platform.kind === "mall" ? `${platform.city ?? "Your"} shopping, digitally connected` : "NEUROCITY MARKETPLACE · SHOP LOCAL ONLINE"}</p>
-              <h1>{platform.kind === "mall" ? <>Your mall.<br />Your favourites.<br /><em>Always open.</em></> : <>Namibian stores.<br />Real catalogues.<br /><em>Ready to shop.</em></>}</h1>
-              <p className="hero-lede">{platform.kind === "mall" ? `${platform.tagline} Browse participating stores, discover what is available and shop before you arrive.` : "Discover and shop trusted Namibian businesses from one convenient national marketplace. Starting in Windhoek, built for every town."}</p>
-              <div className="hero-actions">{storeAvailable && <button onClick={() => showStores()}>Explore stores</button>}<a href={applicationHref}>{platform.kind === "mall" ? "Join this digital mall" : "Sell on NeuroCity"}</a></div>
-              <div className="search-shell">
-                <span aria-hidden="true">⌕</span><input value={query} onChange={(e) => { setQuery(e.target.value); setSelectedCategory(""); }} placeholder="Search approved stores, categories and products" aria-label="Search NeuroCity" /><button onClick={() => showStores()}>Search</button>
+              <p className="eyebrow">
+                <span />{" "}
+                {platform.kind === "mall"
+                  ? `${platform.city ?? "Your"} shopping, digitally connected`
+                  : "NEUROCITY MARKETPLACE · SHOP LOCAL ONLINE"}
+              </p>
+              <h1>
+                {platform.kind === "mall" ? (
+                  <>
+                    Your mall.
+                    <br />
+                    Your favourites.
+                    <br />
+                    <em>Always open.</em>
+                  </>
+                ) : (
+                  <>
+                    Namibian stores.
+                    <br />
+                    Real catalogues.
+                    <br />
+                    <em>Ready to shop.</em>
+                  </>
+                )}
+              </h1>
+              <p className="hero-lede">
+                {platform.kind === "mall"
+                  ? `${platform.tagline} Browse participating stores, discover what is available and shop before you arrive.`
+                  : "Discover and shop trusted Namibian businesses from one convenient national marketplace. Starting in Windhoek, built for every town."}
+              </p>
+              <div className="hero-actions">
+                {storeAvailable && (
+                  <button onClick={() => showStores()}>Explore stores</button>
+                )}
+                <a href={applicationHref}>
+                  {platform.kind === "mall"
+                    ? "Join this digital mall"
+                    : "Sell on NeuroCity"}
+                </a>
               </div>
-              <div className="trust-row"><span>Curated stores</span><span>Local pickup</span><span>Merchant delivery</span></div>
+              <div className="search-shell">
+                <span aria-hidden="true">⌕</span>
+                <input
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setSelectedCategory("");
+                  }}
+                  placeholder="Search approved stores, categories and products"
+                  aria-label="Search NeuroCity"
+                />
+                <button onClick={() => showStores()}>Search</button>
+              </div>
+              <div className="trust-row">
+                <span>Curated stores</span>
+                <span>Local pickup</span>
+                <span>Merchant delivery</span>
+              </div>
             </div>
-            <div className="hero-city" aria-label={`${platform.name} marketplace summary`}>
-              <div className="city-orbit orbit-one" /><div className="city-orbit orbit-two" />
-              {stores[0] ? <div className="city-card main-card"><span>APPROVED LOCAL STORE</span><img src={stores[0].logoUrl ?? "/lightwork-logo.png"} alt={stores[0].name} /><small>{stores[0].branchAddress ?? stores[0].tagline}</small><button onClick={() => openStore(stores[0].slug)}>Enter store →</button></div> : <div className="city-card main-card marketplace-card"><span>NAMIBIAN MARKETPLACE</span><strong>{platform.name}</strong><small>{storeAvailable === null ? "Loading local storefronts…" : "New storefronts coming soon"}</small></div>}
-              <div className="float-card top-float"><b>{stores.length}</b><span>stores open now</span></div>
-              <div className="float-card bottom-float"><i /> <span>Merchant delivery<br /><b>{platform.city ?? "Namibia"}</b></span></div>
+            <div
+              className="hero-city"
+              aria-label={`${platform.name} marketplace summary`}
+            >
+              <div className="city-orbit orbit-one" />
+              <div className="city-orbit orbit-two" />
+              {stores[0] ? (
+                <div className="city-card main-card">
+                  <span>APPROVED LOCAL STORE</span>
+                  <img
+                    src={stores[0].logoUrl ?? "/lightwork-logo.png"}
+                    alt={stores[0].name}
+                  />
+                  <small>{stores[0].branchAddress ?? stores[0].tagline}</small>
+                  <button onClick={() => openStore(stores[0].slug)}>
+                    Enter store →
+                  </button>
+                </div>
+              ) : (
+                <div className="city-card main-card marketplace-card">
+                  <span>NAMIBIAN MARKETPLACE</span>
+                  <strong>{platform.name}</strong>
+                  <small>
+                    {storeAvailable === null
+                      ? "Loading local storefronts…"
+                      : "New storefronts coming soon"}
+                  </small>
+                </div>
+              )}
+              <div className="float-card top-float">
+                <b>{stores.length}</b>
+                <span>stores open now</span>
+              </div>
+              <div className="float-card bottom-float">
+                <i />{" "}
+                <span>
+                  Merchant delivery
+                  <br />
+                  <b>{platform.city ?? "Namibia"}</b>
+                </span>
+              </div>
             </div>
           </section>
 
           <section className="section">
-            <div className="section-heading"><div><p className="eyebrow">Explore {platform.kind === "mall" ? "the mall" : "the city"}</p><h2>One mall. Distinct local stores.</h2></div><p>{platform.name} gives every merchant a real storefront—not just a listing.</p></div>
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">
+                  Explore {platform.kind === "mall" ? "the mall" : "the city"}
+                </p>
+                <h2>One mall. Distinct local stores.</h2>
+              </div>
+              <ul className="info-list"><li>{platform.name} gives every merchant a real storefront—not just a listing.</li></ul>
+            </div>
             <div className="category-grid">
-              {categories.map((category) => { const count = categoryCounts[category.name] ?? 0; return <button className="category-card" key={category.name} onClick={() => count ? showStores(category.name) : setNotice(`${category.name} merchants are being recruited.`)}><span className="category-icon">{category.icon}</span><div><small>{count ? `${count} ${count === 1 ? "store" : "stores"} open` : "Recruiting"}</small><h3>{category.name}</h3><p>{category.detail}</p></div><b>↗</b></button>; })}
+              {categories.map((category) => {
+                const count = categoryCounts[category.name] ?? 0;
+                return (
+                  <button
+                    className="category-card"
+                    key={category.name}
+                    onClick={() =>
+                      count
+                        ? showStores(category.name)
+                        : setNotice(
+                            `${category.name} merchants are being recruited.`,
+                          )
+                    }
+                  >
+                    <span className="category-icon">{category.icon}</span>
+                    <div>
+                      <small>
+                        {count
+                          ? `${count} ${count === 1 ? "store" : "stores"} open`
+                          : "Recruiting"}
+                      </small>
+                      <h3>{category.name}</h3>
+                      <p>{category.detail}</p>
+                    </div>
+                    <b>↗</b>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
           <section className="public-stores section" id="stores">
-            <div className="section-heading"><div><p className="eyebrow">Approved and ready</p><h2>Stores open on {platform.name}.</h2></div><p>Only approved merchants that have completed and published their storefront setup appear here.</p></div>
-            <div className="store-directory-tools"><div>{selectedCategory && <button onClick={() => setSelectedCategory("")}>{selectedCategory} ×</button>}<span>{visibleStores.length} {visibleStores.length === 1 ? "store" : "stores"}</span></div><label><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search stores" /></label></div>
-            {storeAvailable === null ? <div className="public-store-empty"><strong>Loading local stores…</strong></div> : visibleStores.length ? <div className="public-store-grid">{visibleStores.map((store) => <article className="public-store-card" key={store.id}><div className="public-store-art">{store.bannerUrl && <img src={store.bannerUrl} alt="" />}<span>Approved store</span></div><div className="public-store-copy">{store.logoUrl && <img src={store.logoUrl} alt={`${store.name} logo`} />}<small>{store.category}</small><h3>{store.name}</h3><p>{store.tagline ?? store.description}</p><div>{store.fulfillmentMethods?.map((method) => <span key={method}>{method.replaceAll("_", " ")}</span>)}</div><button onClick={() => openStore(store.slug)}>Visit store →</button></div></article>)}</div> : <div className="public-store-empty"><strong>No matching stores</strong><p>{stores.length ? "Try clearing the category or changing your search." : "Approved merchants will appear here as soon as their storefront setup is complete and published."}</p>{(query || selectedCategory) && <button onClick={() => { setQuery(""); setSelectedCategory(""); }}>Clear filters</button>}</div>}
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Approved and ready</p>
+                <h2>Stores open on {platform.name}.</h2>
+              </div>
+              <ul className="info-list"><li>Only approved merchants appear here.</li><li>Each merchant must complete and publish its storefront setup.</li></ul>
+            </div>
+            <div className="store-directory-tools">
+              <div>
+                {selectedCategory && (
+                  <button onClick={() => setSelectedCategory("")}>
+                    {selectedCategory} ×
+                  </button>
+                )}
+                <span>
+                  {visibleStores.length}{" "}
+                  {visibleStores.length === 1 ? "store" : "stores"}
+                </span>
+              </div>
+              <label>
+                <span>⌕</span>
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search stores"
+                />
+              </label>
+            </div>
+            {storeAvailable === null ? (
+              <div className="public-store-empty">
+                <strong>Loading local stores…</strong>
+              </div>
+            ) : visibleStores.length ? (
+              <div className="public-store-grid">
+                {visibleStores.map((store) => (
+                  <article className="public-store-card" key={store.id}>
+                    <div className="public-store-art">
+                      {store.bannerUrl && <img src={store.bannerUrl} alt="" />}
+                      <span>Approved store</span>
+                    </div>
+                    <div className="public-store-copy">
+                      {store.logoUrl && (
+                        <img src={store.logoUrl} alt={`${store.name} logo`} />
+                      )}
+                      <small>{store.category}</small>
+                      <h3>{store.name}</h3>
+                      <p>{store.tagline ?? store.description}</p>
+                      <div>
+                        {store.fulfillmentMethods?.map((method) => (
+                          <span key={method}>
+                            {method.replaceAll("_", " ")}
+                          </span>
+                        ))}
+                      </div>
+                      <button onClick={() => openStore(store.slug)}>
+                        Visit store →
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="public-store-empty">
+                <strong>No matching stores</strong>
+                <p>
+                  {stores.length
+                    ? "Try clearing the category or changing your search."
+                    : "Approved merchants will appear here as soon as their storefront setup is complete and published."}
+                </p>
+                {(query || selectedCategory) && (
+                  <button
+                    onClick={() => {
+                      setQuery("");
+                      setSelectedCategory("");
+                    }}
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            )}
           </section>
 
           <section className="public-process" id="how-it-works">
-            <div className="section-heading"><div><p className="eyebrow">Simple local shopping</p><h2>From discovery to collection.</h2></div><p>Clear, merchant-managed fulfilment during the Windhoek pilot.</p></div>
-            <div className="process-grid"><article><span>01</span><h3>Discover</h3><p>Browse verified local storefronts and product catalogues.</p></article><article><span>02</span><h3>Choose</h3><p>Add confirmed products and select pickup or merchant delivery.</p></article><article><span>03</span><h3>Complete</h3><p>The merchant confirms availability, timing and fulfilment.</p></article></div>
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">Simple local shopping</p>
+                <h2>From discovery to collection.</h2>
+              </div>
+              <ul className="info-list"><li>Clear, merchant-managed fulfilment during the Windhoek pilot.</li></ul>
+            </div>
+            <div className="process-grid">
+              <article>
+                <span>01</span>
+                <h3>Discover</h3>
+                <ul className="info-list"><li>Browse verified local storefronts.</li><li>Explore product catalogues.</li></ul>
+              </article>
+              <article>
+                <span>02</span>
+                <h3>Choose</h3>
+                <ul className="info-list"><li>Add confirmed products.</li><li>Select pickup or merchant delivery.</li></ul>
+              </article>
+              <article>
+                <span>03</span>
+                <h3>Complete</h3>
+                <ul className="info-list"><li>The merchant confirms availability.</li><li>Receive timing and fulfilment details.</li></ul>
+              </article>
+            </div>
           </section>
 
           <section className="concierge">
-            <div><p className="eyebrow light">Neuro concierge · Live</p><h2>Tell us what you need.<br />We’ll find where it lives.</h2><p>Describe the product, colour, size or budget. Neuro searches the live catalogues of approved local stores.</p></div>
-            <button onClick={() => setAssistantOpen(true)}><span>✦</span><div><small>Ask NeuroCity</small><b>“I need a local streetwear look under N$1,500.”</b></div><i>→</i></button>
+            <div>
+              <p className="eyebrow light">Neuro concierge · Live</p>
+              <h2>
+                Tell us what you need.
+                <br />
+                We’ll find where it lives.
+              </h2>
+              <ul className="info-list"><li>Describe the product, colour, size or budget.</li><li>Neuro searches live catalogues from approved local stores.</li></ul>
+            </div>
+            <button onClick={() => setAssistantOpen(true)}>
+              <span>✦</span>
+              <div>
+                <small>Ask NeuroCity</small>
+                <b>“I need a local streetwear look under N$1,500.”</b>
+              </div>
+              <i>→</i>
+            </button>
           </section>
 
-          {stores.some((store) => store.slug === "lightwork-clothing") && <section className="section featured">
-            <div className="section-heading"><div><p className="eyebrow">Pilot storefront</p><h2>LightWork Clothing</h2></div><button className="text-link" onClick={() => openStore("lightwork-clothing")}>View the store →</button></div>
-            <div className="product-grid">{catalogue.slice(0, 3).map((p) => <ProductCard key={p.id} product={p} onAdd={addToCart} />)}</div>
-          </section>}
+          {stores.some((store) => store.slug === "lightwork-clothing") && (
+            <section className="section featured">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Pilot storefront</p>
+                  <h2>LightWork Clothing</h2>
+                </div>
+                <button
+                  className="text-link"
+                  onClick={() => openStore("lightwork-clothing")}
+                >
+                  View the store →
+                </button>
+              </div>
+              <div className="product-grid">
+                {catalogue.slice(0, 3).map((p) => (
+                  <ProductCard key={p.id} product={p} onAdd={addToCart} />
+                ))}
+              </div>
+            </section>
+          )}
 
-          <section className="merchant-public-cta"><div><p className="eyebrow light">For Namibian businesses</p><h2>Bring your store into {platform.name}.</h2><p>Apply online, submit your business documents securely, and receive a merchant dashboard after approval.</p></div><div><a className="merchant-cta-primary" href={applicationHref}>Start an application</a><a href="/application-status">Track an existing application</a></div></section>
+          <section className="merchant-public-cta">
+            <div>
+              <p className="eyebrow light">For Namibian businesses</p>
+              <h2>Bring your store into {platform.name}.</h2>
+              <ul className="info-list"><li>Apply online.</li><li>Submit business documents securely.</li><li>Receive a merchant dashboard after approval.</li></ul>
+            </div>
+            <div>
+              <a className="merchant-cta-primary" href={applicationHref}>
+                Start an application
+              </a>
+              <a href="/application-status">Track an existing application</a>
+            </div>
+          </section>
         </>
       )}
 
       {view === "store" && storeAvailable && (
         <>
           <section className="store-hero">
-            <div className="store-branding"><span>NEUROCITY / FASHION / LIGHTWORK</span><img src="/lightwork-logo.png" alt="LightWork Clothing logo" /><p>Global established movement. Windhoek streetwear from Baines Centre, Pioneerspark.</p><div><button onClick={() => setAssistantOpen(true)}>✦ Ask the store AI</button><button className="ghost" onClick={() => setNotice("Pickup details will be confirmed with LightWork before launch.")}>Pickup information</button></div></div>
-            <div className="store-art"><img src="/lightwork-crown-v1.png" alt="LightWork Crown V1 tracksuit reference" /><span>PRIVATE PILOT CATALOGUE</span></div>
+            <div className="store-branding">
+              <span>NEUROCITY / FASHION / LIGHTWORK</span>
+              <img src="/lightwork-logo.png" alt="LightWork Clothing logo" />
+              <p>
+                Global established movement. Windhoek streetwear from Baines
+                Centre, Pioneerspark.
+              </p>
+              <div>
+                <button onClick={() => setAssistantOpen(true)}>
+                  ✦ Ask the store AI
+                </button>
+                <button
+                  className="ghost"
+                  onClick={() =>
+                    setNotice(
+                      "Pickup details will be confirmed with LightWork before launch.",
+                    )
+                  }
+                >
+                  Pickup information
+                </button>
+              </div>
+            </div>
+            <div className="store-art">
+              <img
+                src="/lightwork-crown-v1.png"
+                alt="LightWork Crown V1 tracksuit reference"
+              />
+              <span>PRIVATE PILOT CATALOGUE</span>
+            </div>
           </section>
-          <section className="store-toolbar"><div><b>LightWork catalogue</b><span>4 starter products · details pending merchant confirmation</span></div><label><span>⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search LightWork" /></label></section>
-          <section className="section store-products"><div className="product-grid four">{filtered.map((p) => <ProductCard key={p.id} product={p} onAdd={addToCart} />)}</div></section>
+          <section className="store-toolbar">
+            <div>
+              <b>LightWork catalogue</b>
+              <span>
+                4 starter products · details pending merchant confirmation
+              </span>
+            </div>
+            <label>
+              <span>⌕</span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search LightWork"
+              />
+            </label>
+          </section>
+          <section className="section store-products">
+            <div className="product-grid four">
+              {filtered.map((p) => (
+                <ProductCard key={p.id} product={p} onAdd={addToCart} />
+              ))}
+            </div>
+          </section>
         </>
       )}
 
-      {view === "merchant" && <MerchantWorkspace onPreview={() => setView("store")} />}
+      {view === "merchant" && (
+        <MerchantWorkspace onPreview={() => setView("store")} />
+      )}
       {false && (
         <section className="dashboard-shell">
-          <aside><div className="merchant-mark"><img src="/lightwork-logo.png" alt="" /><div><b>LightWork</b><span>Pilot workspace</span></div></div>{["Overview", "Orders", "Products", "Inventory", "Storefront", "AI conversations", "Reports"].map((item, i) => <button className={i === 0 ? "active" : ""} key={item}>{item}<span>{item === "Products" ? "4" : item === "Orders" ? "0" : ""}</span></button>)}<div className="pilot-status"><span /><b>Pilot setup</b><small>42% complete</small></div></aside>
-          <div className="dashboard-main"><div className="dashboard-head"><div><p className="eyebrow">Merchant overview</p><h1>Good evening, Zephan.</h1><p>Your storefront is in private pilot setup. Complete the catalogue before accepting orders.</p></div><button onClick={() => setView("store")}>Preview storefront ↗</button></div>
-            <div className="metric-grid"><Metric label="Published products" value={String(merchantStats.publishedProducts)} note={`${merchantStats.products} need confirmation`} tone="gold" /><Metric label="Orders recorded" value={String(merchantStats.orders)} note="Persistent merchant orders" /><Metric label="Store readiness" value={`${merchantStats.readiness}%`} note="7 details remaining" tone="violet" /><Metric label="AI catalogue coverage" value="0%" note="Publish products first" /></div>
-            <div className="dashboard-columns"><div className="task-panel"><div className="panel-title"><div><h3>Launch checklist</h3><p>What LightWork needs before pilot review</p></div><b>3 of 7</b></div>{[
-              ["Business and pickup location", "Complete", true], ["Brand logo and website", "Complete", true], ["Starter product evidence", "Complete", true], ["Current prices and sizes", "Required", false], ["Branch stock or confirmation mode", "Required", false], ["Delivery zones and fees", "Required", false], ["Returns and exchange policy", "Required", false]
-            ].map(([task, status, done]) => <div className="task-row" key={String(task)}><span className={done ? "done" : ""}>{done ? "✓" : ""}</span><b>{task}</b><small>{status}</small></div>)}</div>
-              <div className="activity-panel"><div className="panel-title"><div><h3>Catalogue health</h3><p>Confirmation required</p></div></div>{catalogue.map((p) => <div className="mini-product" key={p.id}><img src={p.image} alt="" /><div><b>{p.name}</b><span>{p.price ? "Historic price recorded" : "Price missing"}</span></div><em>Review</em></div>)}</div></div>
+          <aside>
+            <div className="merchant-mark">
+              <img src="/lightwork-logo.png" alt="" />
+              <div>
+                <b>LightWork</b>
+                <span>Pilot workspace</span>
+              </div>
+            </div>
+            {[
+              "Overview",
+              "Orders",
+              "Products",
+              "Inventory",
+              "Storefront",
+              "AI conversations",
+              "Reports",
+            ].map((item, i) => (
+              <button className={i === 0 ? "active" : ""} key={item}>
+                {item}
+                <span>
+                  {item === "Products" ? "4" : item === "Orders" ? "0" : ""}
+                </span>
+              </button>
+            ))}
+            <div className="pilot-status">
+              <span />
+              <b>Pilot setup</b>
+              <small>42% complete</small>
+            </div>
+          </aside>
+          <div className="dashboard-main">
+            <div className="dashboard-head">
+              <div>
+                <p className="eyebrow">Merchant overview</p>
+                <h1>Good evening, Zephan.</h1>
+                <p>
+                  Your storefront is in private pilot setup. Complete the
+                  catalogue before accepting orders.
+                </p>
+              </div>
+              <button onClick={() => setView("store")}>
+                Preview storefront ↗
+              </button>
+            </div>
+            <div className="metric-grid">
+              <Metric
+                label="Published products"
+                value={String(merchantStats.publishedProducts)}
+                note={`${merchantStats.products} need confirmation`}
+                tone="gold"
+              />
+              <Metric
+                label="Orders recorded"
+                value={String(merchantStats.orders)}
+                note="Persistent merchant orders"
+              />
+              <Metric
+                label="Store readiness"
+                value={`${merchantStats.readiness}%`}
+                note="7 details remaining"
+                tone="violet"
+              />
+              <Metric
+                label="AI catalogue coverage"
+                value="0%"
+                note="Publish products first"
+              />
+            </div>
+            <div className="dashboard-columns">
+              <div className="task-panel">
+                <div className="panel-title">
+                  <div>
+                    <h3>Launch checklist</h3>
+                    <p>What LightWork needs before pilot review</p>
+                  </div>
+                  <b>3 of 7</b>
+                </div>
+                {[
+                  ["Business and pickup location", "Complete", true],
+                  ["Brand logo and website", "Complete", true],
+                  ["Starter product evidence", "Complete", true],
+                  ["Current prices and sizes", "Required", false],
+                  ["Branch stock or confirmation mode", "Required", false],
+                  ["Delivery zones and fees", "Required", false],
+                  ["Returns and exchange policy", "Required", false],
+                ].map(([task, status, done]) => (
+                  <div className="task-row" key={String(task)}>
+                    <span className={done ? "done" : ""}>
+                      {done ? "✓" : ""}
+                    </span>
+                    <b>{task}</b>
+                    <small>{status}</small>
+                  </div>
+                ))}
+              </div>
+              <div className="activity-panel">
+                <div className="panel-title">
+                  <div>
+                    <h3>Catalogue health</h3>
+                    <p>Confirmation required</p>
+                  </div>
+                </div>
+                {catalogue.map((p) => (
+                  <div className="mini-product" key={p.id}>
+                    <img src={p.image} alt="" />
+                    <div>
+                      <b>{p.name}</b>
+                      <span>
+                        {p.price ? "Historic price recorded" : "Price missing"}
+                      </span>
+                    </div>
+                    <em>Review</em>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
       )}
 
-      {notice && <button className="notice" role="status" aria-live="polite" onClick={() => setNotice("")} aria-label="Dismiss notification"><span>{notice}</span><b>×</b></button>}
-      {checkoutOpen && <div className="checkout-backdrop" onClick={() => setCheckoutOpen(false)}><section className="checkout-panel" onClick={(event) => event.stopPropagation()}><header><div><small>LIGHTWORK ORDER</small><h2>Review your order</h2></div><button onClick={() => setCheckoutOpen(false)}>×</button></header><div className="checkout-items">{cart.map((id, index) => { const product = catalogue.find((item) => item.id === id); return product ? <div className="checkout-item" key={`${id}-${index}`}><img src={product.image} alt="" /><div><b>{product.name}</b><span>{product.collection}</span></div><strong>{money(product.price)}</strong></div> : null; })}</div><fieldset><legend>How would you like it?</legend><label className={fulfillment === "pickup" ? "selected" : ""}><input type="radio" checked={fulfillment === "pickup"} onChange={() => setFulfillment("pickup")} /><span><b>Pickup at Baines Centre</b><small>Timing confirmed by LightWork</small></span></label><label className={fulfillment === "merchant_delivery" ? "selected" : ""}><input type="radio" checked={fulfillment === "merchant_delivery"} onChange={() => setFulfillment("merchant_delivery")} /><span><b>Merchant delivery</b><small>Zone and fee confirmed before fulfillment</small></span></label></fieldset><fieldset><legend>Payment preference</legend><label className={payment === "pay_on_collection" ? "selected" : ""}><input type="radio" checked={payment === "pay_on_collection"} onChange={() => setPayment("pay_on_collection")} /><span><b>Pay on collection</b><small>Available during the controlled pilot</small></span></label><label className={payment === "online" ? "selected" : ""}><input type="radio" checked={payment === "online"} onChange={() => setPayment("online")} /><span><b>Online payment</b><small>Provider connection pending</small></span></label></fieldset><div className="checkout-total"><span>Total</span><b>{money(cartTotal)}</b></div><button className="place-order" disabled={placingOrder} onClick={placeOrder}>{placingOrder ? "Creating order…" : payment === "online" ? "Create order and continue to payment" : "Place pilot order"}</button><p className="checkout-note">This creates a real private pilot order. Products awaiting merchant confirmation cannot be ordered.</p></section></div>}
-      <button className="ai-fab" onClick={() => setAssistantOpen(true)} aria-label="Open shopping assistant">✦</button>
-      <NeuroConcierge open={assistantOpen} onClose={() => setAssistantOpen(false)} platformSlug={mallSlug} />
-      {view !== "merchant" && <footer className="public-footer"><a href="/" className="brand"><span>Neuro</span><strong>City</strong></a><p>{platform.name} digital commerce.</p><nav><button onClick={() => showStores()}>Stores</button><a href="/account">Customer account</a><a href={applicationHref}>Become a merchant</a><a href="/application-status">Application status</a></nav><small>© {new Date().getFullYear()} NeuroCity · Namibia</small></footer>}
+      {notice && (
+        <button
+          className="notice"
+          role="status"
+          aria-live="polite"
+          onClick={() => setNotice("")}
+          aria-label="Dismiss notification"
+        >
+          <span>{notice}</span>
+          <b>×</b>
+        </button>
+      )}
+      {checkoutOpen && (
+        <div
+          className="checkout-backdrop"
+          onClick={() => setCheckoutOpen(false)}
+        >
+          <section
+            className="checkout-panel"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header>
+              <div>
+                <small>LIGHTWORK ORDER</small>
+                <h2>Review your order</h2>
+              </div>
+              <button onClick={() => setCheckoutOpen(false)}>×</button>
+            </header>
+            <div className="checkout-items">
+              {cart.map((id, index) => {
+                const product = catalogue.find((item) => item.id === id);
+                return product ? (
+                  <div className="checkout-item" key={`${id}-${index}`}>
+                    <img src={product.image} alt="" />
+                    <div>
+                      <b>{product.name}</b>
+                      <span>{product.collection}</span>
+                    </div>
+                    <strong>{money(product.price)}</strong>
+                  </div>
+                ) : null;
+              })}
+            </div>
+            <fieldset>
+              <legend>How would you like it?</legend>
+              <label className={fulfillment === "pickup" ? "selected" : ""}>
+                <input
+                  type="radio"
+                  checked={fulfillment === "pickup"}
+                  onChange={() => setFulfillment("pickup")}
+                />
+                <span>
+                  <b>Pickup at Baines Centre</b>
+                  <small>Timing confirmed by LightWork</small>
+                </span>
+              </label>
+              <label
+                className={
+                  fulfillment === "merchant_delivery" ? "selected" : ""
+                }
+              >
+                <input
+                  type="radio"
+                  checked={fulfillment === "merchant_delivery"}
+                  onChange={() => setFulfillment("merchant_delivery")}
+                />
+                <span>
+                  <b>Merchant delivery</b>
+                  <small>Zone and fee confirmed before fulfillment</small>
+                </span>
+              </label>
+            </fieldset>
+            <fieldset>
+              <legend>Payment preference</legend>
+              <label
+                className={payment === "pay_on_collection" ? "selected" : ""}
+              >
+                <input
+                  type="radio"
+                  checked={payment === "pay_on_collection"}
+                  onChange={() => setPayment("pay_on_collection")}
+                />
+                <span>
+                  <b>Pay on collection</b>
+                  <small>Available during the controlled pilot</small>
+                </span>
+              </label>
+              <label className={payment === "online" ? "selected" : ""}>
+                <input
+                  type="radio"
+                  checked={payment === "online"}
+                  onChange={() => setPayment("online")}
+                />
+                <span>
+                  <b>Online payment</b>
+                  <small>Provider connection pending</small>
+                </span>
+              </label>
+            </fieldset>
+            <div className="checkout-total">
+              <span>Total</span>
+              <b>{money(cartTotal)}</b>
+            </div>
+            <button
+              className="place-order"
+              disabled={placingOrder}
+              onClick={placeOrder}
+            >
+              {placingOrder
+                ? "Creating order…"
+                : payment === "online"
+                  ? "Create order and continue to payment"
+                  : "Place pilot order"}
+            </button>
+            <p className="checkout-note">
+              This creates a real private pilot order. Products awaiting
+              merchant confirmation cannot be ordered.
+            </p>
+          </section>
+        </div>
+      )}
+      <button
+        className="ai-fab"
+        onClick={() => setAssistantOpen(true)}
+        aria-label="Open shopping assistant"
+      >
+        ✦
+      </button>
+      <NeuroConcierge
+        open={assistantOpen}
+        onClose={() => setAssistantOpen(false)}
+        platformSlug={mallSlug}
+      />
+      {view !== "merchant" && (
+        <footer className="public-footer">
+          <a href="/" className="brand">
+            <span>Neuro</span>
+            <strong>City</strong>
+          </a>
+          <p>{platform.name} digital commerce.</p>
+          <nav>
+            <button onClick={() => showStores()}>Stores</button>
+            <a href="/account">Customer account</a>
+            <a href={applicationHref}>Become a merchant</a>
+            <a href="/application-status">Application status</a>
+          </nav>
+          <small>© {new Date().getFullYear()} NeuroCity · Namibia</small>
+        </footer>
+      )}
     </main>
   );
 }
 
-function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: Product) => void }) {
-  return <article className="product-card"><div className="product-image"><img src={product.image} alt={product.name} /><span>{product.badge}</span><button aria-label={`Save ${product.name}`}>♡</button></div><div className="product-copy"><small>LIGHTWORK · {product.collection}</small><h3>{product.name}</h3><div><b>{money(product.price)}</b><button onClick={() => onAdd(product)}>{product.price ? "+ Add" : "Ask store"}</button></div></div></article>;
+function ProductCard({
+  product,
+  onAdd,
+}: {
+  product: Product;
+  onAdd: (p: Product) => void;
+}) {
+  return (
+    <article className="product-card">
+      <div className="product-image">
+        <img src={product.image} alt={product.name} />
+        <span>{product.badge}</span>
+        <button aria-label={`Save ${product.name}`}>♡</button>
+      </div>
+      <div className="product-copy">
+        <small>LIGHTWORK · {product.collection}</small>
+        <h3>{product.name}</h3>
+        <div>
+          <b>{money(product.price)}</b>
+          <button onClick={() => onAdd(product)}>
+            {product.price ? "+ Add" : "Ask store"}
+          </button>
+        </div>
+      </div>
+    </article>
+  );
 }
 
-function Metric({ label, value, note, tone = "plain" }: { label: string; value: string; note: string; tone?: string }) {
-  return <article className={`metric ${tone}`}><span>{label}</span><b>{value}</b><small>{note}</small></article>;
+function Metric({
+  label,
+  value,
+  note,
+  tone = "plain",
+}: {
+  label: string;
+  value: string;
+  note: string;
+  tone?: string;
+}) {
+  return (
+    <article className={`metric ${tone}`}>
+      <span>{label}</span>
+      <b>{value}</b>
+      <small>{note}</small>
+    </article>
+  );
 }
 
-export default function Home() { return <NeuroCityNetworkHome />; }
+export default function Home() {
+  return <NeuroCityNetworkHome />;
+}

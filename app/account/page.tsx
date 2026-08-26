@@ -2,55 +2,1355 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
-type CustomerConversation = { id: number; storeName: string; storeSlug: string; productName: string | null; subject: string; status: string; lastMessageAt: string; messages: { id: number; senderRole: string; senderName: string; body: string; createdAt: string }[] };
-type PaymentInstructions = { bankName: string; accountHolder: string; accountType: string; accountNumber: string; branchCode: string; referenceInstructions: string };
-type ServiceBooking = { id: number; reference: string; status: string; requestedStart: string; scheduledStart: string | null; durationMinutes: number | null; serviceMode: string | null; priceSnapshot: number | null; pricingModel: string; customerNotes: string | null; merchantNote: string | null; serviceName: string; storeName: string; storeSlug: string };
-type Account = { user: { displayName: string; email: string }; addresses: { id: number; label: string; recipientName: string; phone: string; addressLine1: string; suburb: string | null; city: string; isDefault: boolean }[]; wishlist: { id: number; productId: number; name: string; imageUrl: string | null; price: number | null; storeName: string; storeSlug: string }[]; savedStores: { id: number; merchantId: number; name: string; slug: string; logoUrl: string | null; tagline: string | null; status: string }[]; cart: { id: number; variantId: number; quantity: number; sku: string; title: string; size: string | null; color: string | null; price: number; salePrice: number | null; productName: string; imageUrl: string | null; merchantId: number; storeName: string; storeSlug: string; fulfillmentMethods: string[]; paymentMethods: string[] }[]; orders: { id: number; reference: string; status: string; paymentStatus: string; paymentProof: { id: number; status: string; originalName: string; reviewNote: string | null } | null; paymentInstructions: PaymentInstructions | null; total: number; subtotal: number; deliveryFee: number; fulfillmentMethod: string; paymentMethod: string; createdAt: string; storeName: string; items: { id: number; nameSnapshot: string; variantSnapshot: string | null; sizeSnapshot: string | null; colorSnapshot: string | null; skuSnapshot: string; unitPrice: number; quantity: number; lineTotal: number }[]; events: { id: number; status: string; note: string | null; createdAt: string }[]; issues: { id: number; category: string; description: string; status: string; resolution: string | null; createdAt: string }[] }[]; conversations: CustomerConversation[] };
-type Tab = "Overview" | "Messages" | "Orders" | "Bookings" | "Bag" | "Wishlist" | "Stores" | "Addresses";
-const blankAddress = { label: "Home", recipientName: "", phone: "", addressLine1: "", addressLine2: "", suburb: "", city: "Windhoek", deliveryNotes: "", isDefault: true };
+type CustomerConversation = {
+  id: number;
+  storeName: string;
+  storeSlug: string;
+  productName: string | null;
+  subject: string;
+  status: string;
+  lastMessageAt: string;
+  messages: {
+    id: number;
+    senderRole: string;
+    senderName: string;
+    body: string;
+    createdAt: string;
+  }[];
+};
+type PaymentInstructions = {
+  bankName: string;
+  accountHolder: string;
+  accountType: string;
+  accountNumber: string;
+  branchCode: string;
+  referenceInstructions: string;
+};
+type ServiceBooking = {
+  id: number;
+  reference: string;
+  status: string;
+  requestedStart: string;
+  scheduledStart: string | null;
+  durationMinutes: number | null;
+  serviceMode: string | null;
+  priceSnapshot: number | null;
+  pricingModel: string;
+  customerNotes: string | null;
+  merchantNote: string | null;
+  serviceName: string;
+  storeName: string;
+  storeSlug: string;
+};
+type Account = {
+  user: { displayName: string; email: string };
+  addresses: {
+    id: number;
+    label: string;
+    recipientName: string;
+    phone: string;
+    addressLine1: string;
+    suburb: string | null;
+    city: string;
+    isDefault: boolean;
+  }[];
+  wishlist: {
+    id: number;
+    productId: number;
+    name: string;
+    imageUrl: string | null;
+    price: number | null;
+    storeName: string;
+    storeSlug: string;
+  }[];
+  savedStores: {
+    id: number;
+    merchantId: number;
+    name: string;
+    slug: string;
+    logoUrl: string | null;
+    tagline: string | null;
+    status: string;
+  }[];
+  cart: {
+    id: number;
+    variantId: number;
+    quantity: number;
+    sku: string;
+    title: string;
+    size: string | null;
+    color: string | null;
+    price: number;
+    salePrice: number | null;
+    productName: string;
+    imageUrl: string | null;
+    merchantId: number;
+    storeName: string;
+    storeSlug: string;
+    fulfillmentMethods: string[];
+    paymentMethods: string[];
+  }[];
+  orders: {
+    id: number;
+    reference: string;
+    status: string;
+    paymentStatus: string;
+    paymentProof: {
+      id: number;
+      status: string;
+      originalName: string;
+      reviewNote: string | null;
+    } | null;
+    paymentInstructions: PaymentInstructions | null;
+    total: number;
+    subtotal: number;
+    deliveryFee: number;
+    fulfillmentMethod: string;
+    paymentMethod: string;
+    createdAt: string;
+    storeName: string;
+    items: {
+      id: number;
+      nameSnapshot: string;
+      variantSnapshot: string | null;
+      sizeSnapshot: string | null;
+      colorSnapshot: string | null;
+      skuSnapshot: string;
+      unitPrice: number;
+      quantity: number;
+      lineTotal: number;
+    }[];
+    events: {
+      id: number;
+      status: string;
+      note: string | null;
+      createdAt: string;
+    }[];
+    issues: {
+      id: number;
+      category: string;
+      description: string;
+      status: string;
+      resolution: string | null;
+      createdAt: string;
+    }[];
+  }[];
+  conversations: CustomerConversation[];
+};
+type Tab =
+  | "Overview"
+  | "Messages"
+  | "Orders"
+  | "Bookings"
+  | "Bag"
+  | "Wishlist"
+  | "Stores"
+  | "Addresses";
+const blankAddress = {
+  label: "Home",
+  recipientName: "",
+  phone: "",
+  addressLine1: "",
+  addressLine2: "",
+  suburb: "",
+  city: "Windhoek",
+  deliveryNotes: "",
+  isDefault: true,
+};
 
-export default function AccountPage() { const [data, setData] = useState<Account | null>(null); const [unauthorized, setUnauthorized] = useState(false); const [tab, setTab] = useState<Tab>("Overview"); const [address, setAddress] = useState(blankAddress); const [message, setMessage] = useState(""); const load = useCallback(async () => { const [response, conversationResponse] = await Promise.all([fetch("/api/account"), fetch("/api/conversations")]); if (response.status === 401) return setUnauthorized(true); const body = await response.json(); const conversationBody = conversationResponse.ok ? await conversationResponse.json() : { conversations: [] }; if (!response.ok) return setMessage(body.error); setData({ ...body, conversations: conversationBody.conversations }); }, []); useEffect(() => { load(); }, [load]); async function action(body: object) { const response = await fetch("/api/account", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }); const result = await response.json(); setMessage(response.ok ? "Account updated." : result.error); if (response.ok) await load(); } async function addAddress(event: FormEvent) { event.preventDefault(); await action({ action: "address", ...address }); setAddress(blankAddress); } async function removeAddress(id: number) { await fetch("/api/account", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ resource: "address", id }) }); await load(); } async function reply(conversationId: number, text: string) { const response = await fetch("/api/conversations", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ conversationId, message: text }) }); const result = await response.json(); if (!response.ok) return setMessage(result.error); await load(); }
-  if (unauthorized) return <main className="account-gate"><a href="/" className="brand"><span>Neuro</span><strong>City</strong></a><h1>Your NeuroCity account</h1><p>Sign in or create a customer account to save stores, products, addresses and orders.</p><a href="/login?return_to=%2Faccount">Continue to sign in</a></main>; if (!data) return <main className="account-gate"><p>Loading your account…</p></main>;
-  const bagTotal = data.cart.reduce((sum, item) => sum + Number(item.salePrice ?? item.price) * item.quantity, 0);
-  const bookings = ((data as Account & { bookings?: ServiceBooking[] }).bookings ?? []);
-  return <main className="customer-account"><aside><a href="/" className="brand"><span>Neuro</span><strong>City</strong></a><div><span>{data.user.displayName.slice(0, 1).toUpperCase()}</span><strong>{data.user.displayName}</strong><small>{data.user.email}</small></div><nav>{(["Overview", "Messages", "Orders", "Bookings", "Bag", "Wishlist", "Stores", "Addresses"] as Tab[]).map((item) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>{item}<b>{item === "Messages" ? data.conversations.filter((conversation) => conversation.status !== "closed").length : item === "Orders" ? data.orders.length : item === "Bookings" ? bookings.filter((booking) => !["completed", "declined", "cancelled"].includes(booking.status)).length : item === "Bag" ? data.cart.length : item === "Wishlist" ? data.wishlist.length : item === "Stores" ? data.savedStores.length : item === "Addresses" ? data.addresses.length : ""}</b></button>)}</nav><a href="/api/auth/logout?return_to=/">Sign out</a></aside><section><header><div><p className="eyebrow">Customer account</p><h1>{tab}</h1></div><a href="/">Continue shopping</a></header>{message && <button className="workspace-message" onClick={() => setMessage("")}>{message} ×</button>}
-  {tab === "Overview" && <><div className="account-metrics"><article><span>Orders</span><strong>{data.orders.length}</strong></article><article><span>Bag items</span><strong>{data.cart.reduce((sum, item) => sum + item.quantity, 0)}</strong></article><article><span>Wishlist</span><strong>{data.wishlist.length}</strong></article><article><span>Saved stores</span><strong>{data.savedStores.length}</strong></article></div><div className="account-panel"><h2>Recent orders</h2>{data.orders.slice(0, 3).map((order) => <OrderRow key={order.id} order={order} />)}{data.orders.length === 0 && <p>No orders yet.</p>}</div></>}
-  {tab === "Orders" && <div className="account-list">{data.orders.map((order) => <div className="customer-order-group" key={order.id}><OrderRow order={order} /><OrderActions order={order} /></div>)}{data.orders.length === 0 && <Empty text="Your orders and tracking updates will appear here." />}</div>}
-  {tab === "Bookings" && <div className="account-list">{bookings.map((booking) => <CustomerBooking key={booking.id} booking={booking} reload={load} setMessage={setMessage} />)}{bookings.length === 0 && <Empty text="Your service requests and confirmed appointments will appear here." />}</div>}
-  {tab === "Messages" && <div className="inbox-list">{data.conversations.map((conversation) => <CustomerThread key={conversation.id} conversation={conversation} onReply={reply} />)}{data.conversations.length === 0 && <Empty text="Questions you send to stores will appear here." />}</div>}
-  {tab === "Bag" && <CheckoutBag data={data} total={bagTotal} updateCart={action} reload={load} setMessage={setMessage} setTab={setTab} />}
-  {tab === "Wishlist" && <div className="account-grid">{data.wishlist.map((item) => <article key={item.id}>{item.imageUrl && <img src={item.imageUrl} alt="" />}<h3>{item.name}</h3><p>{item.storeName}</p><div><a href={`/stores/${item.storeSlug}`}>View product</a><button onClick={() => action({ action: "wishlist", productId: item.productId })}>Remove</button></div></article>)}{data.wishlist.length === 0 && <Empty text="Products you save will appear here." />}</div>}
-  {tab === "Stores" && <div className="account-grid">{data.savedStores.map((store) => <article key={store.id}>{store.logoUrl && <img src={store.logoUrl} alt="" />}<h3>{store.name}</h3><p>{store.tagline}</p><div><a href={`/stores/${store.slug}`}>Visit store</a><button onClick={() => action({ action: "store", merchantId: store.merchantId })}>Remove</button></div></article>)}{data.savedStores.length === 0 && <Empty text="Save local stores for quick access." />}</div>}
-  {tab === "Addresses" && <div className="address-layout"><div className="account-list">{data.addresses.map((item) => <article className="address-card" key={item.id}><div><strong>{item.label}{item.isDefault ? " · Default" : ""}</strong><span>{item.recipientName} · {item.phone}</span><p>{item.addressLine1}{item.suburb ? `, ${item.suburb}` : ""}, {item.city}</p></div><button onClick={() => removeAddress(item.id)}>Remove</button></article>)}</div><form onSubmit={addAddress}><h2>Add delivery address</h2><label>Label<input value={address.label} onChange={(event) => setAddress({ ...address, label: event.target.value })} /></label><label>Recipient<input required value={address.recipientName} onChange={(event) => setAddress({ ...address, recipientName: event.target.value })} /></label><label>Phone<input required value={address.phone} onChange={(event) => setAddress({ ...address, phone: event.target.value })} /></label><label>Street address<input required value={address.addressLine1} onChange={(event) => setAddress({ ...address, addressLine1: event.target.value })} /></label><label>Suburb<input value={address.suburb} onChange={(event) => setAddress({ ...address, suburb: event.target.value })} /></label><label>City<input value={address.city} onChange={(event) => setAddress({ ...address, city: event.target.value })} /></label><label className="address-default"><input type="checkbox" checked={address.isDefault} onChange={(event) => setAddress({ ...address, isDefault: event.target.checked })} /> Make default</label><button>Add address</button></form></div>}
-  </section></main>; }
+export default function AccountPage() {
+  const [data, setData] = useState<Account | null>(null);
+  const [unauthorized, setUnauthorized] = useState(false);
+  const [tab, setTab] = useState<Tab>("Overview");
+  const [address, setAddress] = useState(blankAddress);
+  const [message, setMessage] = useState("");
+  const load = useCallback(async () => {
+    const [response, conversationResponse] = await Promise.all([
+      fetch("/api/account"),
+      fetch("/api/conversations"),
+    ]);
+    if (response.status === 401) return setUnauthorized(true);
+    const body = await response.json();
+    const conversationBody = conversationResponse.ok
+      ? await conversationResponse.json()
+      : { conversations: [] };
+    if (!response.ok) return setMessage(body.error);
+    setData({ ...body, conversations: conversationBody.conversations });
+  }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
+  async function action(body: object) {
+    const response = await fetch("/api/account", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const result = await response.json();
+    setMessage(response.ok ? "Account updated." : result.error);
+    if (response.ok) await load();
+  }
+  async function addAddress(event: FormEvent) {
+    event.preventDefault();
+    await action({ action: "address", ...address });
+    setAddress(blankAddress);
+  }
+  async function removeAddress(id: number) {
+    await fetch("/api/account", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ resource: "address", id }),
+    });
+    await load();
+  }
+  async function reply(conversationId: number, text: string) {
+    const response = await fetch("/api/conversations", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ conversationId, message: text }),
+    });
+    const result = await response.json();
+    if (!response.ok) return setMessage(result.error);
+    await load();
+  }
+  if (unauthorized)
+    return (
+      <main className="account-gate">
+        <a href="/" className="brand">
+          <span>Neuro</span>
+          <strong>City</strong>
+        </a>
+        <h1>Your NeuroCity account</h1>
+        <p>
+          Sign in or create a customer account to save stores, products,
+          addresses and orders.
+        </p>
+        <a href="/login?return_to=%2Faccount">Continue to sign in</a>
+      </main>
+    );
+  if (!data)
+    return (
+      <main className="account-gate">
+        <p>Loading your account…</p>
+      </main>
+    );
+  const bagTotal = data.cart.reduce(
+    (sum, item) => sum + Number(item.salePrice ?? item.price) * item.quantity,
+    0,
+  );
+  const bookings =
+    (data as Account & { bookings?: ServiceBooking[] }).bookings ?? [];
+  return (
+    <main className="customer-account">
+      <aside>
+        <a href="/" className="brand">
+          <span>Neuro</span>
+          <strong>City</strong>
+        </a>
+        <div>
+          <span>{data.user.displayName.slice(0, 1).toUpperCase()}</span>
+          <strong>{data.user.displayName}</strong>
+          <small>{data.user.email}</small>
+        </div>
+        <nav>
+          {(
+            [
+              "Overview",
+              "Messages",
+              "Orders",
+              "Bookings",
+              "Bag",
+              "Wishlist",
+              "Stores",
+              "Addresses",
+            ] as Tab[]
+          ).map((item) => (
+            <button
+              key={item}
+              className={tab === item ? "active" : ""}
+              onClick={() => setTab(item)}
+            >
+              {item}
+              <b>
+                {item === "Messages"
+                  ? data.conversations.filter(
+                      (conversation) => conversation.status !== "closed",
+                    ).length
+                  : item === "Orders"
+                    ? data.orders.length
+                    : item === "Bookings"
+                      ? bookings.filter(
+                          (booking) =>
+                            !["completed", "declined", "cancelled"].includes(
+                              booking.status,
+                            ),
+                        ).length
+                      : item === "Bag"
+                        ? data.cart.length
+                        : item === "Wishlist"
+                          ? data.wishlist.length
+                          : item === "Stores"
+                            ? data.savedStores.length
+                            : item === "Addresses"
+                              ? data.addresses.length
+                              : ""}
+              </b>
+            </button>
+          ))}
+        </nav>
+        <a href="/api/auth/logout?return_to=/">Sign out</a>
+      </aside>
+      <section>
+        <header>
+          <div>
+            <p className="eyebrow">Customer account</p>
+            <h1>{tab}</h1>
+          </div>
+          <a href="/">Continue shopping</a>
+        </header>
+        {message && (
+          <button className="workspace-message" onClick={() => setMessage("")}>
+            {message} ×
+          </button>
+        )}
+        {tab === "Overview" && (
+          <>
+            <div className="account-metrics">
+              <article>
+                <span>Orders</span>
+                <strong>{data.orders.length}</strong>
+              </article>
+              <article>
+                <span>Bag items</span>
+                <strong>
+                  {data.cart.reduce((sum, item) => sum + item.quantity, 0)}
+                </strong>
+              </article>
+              <article>
+                <span>Wishlist</span>
+                <strong>{data.wishlist.length}</strong>
+              </article>
+              <article>
+                <span>Saved stores</span>
+                <strong>{data.savedStores.length}</strong>
+              </article>
+            </div>
+            <div className="account-panel">
+              <h2>Recent orders</h2>
+              {data.orders.slice(0, 3).map((order) => (
+                <OrderRow key={order.id} order={order} />
+              ))}
+              {data.orders.length === 0 && <p>No orders yet.</p>}
+            </div>
+          </>
+        )}
+        {tab === "Orders" && (
+          <div className="account-list">
+            {data.orders.map((order) => (
+              <div className="customer-order-group" key={order.id}>
+                <OrderRow order={order} />
+                <OrderActions order={order} />
+              </div>
+            ))}
+            {data.orders.length === 0 && (
+              <Empty text="Your orders and tracking updates will appear here." />
+            )}
+          </div>
+        )}
+        {tab === "Bookings" && (
+          <div className="account-list">
+            {bookings.map((booking) => (
+              <CustomerBooking
+                key={booking.id}
+                booking={booking}
+                reload={load}
+                setMessage={setMessage}
+              />
+            ))}
+            {bookings.length === 0 && (
+              <Empty text="Your service requests and confirmed appointments will appear here." />
+            )}
+          </div>
+        )}
+        {tab === "Messages" && (
+          <div className="inbox-list">
+            {data.conversations.map((conversation) => (
+              <CustomerThread
+                key={conversation.id}
+                conversation={conversation}
+                onReply={reply}
+              />
+            ))}
+            {data.conversations.length === 0 && (
+              <Empty text="Questions you send to stores will appear here." />
+            )}
+          </div>
+        )}
+        {tab === "Bag" && (
+          <CheckoutBag
+            data={data}
+            total={bagTotal}
+            updateCart={action}
+            reload={load}
+            setMessage={setMessage}
+            setTab={setTab}
+          />
+        )}
+        {tab === "Wishlist" && (
+          <div className="account-grid">
+            {data.wishlist.map((item) => (
+              <article key={item.id}>
+                {item.imageUrl && <img src={item.imageUrl} alt="" />}
+                <h3>{item.name}</h3>
+                <p>{item.storeName}</p>
+                <div>
+                  <a href={`/stores/${item.storeSlug}`}>View product</a>
+                  <button
+                    onClick={() =>
+                      action({ action: "wishlist", productId: item.productId })
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+              </article>
+            ))}
+            {data.wishlist.length === 0 && (
+              <Empty text="Products you save will appear here." />
+            )}
+          </div>
+        )}
+        {tab === "Stores" && (
+          <div className="account-grid">
+            {data.savedStores.map((store) => (
+              <article key={store.id}>
+                {store.logoUrl && <img src={store.logoUrl} alt="" />}
+                <h3>{store.name}</h3>
+                <p>{store.tagline}</p>
+                <div>
+                  <a href={`/stores/${store.slug}`}>Visit store</a>
+                  <button
+                    onClick={() =>
+                      action({ action: "store", merchantId: store.merchantId })
+                    }
+                  >
+                    Remove
+                  </button>
+                </div>
+              </article>
+            ))}
+            {data.savedStores.length === 0 && (
+              <Empty text="Save local stores for quick access." />
+            )}
+          </div>
+        )}
+        {tab === "Addresses" && (
+          <div className="address-layout">
+            <div className="account-list">
+              {data.addresses.map((item) => (
+                <article className="address-card" key={item.id}>
+                  <div>
+                    <strong>
+                      {item.label}
+                      {item.isDefault ? " · Default" : ""}
+                    </strong>
+                    <span>
+                      {item.recipientName} · {item.phone}
+                    </span>
+                    <p>
+                      {item.addressLine1}
+                      {item.suburb ? `, ${item.suburb}` : ""}, {item.city}
+                    </p>
+                  </div>
+                  <button onClick={() => removeAddress(item.id)}>Remove</button>
+                </article>
+              ))}
+            </div>
+            <form onSubmit={addAddress}>
+              <h2>Add delivery address</h2>
+              <label>
+                Label
+                <input
+                  value={address.label}
+                  onChange={(event) =>
+                    setAddress({ ...address, label: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Recipient
+                <input
+                  required
+                  value={address.recipientName}
+                  onChange={(event) =>
+                    setAddress({
+                      ...address,
+                      recipientName: event.target.value,
+                    })
+                  }
+                />
+              </label>
+              <label>
+                Phone
+                <input
+                  required
+                  value={address.phone}
+                  onChange={(event) =>
+                    setAddress({ ...address, phone: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Street address
+                <input
+                  required
+                  value={address.addressLine1}
+                  onChange={(event) =>
+                    setAddress({ ...address, addressLine1: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Suburb
+                <input
+                  value={address.suburb}
+                  onChange={(event) =>
+                    setAddress({ ...address, suburb: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                City
+                <input
+                  value={address.city}
+                  onChange={(event) =>
+                    setAddress({ ...address, city: event.target.value })
+                  }
+                />
+              </label>
+              <label className="address-default">
+                <input
+                  type="checkbox"
+                  checked={address.isDefault}
+                  onChange={(event) =>
+                    setAddress({ ...address, isDefault: event.target.checked })
+                  }
+                />{" "}
+                Make default
+              </label>
+              <button>Add address</button>
+            </form>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
 
-function CustomerBooking({ booking, reload, setMessage }: { booking: ServiceBooking; reload: () => Promise<void>; setMessage: (message: string) => void }) { async function cancel() { if (!window.confirm(`Cancel ${booking.reference}?`)) return; const response = await fetch("/api/service-bookings", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: booking.id, action: "cancel" }) }); const result = await response.json(); setMessage(response.ok ? `${booking.reference} cancelled.` : result.error); if (response.ok) await reload(); } const appointment = booking.scheduledStart ?? booking.requestedStart; return <article className="account-order expanded"><div><span>{booking.reference}</span><strong>{booking.storeName}</strong><small>{booking.serviceName}</small></div><div><span className="order-status">{booking.status.replaceAll("_", " ")}</span><small>{new Date(appointment).toLocaleString("en-NA")} · {(booking.serviceMode ?? "at_business").replaceAll("_", " ")}</small></div><strong>{booking.pricingModel === "quote" || booking.priceSnapshot === null ? "Quote" : `N$${Number(booking.priceSnapshot).toFixed(2)}`}</strong><div className="customer-order-detail"><p><span>{booking.durationMinutes ? `${booking.durationMinutes} minutes` : "Duration to be confirmed"}</span>{booking.merchantNote && <small>{booking.merchantNote}</small>}</p><div><a href={`/stores/${booking.storeSlug}`}>View provider</a>{["requested", "confirmed", "reschedule_proposed"].includes(booking.status) && <button onClick={cancel}>Cancel booking</button>}</div></div></article>; }
+function CustomerBooking({
+  booking,
+  reload,
+  setMessage,
+}: {
+  booking: ServiceBooking;
+  reload: () => Promise<void>;
+  setMessage: (message: string) => void;
+}) {
+  async function cancel() {
+    if (!window.confirm(`Cancel ${booking.reference}?`)) return;
+    const response = await fetch("/api/service-bookings", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: booking.id, action: "cancel" }),
+    });
+    const result = await response.json();
+    setMessage(response.ok ? `${booking.reference} cancelled.` : result.error);
+    if (response.ok) await reload();
+  }
+  const appointment = booking.scheduledStart ?? booking.requestedStart;
+  return (
+    <article className="account-order expanded">
+      <div>
+        <span>{booking.reference}</span>
+        <strong>{booking.storeName}</strong>
+        <small>{booking.serviceName}</small>
+      </div>
+      <div>
+        <span className="order-status">
+          {booking.status.replaceAll("_", " ")}
+        </span>
+        <small>
+          {new Date(appointment).toLocaleString("en-NA")} ·{" "}
+          {(booking.serviceMode ?? "at_business").replaceAll("_", " ")}
+        </small>
+      </div>
+      <strong>
+        {booking.pricingModel === "quote" || booking.priceSnapshot === null
+          ? "Quote"
+          : `N$${Number(booking.priceSnapshot).toFixed(2)}`}
+      </strong>
+      <div className="customer-order-detail">
+        <p>
+          <span>
+            {booking.durationMinutes
+              ? `${booking.durationMinutes} minutes`
+              : "Duration to be confirmed"}
+          </span>
+          {booking.merchantNote && <small>{booking.merchantNote}</small>}
+        </p>
+        <div>
+          <a href={`/stores/${booking.storeSlug}`}>View provider</a>
+          {["requested", "confirmed", "reschedule_proposed"].includes(
+            booking.status,
+          ) && <button onClick={cancel}>Cancel booking</button>}
+        </div>
+      </div>
+    </article>
+  );
+}
 
-function CheckoutBag({ data, total, updateCart, reload, setMessage, setTab }: { data: Account; total: number; updateCart: (body: object) => Promise<void>; reload: () => Promise<void>; setMessage: (message: string) => void; setTab: (tab: Tab) => void }) {
+function CheckoutBag({
+  data,
+  total,
+  updateCart,
+  reload,
+  setMessage,
+  setTab,
+}: {
+  data: Account;
+  total: number;
+  updateCart: (body: object) => Promise<void>;
+  reload: () => Promise<void>;
+  setMessage: (message: string) => void;
+  setTab: (tab: Tab) => void;
+}) {
   const [checkoutMerchant, setCheckoutMerchant] = useState<number | null>(null);
   const [fulfillment, setFulfillment] = useState("pickup");
   const [payment, setPayment] = useState("pay_on_collection");
-  const [addressId, setAddressId] = useState<number | null>(data.addresses.find((item) => item.isDefault)?.id ?? data.addresses[0]?.id ?? null);
-  const [notes, setNotes] = useState(""); const [placing, setPlacing] = useState(false); const [confirmation, setConfirmation] = useState<{ reference: string; total: number; paymentMethod: string; paymentInstructions: PaymentInstructions | null } | null>(null);
-  const [deliveryQuote, setDeliveryQuote] = useState<{ supported: boolean; deliveryFee?: number; area?: string; estimatedTime?: string; error?: string } | null>(null);
+  const [addressId, setAddressId] = useState<number | null>(
+    data.addresses.find((item) => item.isDefault)?.id ??
+      data.addresses[0]?.id ??
+      null,
+  );
+  const [notes, setNotes] = useState("");
+  const [placing, setPlacing] = useState(false);
+  const [confirmation, setConfirmation] = useState<{
+    reference: string;
+    total: number;
+    paymentMethod: string;
+    paymentInstructions: PaymentInstructions | null;
+  } | null>(null);
+  const [deliveryQuote, setDeliveryQuote] = useState<{
+    supported: boolean;
+    deliveryFee?: number;
+    area?: string;
+    estimatedTime?: string;
+    error?: string;
+  } | null>(null);
   const [quoting, setQuoting] = useState(false);
-  const merchants = [...new Map(data.cart.map((item) => [item.merchantId, { id: item.merchantId, name: item.storeName, fulfillmentMethods: item.fulfillmentMethods, paymentMethods: item.paymentMethods }])).values()];
-  const checkoutItems = data.cart.filter((item) => item.merchantId === checkoutMerchant);
-  const checkoutTotal = checkoutItems.reduce((sum, item) => sum + Number(item.salePrice ?? item.price) * item.quantity, 0);
-  const deliveryFee = fulfillment === "merchant_delivery" && deliveryQuote?.supported ? Number(deliveryQuote.deliveryFee ?? 0) : 0;
-  useEffect(() => { if (fulfillment !== "merchant_delivery" || !checkoutMerchant || !addressId) { setDeliveryQuote(null); setQuoting(false); return; } const controller = new AbortController(); setQuoting(true); fetch(`/api/orders/quote?merchantId=${checkoutMerchant}&addressId=${addressId}`, { signal: controller.signal }).then(async (response) => { const result = await response.json(); if (!controller.signal.aborted) setDeliveryQuote(result); }).catch(() => { if (!controller.signal.aborted) setDeliveryQuote({ supported: false, error: "Delivery could not be checked. Please try again." }); }).finally(() => { if (!controller.signal.aborted) setQuoting(false); }); return () => controller.abort(); }, [checkoutMerchant, addressId, fulfillment]);
-  useEffect(() => { if (fulfillment !== "merchant_delivery" || !checkoutMerchant) return; const merchant = merchants.find((item) => item.id === checkoutMerchant); if (merchant?.paymentMethods.includes("eft")) setPayment("eft"); }, [fulfillment, checkoutMerchant]);
-  function begin(merchantId: number) { const merchant = merchants.find((item) => item.id === merchantId); const methods = merchant?.fulfillmentMethods ?? []; const payments = merchant?.paymentMethods ?? []; setCheckoutMerchant(merchantId); setFulfillment(methods.includes("pickup") ? "pickup" : methods[0] ?? "pickup"); setPayment(payments.includes("pay_on_collection") ? "pay_on_collection" : payments[0] ?? "eft"); setDeliveryQuote(null); setConfirmation(null); }
-  async function placeOrder() { if (!checkoutMerchant) return; setPlacing(true); const response = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ merchantId: checkoutMerchant, addressId, fulfillmentMethod: fulfillment, paymentMethod: payment, customerNotes: notes }) }); const result = await response.json(); setPlacing(false); if (!response.ok) return setMessage(result.error); setConfirmation(result.order); setMessage(`${result.order.reference} placed successfully.`); await reload(); }
-  if (confirmation) return <section className="checkout-success"><span>✓</span><p className="eyebrow">Order confirmed</p><h2>{confirmation.reference}</h2><p>Your order has been sent to the merchant for confirmation.</p><strong>N${Number(confirmation.total).toFixed(2)}</strong>{confirmation.paymentMethod === "eft" && confirmation.paymentInstructions && <PaymentInstructionsCard instructions={confirmation.paymentInstructions} reference={confirmation.reference} />}<button onClick={() => setTab("Orders")}>{confirmation.paymentMethod === "eft" ? "Upload payment proof" : "Track this order"}</button></section>;
-  if (checkoutMerchant) {
-    const merchant = merchants.find((item) => item.id === checkoutMerchant); const methods = merchant?.fulfillmentMethods ?? []; const payments = merchant?.paymentMethods ?? [];
-    return <section className="account-checkout"><header><button onClick={() => setCheckoutMerchant(null)}>← Bag</button><div><p className="eyebrow">Secure checkout</p><h2>{merchant?.name}</h2></div></header><div className="checkout-layout"><div><section><h3>1. Fulfilment</h3><div className="checkout-options">{methods.includes("pickup") && <label className={fulfillment === "pickup" ? "selected" : ""}><input type="radio" checked={fulfillment === "pickup"} onChange={() => setFulfillment("pickup")} /><span><b>Customer pickup</b><small>Collect directly from the store</small></span></label>}{methods.includes("merchant_delivery") && <label className={fulfillment === "merchant_delivery" ? "selected" : ""}><input type="radio" checked={fulfillment === "merchant_delivery"} onChange={() => setFulfillment("merchant_delivery")} /><span><b>Merchant delivery</b><small>Fee calculated from your suburb</small></span></label>}</div>{fulfillment === "merchant_delivery" && <label className="checkout-address">Delivery address<select value={addressId ?? ""} onChange={(event) => setAddressId(Number(event.target.value))}><option value="" disabled>Choose an address</option>{data.addresses.map((address) => <option key={address.id} value={address.id}>{address.label} — {address.addressLine1}{address.suburb ? `, ${address.suburb}` : ""}</option>)}</select>{data.addresses.length === 0 && <small>Add an address under Addresses before choosing delivery.</small>}{addressId && <span className={`delivery-quote ${deliveryQuote?.supported ? "supported" : deliveryQuote && !quoting ? "unsupported" : ""}`}>{quoting ? "Checking this delivery area…" : deliveryQuote?.supported ? `Delivery to ${deliveryQuote.area}: N$${Number(deliveryQuote.deliveryFee).toFixed(2)} · ${deliveryQuote.estimatedTime}` : deliveryQuote?.error}</span>}</label>}</section><section><h3>2. Payment</h3><div className="checkout-options">{fulfillment === "pickup" && payments.includes("pay_on_collection") && <label className={payment === "pay_on_collection" ? "selected" : ""}><input type="radio" checked={payment === "pay_on_collection"} onChange={() => setPayment("pay_on_collection")} /><span><b>Pay on collection</b><small>Pay when collecting the order</small></span></label>}{payments.includes("eft") && <label className={payment === "eft" ? "selected" : ""}><input type="radio" checked={payment === "eft"} onChange={() => setPayment("eft")} /><span><b>EFT / bank transfer</b><small>Banking instructions appear after placing the order</small></span></label>}</div>{fulfillment === "merchant_delivery" && !payments.includes("eft") && <p className="checkout-warning">This store must enable EFT before accepting delivery orders.</p>}</section><section><h3>3. Order note</h3><textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Optional pickup or delivery instructions" maxLength={1000} /></section></div><aside><h3>Order summary</h3>{checkoutItems.map((item) => <article key={item.id}><div><b>{item.productName}</b><small>{[item.size, item.color].filter(Boolean).join(" / ") || item.title} · Qty {item.quantity}</small></div><strong>N${(Number(item.salePrice ?? item.price) * item.quantity).toFixed(2)}</strong></article>)}<div className="checkout-totals"><span>Subtotal <b>N${checkoutTotal.toFixed(2)}</b></span><span>Delivery <b>{quoting ? "Checking…" : `N$${deliveryFee.toFixed(2)}`}</b></span><strong>Total <b>N${(checkoutTotal + deliveryFee).toFixed(2)}</b></strong></div><button disabled={placing || payments.length === 0 || (fulfillment === "merchant_delivery" && (!payments.includes("eft") || !addressId || quoting || !deliveryQuote?.supported))} onClick={placeOrder}>{placing ? "Placing order..." : "Place order"}</button><small>Prices, inventory and delivery eligibility are checked again before the order is created.</small></aside></div></section>;
+  const merchants = [
+    ...new Map(
+      data.cart.map((item) => [
+        item.merchantId,
+        {
+          id: item.merchantId,
+          name: item.storeName,
+          fulfillmentMethods: item.fulfillmentMethods,
+          paymentMethods: item.paymentMethods,
+        },
+      ]),
+    ).values(),
+  ];
+  const checkoutItems = data.cart.filter(
+    (item) => item.merchantId === checkoutMerchant,
+  );
+  const checkoutTotal = checkoutItems.reduce(
+    (sum, item) => sum + Number(item.salePrice ?? item.price) * item.quantity,
+    0,
+  );
+  const deliveryFee =
+    fulfillment === "merchant_delivery" && deliveryQuote?.supported
+      ? Number(deliveryQuote.deliveryFee ?? 0)
+      : 0;
+  useEffect(() => {
+    if (
+      fulfillment !== "merchant_delivery" ||
+      !checkoutMerchant ||
+      !addressId
+    ) {
+      setDeliveryQuote(null);
+      setQuoting(false);
+      return;
+    }
+    const controller = new AbortController();
+    setQuoting(true);
+    fetch(
+      `/api/orders/quote?merchantId=${checkoutMerchant}&addressId=${addressId}`,
+      { signal: controller.signal },
+    )
+      .then(async (response) => {
+        const result = await response.json();
+        if (!controller.signal.aborted) setDeliveryQuote(result);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setDeliveryQuote({
+            supported: false,
+            error: "Delivery could not be checked. Please try again.",
+          });
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setQuoting(false);
+      });
+    return () => controller.abort();
+  }, [checkoutMerchant, addressId, fulfillment]);
+  useEffect(() => {
+    if (fulfillment !== "merchant_delivery" || !checkoutMerchant) return;
+    const merchant = merchants.find((item) => item.id === checkoutMerchant);
+    if (merchant?.paymentMethods.includes("eft")) setPayment("eft");
+  }, [fulfillment, checkoutMerchant]);
+  function begin(merchantId: number) {
+    const merchant = merchants.find((item) => item.id === merchantId);
+    const methods = merchant?.fulfillmentMethods ?? [];
+    const payments = merchant?.paymentMethods ?? [];
+    setCheckoutMerchant(merchantId);
+    setFulfillment(
+      methods.includes("pickup") ? "pickup" : (methods[0] ?? "pickup"),
+    );
+    setPayment(
+      payments.includes("pay_on_collection")
+        ? "pay_on_collection"
+        : (payments[0] ?? "eft"),
+    );
+    setDeliveryQuote(null);
+    setConfirmation(null);
   }
-  return <div className="account-panel bag-checkout"><div className="account-panel-title"><div><h2>Shopping bag</h2><small>Orders are placed separately for each store.</small></div><strong>N${total.toFixed(2)}</strong></div>{merchants.map((merchant) => { const items = data.cart.filter((item) => item.merchantId === merchant.id); const merchantTotal = items.reduce((sum, item) => sum + Number(item.salePrice ?? item.price) * item.quantity, 0); return <section className="bag-store" key={merchant.id}><header><div><small>STORE</small><h3>{merchant.name}</h3></div><strong>N${merchantTotal.toFixed(2)}</strong></header>{items.map((item) => <article className="account-product-row" key={item.id}>{item.imageUrl && <img src={item.imageUrl} alt="" />}<div><strong>{item.productName}</strong><span>{[item.size, item.color].filter(Boolean).join(" / ") || item.title} · {item.sku}</span></div><input aria-label={`Quantity for ${item.productName}`} type="number" min="0" max="20" value={item.quantity} onChange={(event) => updateCart({ action: "cart", variantId: item.variantId, quantity: Number(event.target.value) })} /><b>N${(Number(item.salePrice ?? item.price) * item.quantity).toFixed(2)}</b></article>)}<button className="checkout-store-button" onClick={() => begin(merchant.id)}>Checkout {merchant.name}</button></section>; })}{data.cart.length === 0 && <Empty text="Your saved bag will follow you across devices." />}</div>;
+  async function placeOrder() {
+    if (!checkoutMerchant) return;
+    setPlacing(true);
+    const response = await fetch("/api/orders", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        merchantId: checkoutMerchant,
+        addressId,
+        fulfillmentMethod: fulfillment,
+        paymentMethod: payment,
+        customerNotes: notes,
+      }),
+    });
+    const result = await response.json();
+    setPlacing(false);
+    if (!response.ok) return setMessage(result.error);
+    setConfirmation(result.order);
+    setMessage(`${result.order.reference} placed successfully.`);
+    await reload();
+  }
+  if (confirmation)
+    return (
+      <section className="checkout-success">
+        <span>✓</span>
+        <p className="eyebrow">Order confirmed</p>
+        <h2>{confirmation.reference}</h2>
+        <p>Your order has been sent to the merchant for confirmation.</p>
+        <strong>N${Number(confirmation.total).toFixed(2)}</strong>
+        {confirmation.paymentMethod === "eft" &&
+          confirmation.paymentInstructions && (
+            <PaymentInstructionsCard
+              instructions={confirmation.paymentInstructions}
+              reference={confirmation.reference}
+            />
+          )}
+        <button onClick={() => setTab("Orders")}>
+          {confirmation.paymentMethod === "eft"
+            ? "Upload payment proof"
+            : "Track this order"}
+        </button>
+      </section>
+    );
+  if (checkoutMerchant) {
+    const merchant = merchants.find((item) => item.id === checkoutMerchant);
+    const methods = merchant?.fulfillmentMethods ?? [];
+    const payments = merchant?.paymentMethods ?? [];
+    return (
+      <section className="account-checkout">
+        <header>
+          <button onClick={() => setCheckoutMerchant(null)}>← Bag</button>
+          <div>
+            <p className="eyebrow">Secure checkout</p>
+            <h2>{merchant?.name}</h2>
+          </div>
+        </header>
+        <div className="checkout-layout">
+          <div>
+            <section>
+              <h3>1. Fulfilment</h3>
+              <div className="checkout-options">
+                {methods.includes("pickup") && (
+                  <label className={fulfillment === "pickup" ? "selected" : ""}>
+                    <input
+                      type="radio"
+                      checked={fulfillment === "pickup"}
+                      onChange={() => setFulfillment("pickup")}
+                    />
+                    <span>
+                      <b>Customer pickup</b>
+                      <small>Collect directly from the store</small>
+                    </span>
+                  </label>
+                )}
+                {methods.includes("merchant_delivery") && (
+                  <label
+                    className={
+                      fulfillment === "merchant_delivery" ? "selected" : ""
+                    }
+                  >
+                    <input
+                      type="radio"
+                      checked={fulfillment === "merchant_delivery"}
+                      onChange={() => setFulfillment("merchant_delivery")}
+                    />
+                    <span>
+                      <b>Merchant delivery</b>
+                      <small>Fee calculated from your suburb</small>
+                    </span>
+                  </label>
+                )}
+              </div>
+              {fulfillment === "merchant_delivery" && (
+                <label className="checkout-address">
+                  Delivery address
+                  <select
+                    value={addressId ?? ""}
+                    onChange={(event) =>
+                      setAddressId(Number(event.target.value))
+                    }
+                  >
+                    <option value="" disabled>
+                      Choose an address
+                    </option>
+                    {data.addresses.map((address) => (
+                      <option key={address.id} value={address.id}>
+                        {address.label} — {address.addressLine1}
+                        {address.suburb ? `, ${address.suburb}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {data.addresses.length === 0 && (
+                    <small>
+                      Add an address under Addresses before choosing delivery.
+                    </small>
+                  )}
+                  {addressId && (
+                    <span
+                      className={`delivery-quote ${deliveryQuote?.supported ? "supported" : deliveryQuote && !quoting ? "unsupported" : ""}`}
+                    >
+                      {quoting
+                        ? "Checking this delivery area…"
+                        : deliveryQuote?.supported
+                          ? `Delivery to ${deliveryQuote.area}: N$${Number(deliveryQuote.deliveryFee).toFixed(2)} · ${deliveryQuote.estimatedTime}`
+                          : deliveryQuote?.error}
+                    </span>
+                  )}
+                </label>
+              )}
+            </section>
+            <section>
+              <h3>2. Payment</h3>
+              <div className="checkout-options">
+                {fulfillment === "pickup" &&
+                  payments.includes("pay_on_collection") && (
+                    <label
+                      className={
+                        payment === "pay_on_collection" ? "selected" : ""
+                      }
+                    >
+                      <input
+                        type="radio"
+                        checked={payment === "pay_on_collection"}
+                        onChange={() => setPayment("pay_on_collection")}
+                      />
+                      <span>
+                        <b>Pay on collection</b>
+                        <small>Pay when collecting the order</small>
+                      </span>
+                    </label>
+                  )}
+                {payments.includes("eft") && (
+                  <label className={payment === "eft" ? "selected" : ""}>
+                    <input
+                      type="radio"
+                      checked={payment === "eft"}
+                      onChange={() => setPayment("eft")}
+                    />
+                    <span>
+                      <b>EFT / bank transfer</b>
+                      <small>
+                        Banking instructions appear after placing the order
+                      </small>
+                    </span>
+                  </label>
+                )}
+              </div>
+              {fulfillment === "merchant_delivery" &&
+                !payments.includes("eft") && (
+                  <p className="checkout-warning">
+                    This store must enable EFT before accepting delivery orders.
+                  </p>
+                )}
+            </section>
+            <section>
+              <h3>3. Order note</h3>
+              <textarea
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder="Optional pickup or delivery instructions"
+                maxLength={1000}
+              />
+            </section>
+          </div>
+          <aside>
+            <h3>Order summary</h3>
+            {checkoutItems.map((item) => (
+              <article key={item.id}>
+                <div>
+                  <b>{item.productName}</b>
+                  <small>
+                    {[item.size, item.color].filter(Boolean).join(" / ") ||
+                      item.title}{" "}
+                    · Qty {item.quantity}
+                  </small>
+                </div>
+                <strong>
+                  N$
+                  {(
+                    Number(item.salePrice ?? item.price) * item.quantity
+                  ).toFixed(2)}
+                </strong>
+              </article>
+            ))}
+            <div className="checkout-totals">
+              <span>
+                Subtotal <b>N${checkoutTotal.toFixed(2)}</b>
+              </span>
+              <span>
+                Delivery{" "}
+                <b>{quoting ? "Checking…" : `N$${deliveryFee.toFixed(2)}`}</b>
+              </span>
+              <strong>
+                Total <b>N${(checkoutTotal + deliveryFee).toFixed(2)}</b>
+              </strong>
+            </div>
+            <button
+              disabled={
+                placing ||
+                payments.length === 0 ||
+                (fulfillment === "merchant_delivery" &&
+                  (!payments.includes("eft") ||
+                    !addressId ||
+                    quoting ||
+                    !deliveryQuote?.supported))
+              }
+              onClick={placeOrder}
+            >
+              {placing ? "Placing order..." : "Place order"}
+            </button>
+            <small>
+              Prices, inventory and delivery eligibility are checked again
+              before the order is created.
+            </small>
+          </aside>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <div className="account-panel bag-checkout">
+      <div className="account-panel-title">
+        <div>
+          <h2>Shopping bag</h2>
+          <small>Orders are placed separately for each store.</small>
+        </div>
+        <strong>N${total.toFixed(2)}</strong>
+      </div>
+      {merchants.map((merchant) => {
+        const items = data.cart.filter(
+          (item) => item.merchantId === merchant.id,
+        );
+        const merchantTotal = items.reduce(
+          (sum, item) =>
+            sum + Number(item.salePrice ?? item.price) * item.quantity,
+          0,
+        );
+        return (
+          <section className="bag-store" key={merchant.id}>
+            <header>
+              <div>
+                <small>STORE</small>
+                <h3>{merchant.name}</h3>
+              </div>
+              <strong>N${merchantTotal.toFixed(2)}</strong>
+            </header>
+            {items.map((item) => (
+              <article className="account-product-row" key={item.id}>
+                {item.imageUrl && <img src={item.imageUrl} alt="" />}
+                <div>
+                  <strong>{item.productName}</strong>
+                  <span>
+                    {[item.size, item.color].filter(Boolean).join(" / ") ||
+                      item.title}{" "}
+                    · {item.sku}
+                  </span>
+                </div>
+                <input
+                  aria-label={`Quantity for ${item.productName}`}
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={item.quantity}
+                  onChange={(event) =>
+                    updateCart({
+                      action: "cart",
+                      variantId: item.variantId,
+                      quantity: Number(event.target.value),
+                    })
+                  }
+                />
+                <b>
+                  N$
+                  {(
+                    Number(item.salePrice ?? item.price) * item.quantity
+                  ).toFixed(2)}
+                </b>
+              </article>
+            ))}
+            <button
+              className="checkout-store-button"
+              onClick={() => begin(merchant.id)}
+            >
+              Checkout {merchant.name}
+            </button>
+          </section>
+        );
+      })}
+      {data.cart.length === 0 && (
+        <Empty text="Your saved bag will follow you across devices." />
+      )}
+    </div>
+  );
 }
-function OrderRow({ order }: { order: Account["orders"][number] }) { const [open, setOpen] = useState(false); const [uploading, setUploading] = useState(false); const [paymentMessage, setPaymentMessage] = useState(""); async function uploadProof(file?: File) { if (!file) return; setUploading(true); const response = await fetch("/api/orders/payment-proof", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderId: order.id, filename: file.name, mimeType: file.type, sizeBytes: file.size }) }); const data = await response.json(); if (!response.ok) { setPaymentMessage(data.error); setUploading(false); return; } const upload = await fetch(data.uploadUrl, { method: "PUT", headers: { "content-type": file.type }, body: file }); if (!upload.ok) { setPaymentMessage("Upload failed. Please try again."); setUploading(false); return; } const complete = await fetch("/api/orders/payment-proof", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderId: order.id }) }); const completed = await complete.json(); setPaymentMessage(complete.ok ? "Proof submitted for verification. Refresh to see the latest status." : completed.error); setUploading(false); } return <article className={`account-order ${open ? "expanded" : ""}`} onClick={() => setOpen(!open)}><div><span>{order.reference}</span><strong>{order.storeName}</strong><small>{new Date(order.createdAt).toLocaleDateString("en-NA")}</small></div><div><span className="order-status">{order.status.replaceAll("_", " ")}</span><small>{order.fulfillmentMethod.replaceAll("_", " ")} · Payment {order.paymentStatus.replaceAll("_", " ")}</small></div><strong>N${Number(order.total).toFixed(2)}</strong>{open && <div className="customer-order-detail" onClick={(event) => event.stopPropagation()}><h4>Items</h4>{order.items.map((item) => <p key={item.id}><span>{item.quantity}× {item.nameSnapshot} · {[item.sizeSnapshot, item.colorSnapshot].filter(Boolean).join(" / ") || item.variantSnapshot}</span><b>N${Number(item.lineTotal || item.unitPrice * item.quantity).toFixed(2)}</b></p>)}{order.paymentMethod === "eft" && order.paymentStatus !== "paid" && <section className="customer-payment-proof">{order.paymentInstructions && <PaymentInstructionsCard instructions={order.paymentInstructions} reference={order.reference} />}<h4>Payment proof</h4><p>{order.paymentProof ? `Current proof: ${order.paymentProof.status.replaceAll("_", " ")}` : "Upload your EFT confirmation for merchant verification."}</p>{order.paymentProof?.reviewNote && <small>{order.paymentProof.reviewNote}</small>}<label>{uploading ? "Uploading…" : order.paymentProof ? "Replace proof" : "Upload proof"}<input type="file" accept="application/pdf,image/jpeg,image/png" disabled={uploading} onChange={(event) => uploadProof(event.target.files?.[0])} /></label>{order.paymentProof && <a href={`/api/orders/payment-proof?orderId=${order.id}`} target="_blank" rel="noreferrer">View uploaded proof</a>}{paymentMessage && <span>{paymentMessage}</span>}</section>}<h4>Progress</h4><ol>{order.events.slice().reverse().map((event) => <li key={event.id}><b>{event.status.replaceAll("_", " ")}</b><small>{new Date(event.createdAt).toLocaleString("en-NA")}</small></li>)}</ol></div>}</article>; }
-function PaymentInstructionsCard({ instructions, reference }: { instructions: PaymentInstructions; reference: string }) { return <div className="payment-instructions"><p className="eyebrow">EFT instructions</p><h3>Pay {instructions.bankName}</h3><dl><div><dt>Account holder</dt><dd>{instructions.accountHolder}</dd></div><div><dt>Account type</dt><dd>{instructions.accountType}</dd></div><div><dt>Account number</dt><dd>{instructions.accountNumber}</dd></div><div><dt>Branch code</dt><dd>{instructions.branchCode}</dd></div><div><dt>Payment reference</dt><dd>{reference}</dd></div></dl><p>{instructions.referenceInstructions}</p></div>; }
-function OrderActions({ order }: { order: Account["orders"][number] }) { const [message, setMessage] = useState(""); async function cancel() { const reason = window.prompt("Why are you cancelling this order?")?.trim(); if (!reason) return; const response = await fetch("/api/orders", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderId: order.id, reason }) }); const data = await response.json(); setMessage(response.ok ? "Order cancelled. Refresh to see the updated status." : data.error); } async function report() { const category = window.prompt("Issue type: payment, order_change, delivery, product, refund or other", "other")?.trim(); if (!category) return; const description = window.prompt("Describe the issue for NeuroCity support")?.trim(); if (!description) return; const response = await fetch("/api/orders/issues", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderId: order.id, category, description }) }); const data = await response.json(); setMessage(response.ok ? "Issue sent to NeuroCity support." : data.error); } return <section className="customer-order-actions">{order.issues?.map((issue) => <div className={`customer-issue issue-${issue.status}`} key={issue.id}><b>{issue.category.replaceAll("_", " ")} · {issue.status}</b><span>{issue.description}</span>{issue.resolution && <small>Resolution: {issue.resolution}</small>}</div>)}<div>{order.status === "pending_merchant_confirmation" && <button onClick={cancel}>Cancel order</button>}{!order.issues?.some((issue) => issue.status === "open") && <button onClick={report}>Report an issue</button>}</div>{message && <p>{message}</p>}</section>; }
-function CustomerThread({ conversation, onReply }: { conversation: CustomerConversation; onReply: (id: number, text: string) => void }) { const [text, setText] = useState(""); return <article className="inbox-thread customer-thread"><header><div><span className={`review-status status-${conversation.status}`}>{conversation.status}</span><h3>{conversation.subject}</h3><p>{conversation.storeName}{conversation.productName ? ` · ${conversation.productName}` : ""}</p></div><a href={`/stores/${conversation.storeSlug}`}>Visit store</a></header><div className="thread-messages">{conversation.messages.map((message) => <div className={message.senderRole === "customer" ? "customer-message" : "merchant-message"} key={message.id}><strong>{message.senderName}</strong><p>{message.body}</p><small>{new Date(message.createdAt).toLocaleString("en-NA")}</small></div>)}</div>{conversation.status !== "closed" && <footer><textarea value={text} onChange={(event) => setText(event.target.value)} placeholder="Reply to the store…" /><button disabled={!text.trim()} onClick={() => { onReply(conversation.id, text); setText(""); }}>Send message</button></footer>}</article>; }
-function Empty({ text }: { text: string }) { return <div className="account-empty"><strong>Nothing here yet</strong><p>{text}</p><a href="/">Explore NeuroCity</a></div>; }
+function OrderRow({ order }: { order: Account["orders"][number] }) {
+  const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState("");
+  async function uploadProof(file?: File) {
+    if (!file) return;
+    setUploading(true);
+    const response = await fetch("/api/orders/payment-proof", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        orderId: order.id,
+        filename: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setPaymentMessage(data.error);
+      setUploading(false);
+      return;
+    }
+    const upload = await fetch(data.uploadUrl, {
+      method: "PUT",
+      headers: { "content-type": file.type },
+      body: file,
+    });
+    if (!upload.ok) {
+      setPaymentMessage("Upload failed. Please try again.");
+      setUploading(false);
+      return;
+    }
+    const complete = await fetch("/api/orders/payment-proof", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orderId: order.id }),
+    });
+    const completed = await complete.json();
+    setPaymentMessage(
+      complete.ok
+        ? "Proof submitted for verification. Refresh to see the latest status."
+        : completed.error,
+    );
+    setUploading(false);
+  }
+  return (
+    <article
+      className={`account-order ${open ? "expanded" : ""}`}
+      onClick={() => setOpen(!open)}
+    >
+      <div>
+        <span>{order.reference}</span>
+        <strong>{order.storeName}</strong>
+        <small>{new Date(order.createdAt).toLocaleDateString("en-NA")}</small>
+      </div>
+      <div>
+        <span className="order-status">
+          {order.status.replaceAll("_", " ")}
+        </span>
+        <small>
+          {order.fulfillmentMethod.replaceAll("_", " ")} · Payment{" "}
+          {order.paymentStatus.replaceAll("_", " ")}
+        </small>
+      </div>
+      <strong>N${Number(order.total).toFixed(2)}</strong>
+      {open && (
+        <div
+          className="customer-order-detail"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <h4>Items</h4>
+          {order.items.map((item) => (
+            <p key={item.id}>
+              <span>
+                {item.quantity}× {item.nameSnapshot} ·{" "}
+                {[item.sizeSnapshot, item.colorSnapshot]
+                  .filter(Boolean)
+                  .join(" / ") || item.variantSnapshot}
+              </span>
+              <b>
+                N$
+                {Number(
+                  item.lineTotal || item.unitPrice * item.quantity,
+                ).toFixed(2)}
+              </b>
+            </p>
+          ))}
+          {order.paymentMethod === "eft" && order.paymentStatus !== "paid" && (
+            <section className="customer-payment-proof">
+              {order.paymentInstructions && (
+                <PaymentInstructionsCard
+                  instructions={order.paymentInstructions}
+                  reference={order.reference}
+                />
+              )}
+              <h4>Payment proof</h4>
+              <p>
+                {order.paymentProof
+                  ? `Current proof: ${order.paymentProof.status.replaceAll("_", " ")}`
+                  : "Upload your EFT confirmation for merchant verification."}
+              </p>
+              {order.paymentProof?.reviewNote && (
+                <small>{order.paymentProof.reviewNote}</small>
+              )}
+              <label>
+                {uploading
+                  ? "Uploading…"
+                  : order.paymentProof
+                    ? "Replace proof"
+                    : "Upload proof"}
+                <input
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png"
+                  disabled={uploading}
+                  onChange={(event) => uploadProof(event.target.files?.[0])}
+                />
+              </label>
+              {order.paymentProof && (
+                <a
+                  href={`/api/orders/payment-proof?orderId=${order.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View uploaded proof
+                </a>
+              )}
+              {paymentMessage && <span>{paymentMessage}</span>}
+            </section>
+          )}
+          <h4>Progress</h4>
+          <ol>
+            {order.events
+              .slice()
+              .reverse()
+              .map((event) => (
+                <li key={event.id}>
+                  <b>{event.status.replaceAll("_", " ")}</b>
+                  <small>
+                    {new Date(event.createdAt).toLocaleString("en-NA")}
+                  </small>
+                </li>
+              ))}
+          </ol>
+        </div>
+      )}
+    </article>
+  );
+}
+function PaymentInstructionsCard({
+  instructions,
+  reference,
+}: {
+  instructions: PaymentInstructions;
+  reference: string;
+}) {
+  return (
+    <div className="payment-instructions">
+      <p className="eyebrow">EFT instructions</p>
+      <h3>Pay {instructions.bankName}</h3>
+      <dl>
+        <div>
+          <dt>Account holder</dt>
+          <dd>{instructions.accountHolder}</dd>
+        </div>
+        <div>
+          <dt>Account type</dt>
+          <dd>{instructions.accountType}</dd>
+        </div>
+        <div>
+          <dt>Account number</dt>
+          <dd>{instructions.accountNumber}</dd>
+        </div>
+        <div>
+          <dt>Branch code</dt>
+          <dd>{instructions.branchCode}</dd>
+        </div>
+        <div>
+          <dt>Payment reference</dt>
+          <dd>{reference}</dd>
+        </div>
+      </dl>
+      <p>{instructions.referenceInstructions}</p>
+    </div>
+  );
+}
+function OrderActions({ order }: { order: Account["orders"][number] }) {
+  const [message, setMessage] = useState("");
+  async function cancel() {
+    const reason = window.prompt("Why are you cancelling this order?")?.trim();
+    if (!reason) return;
+    const response = await fetch("/api/orders", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orderId: order.id, reason }),
+    });
+    const data = await response.json();
+    setMessage(
+      response.ok
+        ? "Order cancelled. Refresh to see the updated status."
+        : data.error,
+    );
+  }
+  async function report() {
+    const category = window
+      .prompt(
+        "Issue type: payment, order_change, delivery, product, refund or other",
+        "other",
+      )
+      ?.trim();
+    if (!category) return;
+    const description = window
+      .prompt("Describe the issue for NeuroCity support")
+      ?.trim();
+    if (!description) return;
+    const response = await fetch("/api/orders/issues", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orderId: order.id, category, description }),
+    });
+    const data = await response.json();
+    setMessage(response.ok ? "Issue sent to NeuroCity support." : data.error);
+  }
+  return (
+    <section className="customer-order-actions">
+      {order.issues?.map((issue) => (
+        <div className={`customer-issue issue-${issue.status}`} key={issue.id}>
+          <b>
+            {issue.category.replaceAll("_", " ")} · {issue.status}
+          </b>
+          <span>{issue.description}</span>
+          {issue.resolution && <small>Resolution: {issue.resolution}</small>}
+        </div>
+      ))}
+      <div>
+        {order.status === "pending_merchant_confirmation" && (
+          <button onClick={cancel}>Cancel order</button>
+        )}
+        {!order.issues?.some((issue) => issue.status === "open") && (
+          <button onClick={report}>Report an issue</button>
+        )}
+      </div>
+      {message && <p>{message}</p>}
+    </section>
+  );
+}
+function CustomerThread({
+  conversation,
+  onReply,
+}: {
+  conversation: CustomerConversation;
+  onReply: (id: number, text: string) => void;
+}) {
+  const [text, setText] = useState("");
+  return (
+    <article className="inbox-thread customer-thread">
+      <header>
+        <div>
+          <span className={`review-status status-${conversation.status}`}>
+            {conversation.status}
+          </span>
+          <h3>{conversation.subject}</h3>
+          <p>
+            {conversation.storeName}
+            {conversation.productName ? ` · ${conversation.productName}` : ""}
+          </p>
+        </div>
+        <a href={`/stores/${conversation.storeSlug}`}>Visit store</a>
+      </header>
+      <div className="thread-messages">
+        {conversation.messages.map((message) => (
+          <div
+            className={
+              message.senderRole === "customer"
+                ? "customer-message"
+                : "merchant-message"
+            }
+            key={message.id}
+          >
+            <strong>{message.senderName}</strong>
+            <p>{message.body}</p>
+            <small>{new Date(message.createdAt).toLocaleString("en-NA")}</small>
+          </div>
+        ))}
+      </div>
+      {conversation.status !== "closed" && (
+        <footer>
+          <textarea
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            placeholder="Reply to the store…"
+          />
+          <button
+            disabled={!text.trim()}
+            onClick={() => {
+              onReply(conversation.id, text);
+              setText("");
+            }}
+          >
+            Send message
+          </button>
+        </footer>
+      )}
+    </article>
+  );
+}
+function Empty({ text }: { text: string }) {
+  return (
+    <div className="account-empty">
+      <strong>Nothing here yet</strong>
+      <p>{text}</p>
+      <a href="/">Explore NeuroCity</a>
+    </div>
+  );
+}

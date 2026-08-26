@@ -8,15 +8,19 @@ type InstallPromptEvent = Event & {
 };
 
 export function PwaInstaller() {
-  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
     const register = () => {
-      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
-        console.warn("NeuroCity service worker registration failed", error);
-      });
+      navigator.serviceWorker
+        .register("/sw.js", { scope: "/" })
+        .catch((error) => {
+          console.warn("NeuroCity service worker registration failed", error);
+        });
     };
 
     if (document.readyState === "complete") register();
@@ -47,7 +51,12 @@ export function PwaInstaller() {
   }
 
   return (
-    <button className="pwa-install" type="button" onClick={install} aria-label="Install NeuroCity on this device">
+    <button
+      className="pwa-install"
+      type="button"
+      onClick={install}
+      aria-label="Install NeuroCity on this device"
+    >
       <span aria-hidden="true">↓</span>
       Install NeuroCity
     </button>
