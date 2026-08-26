@@ -1043,6 +1043,24 @@ function OrderRow({ order }: { order: Account["orders"][number] }) {
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
+  const pickup = order.fulfillmentMethod === "pickup";
+  const journey = pickup
+    ? ["pending_merchant_confirmation", "accepted", "preparing", "ready_for_pickup", "collected", "completed"]
+    : ["pending_merchant_confirmation", "accepted", "preparing", "dispatched", "delivered", "completed"];
+  const terminal = ["rejected", "cancelled"].includes(order.status);
+  const currentStep = journey.indexOf(order.status);
+  const customerGuidance: Record<string, string> = {
+    pending_merchant_confirmation: `${order.storeName} is checking your items.`,
+    accepted: order.paymentMethod === "eft" && order.paymentStatus !== "paid" ? "Complete or verify payment so the store can prepare your order." : "Your order was accepted and will be prepared next.",
+    preparing: "The store is preparing your items.",
+    ready_for_pickup: "Your order is ready. Take your order reference when collecting.",
+    dispatched: "Your order has left the store and is on its way.",
+    collected: "Collection was recorded. The store will close the order shortly.",
+    delivered: "Delivery was recorded. The store will close the order shortly.",
+    completed: "Your order is complete. Thank you for shopping local.",
+    rejected: "The store could not fulfil this order. Reserved stock has been released.",
+    cancelled: "This order was cancelled. Reserved stock has been released.",
+  };
   async function uploadProof(file?: File) {
     if (!file) return;
     setUploading(true);
@@ -1169,8 +1187,15 @@ function OrderRow({ order }: { order: Account["orders"][number] }) {
               {paymentMessage && <span>{paymentMessage}</span>}
             </section>
           )}
-          <h4>Progress</h4>
-          <ol>
+          <section className={`customer-order-journey ${terminal ? "terminal" : ""}`}>
+            <div><small>WHAT’S HAPPENING</small><strong>{customerGuidance[order.status] ?? "Check the latest order update below."}</strong></div>
+            {!terminal && <div className="customer-step-track">
+              {journey.map((status, index) => <span key={status} className={`${index < currentStep ? "done" : ""} ${index === currentStep ? "current" : ""}`}><i>{index < currentStep ? "✓" : index + 1}</i><b>{status === "pending_merchant_confirmation" ? "Placed" : status.replaceAll("_", " ")}</b></span>)}
+            </div>}
+          </section>
+          <details className="customer-order-history">
+            <summary>View detailed order history</summary>
+            <ol>
             {order.events
               .slice()
               .reverse()
@@ -1182,7 +1207,8 @@ function OrderRow({ order }: { order: Account["orders"][number] }) {
                   </small>
                 </li>
               ))}
-          </ol>
+            </ol>
+          </details>
         </div>
       )}
     </article>

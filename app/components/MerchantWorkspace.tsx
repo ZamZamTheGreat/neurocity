@@ -1942,6 +1942,12 @@ function MerchantOverview({
     (item) => item.variantStatus === "active" && item.available <= 3,
   );
   const openMessages = conversations.filter((item) => item.status !== "closed");
+  const paymentReviews = orders.filter(
+    (order) => order.paymentMethod === "eft" && order.paymentProof?.status === "uploaded",
+  );
+  const fulfilmentWork = orders.filter((order) =>
+    ["accepted", "preparing", "ready_for_pickup", "dispatched", "collected", "delivered", "delivery_failed"].includes(order.status),
+  );
   const revenue = orders
     .filter((order) => order.status === "completed")
     .reduce((total, order) => total + Number(order.total), 0);
@@ -1985,7 +1991,7 @@ function MerchantOverview({
               <h2>Needs your attention</h2>
             </div>
             <span>
-              {pending.length + lowStock.length + openMessages.length}
+              {pending.length + paymentReviews.length + fulfilmentWork.length + lowStock.length + openMessages.length}
             </span>
           </header>
           <div className="priority-list">
@@ -2014,6 +2020,22 @@ function MerchantOverview({
                     : "Inventory looks healthy"}
                 </b>
                 <small>Live stock after reservations and safety levels</small>
+              </span>
+              <strong>→</strong>
+            </button>
+            <button onClick={() => setTab("Orders")}>
+              <i className={paymentReviews.length ? "urgent" : "clear"}>N$</i>
+              <span>
+                <b>{paymentReviews.length ? `${paymentReviews.length} payment proof${paymentReviews.length === 1 ? "" : "s"} to review` : "No payment proofs waiting"}</b>
+                <small>Verify EFT payments before preparing orders</small>
+              </span>
+              <strong>→</strong>
+            </button>
+            <button onClick={() => setTab("Orders")}>
+              <i className={fulfilmentWork.length ? "notice" : "clear"}>→</i>
+              <span>
+                <b>{fulfilmentWork.length ? `${fulfilmentWork.length} order${fulfilmentWork.length === 1 ? "" : "s"} in fulfilment` : "No active fulfilment work"}</b>
+                <small>Prepare, hand over or complete active orders</small>
               </span>
               <strong>→</strong>
             </button>

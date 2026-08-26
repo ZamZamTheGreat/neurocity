@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { PwaInstaller } from "./components/PwaInstaller";
+import { MobileDock } from "./components/MobileDock";
 import "./globals.css";
 import "./catalogue.css";
 import "./header.css";
@@ -80,6 +81,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         {children}
+        <MobileDock />
         <PwaInstaller />
       </body>
     </html>
