@@ -79,7 +79,7 @@ export default function LoginPage() {
             <li>
               <span>01</span>
               <div>
-                <b>Discover with James</b>
+                <b>Discover with Selma</b>
                 <small>
                   Search live local catalogues by product, colour, size or
                   budget.

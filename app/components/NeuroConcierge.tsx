@@ -21,11 +21,11 @@ type Message = {
 };
 type Profile = { companionName: string; customerName: string };
 const prompts = [
-  "Black hoodies under N$1,500",
-  "A complete outfit under N$2,000",
-  "A birthday gift under N$800",
+  "A local birthday gift under N$800",
+  "An outfit for a Windhoek weekend under N$2,000",
+  "What can I collect locally today?",
 ];
-const GUEST_CHAT_KEY = "neurocity_guest_james_chat";
+const GUEST_CHAT_KEY = "neurocity_guest_selma_chat";
 const money = (value: number | null) =>
   value === null
     ? "Ask store for price"
@@ -50,7 +50,7 @@ export function NeuroConcierge({
   const [profileLoading, setProfileLoading] = useState(false);
   const [guest, setGuest] = useState(false);
   const [renaming, setRenaming] = useState(false);
-  const [newName, setNewName] = useState("James");
+  const [newName, setNewName] = useState("Selma");
   const [profileError, setProfileError] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
@@ -66,12 +66,12 @@ export function NeuroConcierge({
         if (cancelled) return;
         if (response.status === 401) {
           const guestProfile = {
-            companionName: "James",
+            companionName: "Selma",
             customerName: "there",
           };
           setGuest(true);
           setProfile(guestProfile);
-          setNewName("James");
+          setNewName("Selma");
           const stored = sessionStorage.getItem(GUEST_CHAT_KEY);
           const history = stored ? (JSON.parse(stored) as Message[]) : [];
           setMessages(
@@ -81,7 +81,7 @@ export function NeuroConcierge({
                   {
                     id: "welcome",
                     role: "companion",
-                    text: "Hi, I’m James—NeuroCity’s public shopping companion. This guest chat stays only in this browser session and is never saved to your NeuroCity account. What are you looking for?",
+                    text: "Hello! I’m Selma, your local NeuroCity shopping companion. I search live Namibian catalogues and prices in N$. This guest chat stays only in this browser session. What can I help you find?",
                   },
                 ],
           );
@@ -99,7 +99,7 @@ export function NeuroConcierge({
           {
             id: "welcome",
             role: "companion",
-            text: `Hi ${next.customerName}, I’m ${next.companionName}—your personal shopping companion. Tell me what you need, your preferred colour or size, and your budget.`,
+            text: `Hello ${next.customerName}, I’m ${next.companionName}—your local shopping companion. Tell me what you need, your town or preferred pickup area, and your budget in N$. I’ll check NeuroCity’s live Namibian catalogues.`,
           },
         ]);
       } catch {
@@ -237,7 +237,7 @@ export function NeuroConcierge({
           <div>
             <img src="/branding/neurocity-mark.png" alt="" />
             <div>
-              <b>{profile?.companionName ?? "James"}</b>
+              <b>{profile?.companionName ?? "Selma"}</b>
               <small>
                 <i />{" "}
                 {guest
@@ -283,7 +283,7 @@ export function NeuroConcierge({
           </div>
         ) : profileError && !profile ? (
           <div className="companion-gate">
-            <h2>James is unavailable</h2>
+            <h2>Selma is unavailable</h2>
             <p>{profileError}</p>
             <button
               onClick={() => {
@@ -374,7 +374,7 @@ export function NeuroConcierge({
                   value={input}
                   maxLength={300}
                   onChange={(event) => setInput(event.target.value)}
-                  placeholder={`Ask ${profile?.companionName ?? "James"} what you need`}
+                  placeholder={`Ask ${profile?.companionName ?? "Selma"} what you need`}
                 />
               </label>
               <button disabled={busy || input.trim().length < 2}>
@@ -387,7 +387,7 @@ export function NeuroConcierge({
                   <span>This chat is stored only in this browser session.</span>
                   <a href="/login?return_to=%2F">
                     {" "}
-                    Sign in to personalise James
+                    Sign in to personalise Selma
                   </a>
                 </>
               ) : (

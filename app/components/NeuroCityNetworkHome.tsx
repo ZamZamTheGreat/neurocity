@@ -24,11 +24,11 @@ export default function NeuroCityNetworkHome({
 }) {
   const [malls, setMalls] = useState<Mall[]>([]);
   const [loading, setLoading] = useState(true);
-  const [jamesOpen, setJamesOpen] = useState(false);
-  const [jamesPrompt, setJamesPrompt] = useState({ text: "", key: 0 });
-  const askJames = (text = "") => {
-    if (text) setJamesPrompt({ text, key: Date.now() });
-    setJamesOpen(true);
+  const [selmaOpen, setSelmaOpen] = useState(false);
+  const [selmaPrompt, setSelmaPrompt] = useState({ text: "", key: 0 });
+  const askSelma = (text = "") => {
+    if (text) setSelmaPrompt({ text, key: Date.now() });
+    setSelmaOpen(true);
   };
   useEffect(() => {
     fetch("/api/malls")
@@ -62,7 +62,7 @@ export default function NeuroCityNetworkHome({
           <a href="/marketplace#stores">Stores</a>
         </nav>
         <div>
-          <button onClick={() => askJames()}>✦ Ask James</button>
+          <button onClick={() => askSelma()}>✦ Ask Selma</button>
           <a href="/account">Account</a>
         </div>
       </header>
@@ -86,7 +86,7 @@ export default function NeuroCityNetworkHome({
               <ul>
                 <li>One customer account</li>
                 <li>Live local catalogues</li>
-                <li>James across the network</li>
+                <li>Selma across the network</li>
               </ul>
             </div>
             <aside>
@@ -108,8 +108,8 @@ export default function NeuroCityNetworkHome({
                   <small>{malls.length || "New"} destinations</small>
                 </span>
                 <span className="network-node james">
-                  <b>James</b>
-                  <small>Live discovery</small>
+                  <b>Selma</b>
+                  <small>Local discovery</small>
                 </span>
               </div>
             </aside>
@@ -137,9 +137,9 @@ export default function NeuroCityNetworkHome({
               <span>03</span>
               <div>
                 <small>ASK NATURALLY</small>
-                <h2>James</h2>
-                <ul className="info-list"><li>Search live catalogues across the network.</li><li>Filter by product, budget, colour, size or occasion.</li></ul>
-                <button onClick={() => setJamesOpen(true)}>
+                <h2>Selma</h2>
+                <ul className="info-list"><li>Search live Namibian catalogues across the network.</li><li>Shop naturally by product, N$ budget, colour, size or occasion.</li></ul>
+                <button onClick={() => setSelmaOpen(true)}>
                   Start a conversation →
                 </button>
               </div>
@@ -232,28 +232,28 @@ export default function NeuroCityNetworkHome({
       {!directoryOnly && (
         <section className="network-james">
           <div>
-            <span>J</span>
+            <span>S</span>
             <i className="james-online" />
           </div>
           <article>
-            <p className="eyebrow">JAMES · LIVE SHOPPING COMPANION</p>
+            <p className="eyebrow">SELMA · YOUR LOCAL SHOPPING COMPANION</p>
             <h2>
               One question.
               <br />
               The whole network.
             </h2>
-            <ul className="info-list"><li>Search the national marketplace.</li><li>Compare participating stores.</li><li>Focus on a specific digital mall.</li></ul>
-            <button onClick={() => askJames()}>
-              Ask James what you need →
+            <ul className="info-list"><li>Search live Namibian stores.</li><li>Compare local options and prices in N$.</li><li>Focus on a specific digital mall.</li></ul>
+            <button onClick={() => askSelma()}>
+              Ask Selma what you need →
             </button>
           </article>
           <aside>
             {[
-              "Find black running shoes under N$1,500 near me.",
-              "Which digital mall has a birthday gift under N$800?",
-              "Only show products currently in stock.",
+              "Find a local birthday gift under N$800.",
+              "Show me an outfit for a Windhoek weekend under N$2,000.",
+              "What can I collect from a local store today?",
             ].map((question) => (
-              <button key={question} onClick={() => askJames(question)}>
+              <button key={question} onClick={() => askSelma(question)}>
                 “{question}” <span>Ask →</span>
               </button>
             ))}
@@ -279,16 +279,16 @@ export default function NeuroCityNetworkHome({
       </footer>
       <button
         className="network-james-fab"
-        onClick={() => askJames()}
-        aria-label="Open James"
+        onClick={() => askSelma()}
+        aria-label="Open Selma"
       >
         ✦
       </button>
       <NeuroConcierge
-        open={jamesOpen}
-        onClose={() => setJamesOpen(false)}
-        initialPrompt={jamesPrompt.text}
-        promptKey={jamesPrompt.key}
+        open={selmaOpen}
+        onClose={() => setSelmaOpen(false)}
+        initialPrompt={selmaPrompt.text}
+        promptKey={selmaPrompt.key}
       />
     </main>
   );
