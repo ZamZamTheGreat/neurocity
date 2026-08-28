@@ -1,0 +1,14 @@
+{
+  "name": "NeuroCity Digital Malls",
+  "short_name": "NC Malls",
+  "description": "Namibia's connected digital mall network.",
+  "start_url": "/malls",
+  "scope": "/malls",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#080808",
+  "icons": [
+    { "src": "/icons/neurocity-malls-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/neurocity-malls-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
