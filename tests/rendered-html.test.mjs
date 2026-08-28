@@ -35,7 +35,7 @@ test("renders the NeuroCity network gateway", async () => {
   assert.match(html, /shopping world/);
   assert.match(html, /NeuroCity Marketplace/);
   assert.match(html, /Digital malls/);
-  assert.match(html, /James/);
+  assert.match(html, /Selma/);
   const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(source, /Review your order/);
   assert.match(source, /Pay on collection/);
@@ -111,6 +111,7 @@ test("protects administration APIs from anonymous access", async (t) => {
     ["/api/admin/applications", "DELETE"],
     ["/api/admin/merchants", "PATCH"],
     ["/api/admin/orders", "GET"],
+    ["/api/admin/transactions", "GET"],
     ["/api/admin/platforms", "GET"],
   ];
   for (const [path, method] of routes) {

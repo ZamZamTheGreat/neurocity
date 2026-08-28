@@ -23,3 +23,14 @@ Validate the blueprint with 5–10 pilot merchants and shortlisted payment provi
 - `npm run test:all` runs both suites.
 
 Docker Desktop must be running for the integration suite. The runner allocates a random local port and refuses to run the database tests unless the connection URL identifies the disposable `neurocity_test` database.
+
+## PayToday activation
+
+The PayToday checkout adapter remains hidden until all three credentials are configured. Add these as secret environment variables in Render when PayToday activates the NeuroCity account:
+
+- `PAYTODAY_ENVIRONMENT=sandbox` (change to `live` only after production approval)
+- `PAYTODAY_SHOP_KEY`
+- `PAYTODAY_SHOP_HANDLE`
+- `PAYTODAY_PRIVATE_KEY`
+
+Never commit these values. The checkout return URL is generated from the public request origin and ends at `/api/payments/paytoday/return`.
