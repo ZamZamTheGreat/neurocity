@@ -86,7 +86,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
     (category) => category.name === form.category,
   );
   return (
-    <main className="application-page">
+    <main className={`application-page ${mallSlug ? "mall-application-page" : ""}`}>
       <header>
         <a
           href={mallSlug ? `/malls/${mallSlug}` : "/marketplace"}

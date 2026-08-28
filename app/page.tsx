@@ -239,9 +239,9 @@ export function MarketplaceExperience({
       }
       style={
         {
-          "--ink": platform.theme?.surface ?? "#07111f",
-          "--gold": platform.theme?.primary ?? "#18c98e",
-          "--violet": platform.theme?.primary ?? "#18c98e",
+          "--ink": platform.kind === "mall" ? "#080808" : (platform.theme?.surface ?? "#07111f"),
+          "--gold": platform.kind === "mall" ? "#d4af37" : (platform.theme?.primary ?? "#18c98e"),
+          "--violet": platform.kind === "mall" ? "#d4af37" : (platform.theme?.primary ?? "#18c98e"),
         } as CSSProperties
       }
     >
