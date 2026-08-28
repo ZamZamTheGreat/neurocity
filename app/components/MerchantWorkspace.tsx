@@ -1389,7 +1389,7 @@ function CatalogueManager({
 }) {
   const [creating, setCreating] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
-  async function createProduct(product: NewProduct) {
+  async function createProduct(product: NewProduct, addAnother = false) {
     setCreateBusy(true);
     const response = await fetch("/api/merchant/products", {
       method: "POST",
@@ -1402,9 +1402,9 @@ function CatalogueManager({
       setMessage(data.error);
       return false;
     }
-    setCreating(false);
+    if (!addAnother) setCreating(false);
     setMessage(
-      `${product.name} created as a draft. Add its image and customer options below.`,
+      addAnother ? `${product.name} saved. Add the next catalogue item.` : `${product.name} created as a draft. Add its image and customer options below.`,
     );
     await reload();
     return true;

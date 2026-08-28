@@ -1,11 +1,13 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
-import { auditEvents, customerAddresses, customerCartItems, merchantDeliveryZones, merchants, orderItems, orders, orderStatusEvents, productVariants, products, variantInventory } from "../../../db/schema";
+import { auditEvents, checkoutGroups, customerAddresses, customerCartItems, merchantDeliveryZones, merchantPaymentAllocations, merchants, orderItems, orders, orderStatusEvents, paymentTransactions, productVariants, products, variantInventory } from "../../../db/schema";
 import { sendOrderPlacedNotifications } from "../../../lib/order-mail";
+import { createPayTodayPayment, getPayTodayAvailability } from "../../../lib/paytoday";
 
 const fulfillmentMethods = new Set(["pickup", "merchant_delivery"]);
-const paymentMethods = new Set(["pay_on_collection", "eft"]);
+const paymentMethods = new Set(["pay_on_collection", "eft", "paytoday"]);
 const normalized = (value: string | null | undefined) => value?.trim().replace(/\s+/g, " ").toLocaleLowerCase("en") ?? "";
 
 export async function POST(request: Request) {
@@ -19,6 +21,7 @@ export async function POST(request: Request) {
     if (!fulfillmentMethods.has(payload.fulfillmentMethod ?? "")) return Response.json({ error: "Choose pickup or merchant delivery." }, { status: 400 });
     if (!paymentMethods.has(payload.paymentMethod ?? "")) return Response.json({ error: "Choose a valid payment method." }, { status: 400 });
     if (payload.fulfillmentMethod === "merchant_delivery" && payload.paymentMethod === "pay_on_collection") return Response.json({ error: "Delivery orders must be paid by EFT during the pilot." }, { status: 409 });
+    if (payload.paymentMethod === "paytoday" && !getPayTodayAvailability().configured) return Response.json({ error: "PayToday is not active yet. Choose another payment method." }, { status: 409 });
     const db = getDb();
     const [merchant] = await db.select().from(merchants).where(and(eq(merchants.id, merchantId), eq(merchants.isPublic, true), inArray(merchants.status, ["pilot", "active"]))).limit(1);
     if (!merchant) return Response.json({ error: "This store is not currently available." }, { status: 409 });
@@ -57,8 +60,11 @@ export async function POST(request: Request) {
     const deliveryFee = deliveryZone ? Number(deliveryZone.fee) : 0;
     const paymentInstructions = payload.paymentMethod === "eft" ? { bankName: String(paymentSettings.bankName), accountHolder: String(paymentSettings.accountHolder), accountType: String(paymentSettings.accountType), accountNumber: String(paymentSettings.accountNumber), branchCode: String(paymentSettings.branchCode), referenceInstructions: String(paymentSettings.referenceInstructions || "Use your NeuroCity order reference as the payment reference.") } : null;
     const notes = payload.customerNotes?.trim().slice(0, 1000) || null;
+    const checkoutReference = `NCP-${randomUUID().replaceAll("-", "").slice(0, 16).toUpperCase()}`;
     const order = await db.transaction(async (tx) => {
-      const [created] = await tx.insert(orders).values({ merchantId, customerRef: user.userId, customerName: address?.recipientName ?? user.displayName, customerEmail: user.email, customerPhone: address?.phone ?? null, status: "pending_merchant_confirmation", paymentStatus: "pending", paymentMethod: payload.paymentMethod, paymentInstructions, fulfillmentMethod: payload.fulfillmentMethod, addressSnapshot: address ? { label: address.label, recipientName: address.recipientName, phone: address.phone, addressLine1: address.addressLine1, addressLine2: address.addressLine2, suburb: address.suburb, city: address.city, deliveryNotes: address.deliveryNotes, deliveryZone: deliveryZone?.area ?? null, deliveryEstimate: deliveryZone?.estimatedTime ?? null } : null, customerNotes: notes, subtotal, deliveryFee, total: subtotal + deliveryFee, createdAt: new Date(), updatedAt: new Date() }).returning();
+      const [checkout] = await tx.insert(checkoutGroups).values({ reference: checkoutReference, customerRef: user.userId, subtotal, deliveryFee, total: subtotal + deliveryFee, paymentProvider: payload.paymentMethod === "paytoday" ? "paytoday" : null }).returning();
+      const [created] = await tx.insert(orders).values({ checkoutGroupId: checkout.id, merchantId, customerRef: user.userId, customerName: address?.recipientName ?? user.displayName, customerEmail: user.email, customerPhone: address?.phone ?? null, status: "pending_merchant_confirmation", paymentStatus: "pending", paymentMethod: payload.paymentMethod, paymentInstructions, fulfillmentMethod: payload.fulfillmentMethod, addressSnapshot: address ? { label: address.label, recipientName: address.recipientName, phone: address.phone, addressLine1: address.addressLine1, addressLine2: address.addressLine2, suburb: address.suburb, city: address.city, deliveryNotes: address.deliveryNotes, deliveryZone: deliveryZone?.area ?? null, deliveryEstimate: deliveryZone?.estimatedTime ?? null } : null, customerNotes: notes, subtotal, deliveryFee, total: subtotal + deliveryFee, createdAt: new Date(), updatedAt: new Date() }).returning();
+      await tx.insert(merchantPaymentAllocations).values({ checkoutGroupId: checkout.id, orderId: created.id, merchantId, grossAmount: subtotal + deliveryFee, deliveryAmount: deliveryFee, netAmount: subtotal + deliveryFee });
       await tx.insert(orderItems).values(cart.map((item) => ({ orderId: created.id, productId: item.productId, variantId: item.variantId, skuSnapshot: item.variantSku, nameSnapshot: item.productName, variantSnapshot: item.variantTitle, sizeSnapshot: item.size, colorSnapshot: item.color, unitPrice: Number(item.salePrice ?? item.variantPrice), quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity })));
       for (const item of cart) {
         const rows = inventoryRows.filter((inventory) => inventory.variantId === item.variantId);
@@ -75,8 +81,26 @@ export async function POST(request: Request) {
       await tx.insert(auditEvents).values({ actorRef: user.userId, action: "order.created", resourceType: "order", resourceId: String(created.id), metadata: { merchantId, paymentMethod: created.paymentMethod, fulfillmentMethod: created.fulfillmentMethod, itemCount: cart.length, subtotal, deliveryFee, deliveryZone: deliveryZone?.area ?? null }, createdAt: new Date() });
       return created;
     });
+    let paymentUrl: string | null = null;
+    let paymentError: string | null = null;
+    if (payload.paymentMethod === "paytoday" && order.checkoutGroupId) {
+      const [transaction] = await db.insert(paymentTransactions).values({ checkoutGroupId: order.checkoutGroupId, provider: "paytoday", amount: order.total, status: "creating", providerMetadata: { invoiceNumber: checkoutReference } }).returning();
+      try {
+        const names = (order.customerName ?? user.displayName).trim().split(/\s+/);
+        const result = await createPayTodayPayment({ amount: order.total, invoiceNumber: checkoutReference, firstName: names[0] ?? "Customer", lastName: names.slice(1).join(" ") || "NeuroCity", email: order.customerEmail ?? user.email, phone: order.customerPhone ?? "", returnUrl: new URL("/api/payments/paytoday/return", request.url).toString() });
+        paymentUrl = result.checkoutUrl;
+        await db.update(paymentTransactions).set({ providerPaymentToken: result.paymentToken, providerReference: result.providerReference, checkoutUrl: result.checkoutUrl, status: "pending", updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));
+      } catch (error) {
+        paymentError = error instanceof Error ? error.message : "PayToday payment could not be started.";
+        await db.transaction(async (tx) => {
+          await tx.update(paymentTransactions).set({ status: "failed", failureMessage: paymentError, updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));
+          await tx.update(checkoutGroups).set({ paymentStatus: "failed", updatedAt: new Date() }).where(eq(checkoutGroups.id, order.checkoutGroupId!));
+          await tx.update(orders).set({ paymentStatus: "failed", updatedAt: new Date() }).where(eq(orders.id, order.id));
+        });
+      }
+    }
     await sendOrderPlacedNotifications({ reference: `NC-${String(order.id).padStart(6, "0")}`, storeName: merchant.name, customerName: order.customerName ?? user.displayName, customerEmail: order.customerEmail ?? user.email, merchantEmail: merchant.contactEmail, status: order.status, total: order.total, fulfillmentMethod: order.fulfillmentMethod ?? payload.fulfillmentMethod!, paymentInstructions, lines: cart.map((item) => ({ name: item.productName, option: [item.size, item.color].filter(Boolean).join(" / ") || item.variantTitle, quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity })) });
-    return Response.json({ order: { id: order.id, status: order.status, paymentStatus: order.paymentStatus, paymentMethod: order.paymentMethod, paymentInstructions: order.paymentInstructions, total: order.total, reference: `NC-${String(order.id).padStart(6, "0")}` } }, { status: 201 });
+    return Response.json({ order: { id: order.id, status: order.status, paymentStatus: paymentError ? "failed" : order.paymentStatus, paymentMethod: order.paymentMethod, paymentInstructions: order.paymentInstructions, total: order.total, reference: `NC-${String(order.id).padStart(6, "0")}`, checkoutReference, paymentUrl, paymentError } }, { status: 201 });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Order creation failed." }, { status: 500 });
   }

@@ -43,7 +43,7 @@ export default function ProductCreatePanel({
   open: boolean;
   busy: boolean;
   onClose: () => void;
-  onCreate: (product: NewProduct) => Promise<boolean>;
+  onCreate: (product: NewProduct, addAnother?: boolean) => Promise<boolean>;
 }) {
   const [product, setProduct] = useState(empty);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -68,6 +68,12 @@ export default function ProductCreatePanel({
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (valid && (await onCreate(product))) setProduct(empty());
+  }
+  async function saveAndAddAnother() {
+    if (valid && (await onCreate(product, true))) {
+      setProduct(empty());
+      window.setTimeout(() => nameRef.current?.focus(), 50);
+    }
   }
   return (
     <div
@@ -321,6 +327,9 @@ export default function ProductCreatePanel({
             onClick={onClose}
           >
             Cancel
+          </button>
+          <button type="button" className="secondary" disabled={!valid || busy} onClick={() => void saveAndAddAnother()}>
+            Save & add another
           </button>
           <button type="submit" disabled={!valid || busy}>
             {busy

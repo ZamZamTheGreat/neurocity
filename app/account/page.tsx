@@ -639,6 +639,8 @@ function CheckoutBag({
     total: number;
     paymentMethod: string;
     paymentInstructions: PaymentInstructions | null;
+    paymentUrl?: string | null;
+    paymentError?: string | null;
   } | null>(null);
   const [deliveryQuote, setDeliveryQuote] = useState<{
     supported: boolean;
@@ -707,7 +709,8 @@ function CheckoutBag({
   useEffect(() => {
     if (fulfillment !== "merchant_delivery" || !checkoutMerchant) return;
     const merchant = merchants.find((item) => item.id === checkoutMerchant);
-    if (merchant?.paymentMethods.includes("eft")) setPayment("eft");
+    if (merchant?.paymentMethods.includes("paytoday")) setPayment("paytoday");
+    else if (merchant?.paymentMethods.includes("eft")) setPayment("eft");
   }, [fulfillment, checkoutMerchant]);
   function begin(merchantId: number) {
     const merchant = merchants.find((item) => item.id === merchantId);
@@ -718,7 +721,9 @@ function CheckoutBag({
       methods.includes("pickup") ? "pickup" : (methods[0] ?? "pickup"),
     );
     setPayment(
-      payments.includes("pay_on_collection")
+      payments.includes("paytoday")
+        ? "paytoday"
+        : payments.includes("pay_on_collection")
         ? "pay_on_collection"
         : (payments[0] ?? "eft"),
     );
@@ -742,8 +747,13 @@ function CheckoutBag({
     const result = await response.json();
     setPlacing(false);
     if (!response.ok) return setMessage(result.error);
+    if (result.order.paymentUrl) {
+      setMessage("Opening PayToday secure payment…");
+      window.location.assign(result.order.paymentUrl);
+      return;
+    }
     setConfirmation(result.order);
-    setMessage(`${result.order.reference} placed successfully.`);
+    setMessage(result.order.paymentError ? `${result.order.reference} was created, but payment could not start.` : `${result.order.reference} placed successfully.`);
     await reload();
   }
   if (confirmation)
@@ -754,6 +764,7 @@ function CheckoutBag({
         <h2>{confirmation.reference}</h2>
         <p>Your order has been sent to the merchant for confirmation.</p>
         <strong>N${Number(confirmation.total).toFixed(2)}</strong>
+        {confirmation.paymentError && <p className="checkout-warning">{confirmation.paymentError} Your order is saved; choose it under Orders to retry payment.</p>}
         {confirmation.paymentMethod === "eft" &&
           confirmation.paymentInstructions && (
             <PaymentInstructionsCard
@@ -786,6 +797,19 @@ function CheckoutBag({
             <section>
               <h3>1. Fulfilment</h3>
               <div className="checkout-options">
+                {payments.includes("paytoday") && (
+                  <label className={payment === "paytoday" ? "selected" : ""}>
+                    <input
+                      type="radio"
+                      checked={payment === "paytoday"}
+                      onChange={() => setPayment("paytoday")}
+                    />
+                    <span>
+                      <b>PayToday secure payment</b>
+                      <small>Pay the complete order total online</small>
+                    </span>
+                  </label>
+                )}
                 {methods.includes("pickup") && (
                   <label className={fulfillment === "pickup" ? "selected" : ""}>
                     <input
@@ -893,9 +917,9 @@ function CheckoutBag({
                 )}
               </div>
               {fulfillment === "merchant_delivery" &&
-                !payments.includes("eft") && (
+                !payments.some((method) => ["eft", "paytoday"].includes(method)) && (
                   <p className="checkout-warning">
-                    This store must enable EFT before accepting delivery orders.
+                    This store must offer an online payment method before accepting delivery orders.
                   </p>
                 )}
             </section>
@@ -946,7 +970,7 @@ function CheckoutBag({
                 placing ||
                 payments.length === 0 ||
                 (fulfillment === "merchant_delivery" &&
-                  (!payments.includes("eft") ||
+                  (!payments.some((method) => ["eft", "paytoday"].includes(method)) ||
                     !addressId ||
                     quoting ||
                     !deliveryQuote?.supported))

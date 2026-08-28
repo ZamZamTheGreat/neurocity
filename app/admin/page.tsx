@@ -7,6 +7,7 @@ import AdminOrderCentre, {
 import MallPlatformManager, {
   type MallPlatform,
 } from "../components/MallPlatformManager";
+import AdminTransactionLedger, { type AdminTransaction, type TransactionSummary } from "../components/AdminTransactionLedger";
 
 type Document = {
   id: number;
@@ -43,12 +44,14 @@ type Merchant = {
   contactEmail: string | null;
   createdAt: string;
 };
-type View = "applications" | "merchants" | "orders" | "malls";
+type View = "applications" | "merchants" | "orders" | "transactions" | "malls";
 
 export default function AdminPage() {
   const [items, setItems] = useState<Application[] | null>(null);
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
+  const [transactionSummary, setTransactionSummary] = useState<TransactionSummary>({ totalRecords: 0, successfulValue: 0, pendingCount: 0, failedCount: 0, unsettledValue: 0 });
   const [orderAnalytics, setOrderAnalytics] = useState({
     grossPaid: 0,
     refunded: 0,
@@ -68,9 +71,10 @@ export default function AdminPage() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   async function load() {
-    const [response, orderResponse, platformResponse] = await Promise.all([
+    const [response, orderResponse, transactionResponse, platformResponse] = await Promise.all([
       fetch("/api/admin/applications"),
       fetch("/api/admin/orders"),
+      fetch("/api/admin/transactions"),
       fetch("/api/admin/platforms"),
     ]);
     if (!response.ok) return setItems(null);
@@ -89,6 +93,11 @@ export default function AdminPage() {
           completedOrders: 0,
         },
       );
+    }
+    if (transactionResponse.ok) {
+      const transactionData = await transactionResponse.json();
+      setTransactions(transactionData.transactions ?? []);
+      setTransactionSummary(transactionData.summary ?? { totalRecords: 0, successfulValue: 0, pendingCount: 0, failedCount: 0, unsettledValue: 0 });
     }
     if (platformResponse.ok) {
       const platformData = await platformResponse.json();
@@ -361,6 +370,13 @@ export default function AdminPage() {
           <b>{orders.length}</b>
         </button>
         <button
+          className={view === "transactions" ? "active" : ""}
+          onClick={() => switchView("transactions")}
+        >
+          <span>Transactions</span>
+          <b>{transactions.length}</b>
+        </button>
+        <button
           className={view === "malls" ? "active" : ""}
           onClick={() => switchView("malls")}
         >
@@ -380,6 +396,8 @@ export default function AdminPage() {
                   ? "Approved merchants"
                   : view === "orders"
                     ? "Marketplace orders"
+                    : view === "transactions"
+                      ? "Transaction ledger"
                     : "Digital mall network"}
             </h2>
             <p>
@@ -389,6 +407,8 @@ export default function AdminPage() {
                   ? "Control storefront and dashboard access after approval."
                   : view === "orders"
                     ? "Monitor every transaction, payment proof and refund across NeuroCity."
+                    : view === "transactions"
+                      ? "Reconcile every payment record, provider result and merchant allocation from one ledger."
                     : "Create and operate branded digital destinations from the shared NeuroCity commerce engine."}
             </p>
           </div>
@@ -452,6 +472,8 @@ export default function AdminPage() {
             updatePayment={updatePayment}
             resolveIssue={resolveIssue}
           />
+        ) : view === "transactions" ? (
+          <AdminTransactionLedger transactions={transactions} summary={transactionSummary} />
         ) : (
           <MallPlatformManager
             platforms={platforms}
