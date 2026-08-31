@@ -99,6 +99,11 @@
 .mall-application-page .application-intro { background:radial-gradient(circle at 82% 20%,rgba(212,175,55,.15),transparent 30%),linear-gradient(140deg,#050505,#15130c); color:#fff; }
 .mall-application-page .application-intro .eyebrow { color:var(--mall-gold-bright); }
 .mall-application-page .submit-application { background:linear-gradient(135deg,#e2bf4b,#b98b18); color:#080808; box-shadow:0 12px 34px rgba(212,175,55,.18); }
+.digital-mall-state { min-height:100vh; background:radial-gradient(circle at 80% 15%,rgba(212,175,55,.14),transparent 28%),#080808; color:#f7f3e8; }
+.digital-mall-state .brand { color:#fff; }
+.digital-mall-state .brand strong,
+.digital-mall-state .platform-state-code { color:var(--mall-gold,#d4af37); }
+.digital-mall-state .platform-state-action { background:linear-gradient(135deg,#e2bf4b,#b98b18); color:#080808; }
 
 @media (prefers-reduced-motion: no-preference) {
   .digital-malls-home .network-mall-grid > article { animation:mall-card-in .55s both; }

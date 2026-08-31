@@ -22,7 +22,7 @@ export default async function DigitalMallPage({
     .limit(1);
   if (!mall)
     return (
-      <main id="main-content" className="platform-state">
+      <main id="main-content" className="platform-state digital-mall-state">
         <a href="/" className="brand">
           <span>Neuro</span>
           <strong>City</strong>
