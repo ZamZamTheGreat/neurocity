@@ -15,6 +15,11 @@
 .digital-malls-home .network-header { border-color: var(--mall-line); background: rgba(8, 8, 8, .9); box-shadow: 0 12px 40px rgba(0,0,0,.22); }
 .digital-malls-home .network-brand { color: #fff; }
 .digital-malls-home .network-brand strong { color: var(--mall-gold); }
+.network-brand > span { grid-template-columns:1fr; }
+.network-wordmark { white-space:nowrap; }
+.network-wordmark > span { color:var(--network-green); font:inherit; }
+.digital-malls-home .network-wordmark > span { color:var(--mall-gold); }
+.network-brand small { grid-column:auto; }
 .digital-malls-home .network-brand small { color: #a9a38f; }
 .digital-malls-home .network-header > nav { border-color: var(--mall-line); background: #12120f; }
 .digital-malls-home .network-header > nav a { color: #aaa590; transition: color .22s ease, background .22s ease, transform .22s ease; }

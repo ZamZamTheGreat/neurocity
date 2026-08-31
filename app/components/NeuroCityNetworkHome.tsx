@@ -46,8 +46,7 @@ export default function NeuroCityNetworkHome({
         <a href="/" className="network-brand">
           <img src="/branding/neurocity-malls-mark.png" alt="" />
           <span>
-            <b>Neuro</b>
-            <strong>City</strong>
+            <b className="network-wordmark">Neuro<span>City</span></b>
             <small>Namibia&apos;s connected shopping network</small>
           </span>
         </a>
@@ -264,8 +263,7 @@ export default function NeuroCityNetworkHome({
         <div className="network-brand">
           <img src="/branding/neurocity-malls-mark.png" alt="" />
           <span>
-            <b>Neuro</b>
-            <strong>City</strong>
+            <b className="network-wordmark">Neuro<span>City</span></b>
           </span>
         </div>
         <p>Namibia&apos;s connected commerce and digital-mall network.</p>
