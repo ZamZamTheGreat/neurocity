@@ -41,10 +41,10 @@ export default function NeuroCityNetworkHome({
       .finally(() => setLoading(false));
   }, []);
   return (
-    <main id="main-content" className={`network-home ${directoryOnly ? "digital-malls-home" : ""}`}>
+    <main id="main-content" className="network-home digital-malls-home">
       <header className="network-header">
         <a href="/" className="network-brand">
-          <img src={directoryOnly ? "/branding/neurocity-malls-mark.png" : "/branding/neurocity-mark.png"} alt="" />
+          <img src="/branding/neurocity-malls-mark.png" alt="" />
           <span>
             <b>Neuro</b>
             <strong>City</strong>
@@ -95,7 +95,7 @@ export default function NeuroCityNetworkHome({
                 <i className="pulse p2" />
                 <i className="pulse p3" />
                 <span className="network-node main">
-                  <img src="/branding/neurocity-mark.png" alt="" />
+                  <img src="/branding/neurocity-malls-mark.png" alt="" />
                   <b>NeuroCity</b>
                   <small>Commerce network</small>
                 </span>
@@ -176,8 +176,8 @@ export default function NeuroCityNetworkHome({
                 key={mall.id}
                 style={
                   {
-                    "--mall-primary": directoryOnly ? "#d4af37" : (mall.theme?.primary ?? "#18c98e"),
-                    "--mall-surface": directoryOnly ? "#080808" : (mall.theme?.surface ?? "#07111f"),
+                    "--mall-primary": "#d4af37",
+                    "--mall-surface": "#080808",
                   } as CSSProperties
                 }
               >
@@ -262,7 +262,7 @@ export default function NeuroCityNetworkHome({
       )}
       <footer className="network-footer">
         <div className="network-brand">
-          <img src={directoryOnly ? "/branding/neurocity-malls-mark.png" : "/branding/neurocity-mark.png"} alt="" />
+          <img src="/branding/neurocity-malls-mark.png" alt="" />
           <span>
             <b>Neuro</b>
             <strong>City</strong>

@@ -25,6 +25,22 @@
 .digital-malls-home .network-header > div button { background: linear-gradient(135deg, #e2bf4b, #b88a17); color: #090909; }
 .digital-malls-home .network-header > div button:hover,
 .digital-malls-home .network-header > div a:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(212,175,55,.16); }
+.digital-malls-home .network-hero { background:radial-gradient(circle at 78% 30%,rgba(212,175,55,.17),transparent 30%),linear-gradient(140deg,#050505,#17140b 72%,#080808); }
+.digital-malls-home .network-hero h1 em { color:var(--mall-gold-bright); }
+.digital-malls-home .network-hero > div > p:not(.eyebrow) { color:#b4ad98; }
+.digital-malls-home .network-hero > div > div a.primary { border-color:var(--mall-gold); background:linear-gradient(135deg,#e2bf4b,#b88a17); color:#080808; box-shadow:0 14px 38px rgba(212,175,55,.18); }
+.digital-malls-home .network-hero li:before { color:var(--mall-gold); }
+.digital-malls-home .network-map { border-color:rgba(212,175,55,.3); background:radial-gradient(circle,rgba(212,175,55,.11),transparent 62%); }
+.digital-malls-home .network-node { border-color:rgba(212,175,55,.22); background:rgba(18,17,13,.9); }
+.digital-malls-home .network-node small { color:#a69e85; }
+.digital-malls-home .pulse { background:var(--mall-gold); box-shadow:0 0 0 7px rgba(212,175,55,.14); }
+.digital-malls-home .network-paths { background:#2b271b; }
+.digital-malls-home .network-paths article { background:#0f0f0d; color:#f6f1e3; }
+.digital-malls-home .network-paths article > span { background:rgba(212,175,55,.12); color:var(--mall-gold-bright); }
+.digital-malls-home .network-paths small,
+.digital-malls-home .network-paths a,
+.digital-malls-home .network-paths button { color:var(--mall-gold-bright); }
+.digital-malls-home .network-paths p { color:#aaa38d; }
 .digital-malls-home .network-malls.directory-page { position: relative; overflow: hidden; background: radial-gradient(circle at 82% 8%, rgba(212,175,55,.13), transparent 27%), linear-gradient(145deg, #080808, #11110e 72%, #080808); }
 .digital-malls-home .network-malls.directory-page:before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.24; background-image:linear-gradient(rgba(212,175,55,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(212,175,55,.07) 1px,transparent 1px); background-size:52px 52px; mask-image:linear-gradient(to bottom,#000,transparent 75%); }
 .digital-malls-home .network-malls > header,
@@ -51,6 +67,14 @@
 .digital-malls-home .network-footer nav a { color: #c9c2aa; transition: color .2s ease; }
 .digital-malls-home .network-footer nav a:hover { color: var(--mall-gold-bright); }
 .digital-malls-home .network-james-fab { background: linear-gradient(145deg,#f0cf62,#b78917); color:#080808; box-shadow:0 16px 42px rgba(212,175,55,.26); }
+.digital-malls-home .network-james { background:radial-gradient(circle at 12% 45%,rgba(212,175,55,.1),transparent 25%),#080808; }
+.digital-malls-home .network-james > div { border-color:rgba(212,175,55,.4); background:#15130d; }
+.digital-malls-home .network-james > div > span,
+.digital-malls-home .network-james article button,
+.digital-malls-home .network-james aside > button span { color:var(--mall-gold-bright); }
+.digital-malls-home .james-online { border-color:#15130d; background:var(--mall-gold); }
+.digital-malls-home .network-james aside > button:hover,
+.digital-malls-home .network-james aside > button:focus-visible { border-color:rgba(212,175,55,.5); background:rgba(212,175,55,.09); }
 
 .white-label-mall { background: var(--mall-cream); }
 .white-label-mall .topbar { border-bottom: 1px solid var(--mall-line); background: rgba(8,8,8,.94); color:#fff; box-shadow:0 12px 42px rgba(0,0,0,.16); }

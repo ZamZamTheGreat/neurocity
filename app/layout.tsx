@@ -21,7 +21,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#07111f",
+  themeColor: "#080808",
 };
 
 export const metadata: Metadata = {
@@ -39,15 +39,15 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/branding/neurocity-mark.png",
+        url: "/branding/neurocity-malls-mark.png",
         sizes: "512x512",
         type: "image/png",
       },
-      { url: "/icons/neurocity-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/neurocity-malls-192.png", sizes: "192x192", type: "image/png" },
     ],
-    shortcut: "/branding/neurocity-mark.png",
+    shortcut: "/branding/neurocity-malls-mark.png",
     apple: [
-      { url: "/icons/neurocity-180.png", sizes: "180x180", type: "image/png" },
+      { url: "/icons/neurocity-malls-180.png", sizes: "180x180", type: "image/png" },
     ],
   },
   openGraph: {
