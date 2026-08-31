@@ -1,0 +1,2 @@
+ALTER TABLE "users" ADD COLUMN "terms_version" varchar(32);--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "terms_accepted_at" timestamp with time zone;

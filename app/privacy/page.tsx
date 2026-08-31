@@ -5,7 +5,7 @@ export const metadata = { title: "Privacy notice | NeuroCity", description: "How
 
 export default function PrivacyPage() {
   return <main className="legal-page">
-    <nav><Link href="/" className="brand"><span>Neuro</span><strong>City</strong></Link><Link href="/account">Privacy controls</Link></nav>
+    <nav><Link href="/" className="brand"><span>Neuro</span><strong>City</strong></Link><span><Link href="/terms">Terms</Link> · <Link href="/account">Privacy controls</Link></span></nav>
     <article>
       <p className="eyebrow">Privacy at NeuroCity</p>
       <h1>Your information should work for you—not travel farther than it needs to.</h1>

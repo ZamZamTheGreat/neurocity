@@ -10,6 +10,8 @@ export const users = pgTable("users", {
   status: varchar("status", { length: 32 }).notNull().default("active"),
   privacyNoticeVersion: varchar("privacy_notice_version", { length: 32 }),
   privacyAcceptedAt: timestamp("privacy_accepted_at", { withTimezone: true }),
+  termsVersion: varchar("terms_version", { length: 32 }),
+  termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("idx_users_email").on(table.email)]);

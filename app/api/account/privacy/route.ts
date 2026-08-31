@@ -10,7 +10,7 @@ export async function GET() {
   const db = getDb();
   const userId = Number(auth.userId);
   const [account, addresses, cart, wishlist, stores, purchases, bookings, companion, requests] = await Promise.all([
-    db.select({ email: users.email, displayName: users.displayName, status: users.status, createdAt: users.createdAt, privacyNoticeVersion: users.privacyNoticeVersion, privacyAcceptedAt: users.privacyAcceptedAt }).from(users).where(eq(users.id, userId)).limit(1),
+    db.select({ email: users.email, displayName: users.displayName, status: users.status, createdAt: users.createdAt, privacyNoticeVersion: users.privacyNoticeVersion, privacyAcceptedAt: users.privacyAcceptedAt, termsVersion: users.termsVersion, termsAcceptedAt: users.termsAcceptedAt }).from(users).where(eq(users.id, userId)).limit(1),
     db.select().from(customerAddresses).where(eq(customerAddresses.userId, userId)),
     db.select().from(customerCartItems).where(eq(customerCartItems.userId, userId)),
     db.select().from(customerWishlists).where(eq(customerWishlists.userId, userId)),

@@ -7,7 +7,7 @@ import { applicationDocuments, merchantApplications, platformTenants, users } fr
 import { sendMail } from "../../../lib/mail";
 import { isMerchantCategory } from "../../../lib/merchant-categories";
 import { createSession, sessionCookieOptions, SESSION_COOKIE } from "../../chatgpt-auth";
-import { PRIVACY_NOTICE_VERSION } from "../../../lib/privacy";
+import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from "../../../lib/privacy";
 
 const requiredDocuments = ["business_registration", "representative_identification", "proof_of_business_address", "bank_confirmation_letter"];
 const required = ["legalName", "tradingName", "registrationNumber", "businessType", "category", "mainOperatingArea", "description", "representativeName", "representativeRole", "email", "phone", "physicalAddress"];
@@ -51,8 +51,9 @@ export async function POST(request: Request) {
     if (existingUser && !existingUser.passwordHash) return Response.json({ error: "This email already has an account that cannot use password sign-in. Contact NeuroCity support." }, { status: 409 });
     const passwordHash = existingUser ? null : await hash(password, 12);
     const { application, user } = await db.transaction(async (tx) => {
-      const [user] = existingUser ? [existingUser] : await tx.insert(users).values({ email: normalizedEmail, displayName: String(data.representativeName).trim(), passwordHash, platformRole: "customer", privacyNoticeVersion: PRIVACY_NOTICE_VERSION, privacyAcceptedAt: new Date() }).returning();
-      if (existingUser) await tx.update(users).set({ privacyNoticeVersion: PRIVACY_NOTICE_VERSION, privacyAcceptedAt: new Date(), updatedAt: new Date() }).where(eq(users.id, existingUser.id));
+      const acceptedAt = new Date();
+      const [user] = existingUser ? [existingUser] : await tx.insert(users).values({ email: normalizedEmail, displayName: String(data.representativeName).trim(), passwordHash, platformRole: "customer", privacyNoticeVersion: PRIVACY_NOTICE_VERSION, privacyAcceptedAt: acceptedAt, termsVersion: TERMS_VERSION, termsAcceptedAt: acceptedAt }).returning();
+      if (existingUser) await tx.update(users).set({ privacyNoticeVersion: PRIVACY_NOTICE_VERSION, privacyAcceptedAt: acceptedAt, termsVersion: TERMS_VERSION, termsAcceptedAt: acceptedAt, updatedAt: acceptedAt }).where(eq(users.id, existingUser.id));
       const [application] = await tx.insert(merchantApplications).values({ reference, legalName: String(data.legalName).trim(), tradingName: String(data.tradingName).trim(), registrationNumber: String(data.registrationNumber).trim(), businessType: String(data.businessType).trim(), category: String(data.category).trim(), offeringType: String(data.offeringType), description: String(data.description).trim(), representativeName: String(data.representativeName).trim(), representativeRole: String(data.representativeRole).trim(), email: normalizedEmail, phone: String(data.phone).trim(), physicalAddress: String(data.physicalAddress).trim(), website: String(data.website ?? "").trim() || null, socialProfiles: String(data.socialProfiles ?? "").trim() || null, branchCount: Math.max(1, Number(data.branchCount) || 1), branchLocations: String(data.branchLocations).trim(), productSummary: String(data.productSummary).trim(), estimatedProductCount: Math.max(1, Number(data.estimatedProductCount) || 1), pickupAvailable: data.pickupAvailable === true, deliveryAvailable: data.deliveryAvailable === true, deliveryDetails: String(data.deliveryDetails ?? "").trim() || null, returnsPolicy: String(data.returnsPolicy).trim(), termsAccepted: true, privacyAccepted: true }).returning();
       await tx.update(merchantApplications).set({ platformTenantId: targetPlatform.id, locationType: String(data.locationType), mainOperatingArea: String(data.mainOperatingArea).trim() }).where(eq(merchantApplications.id, application.id));
       await tx.insert(applicationDocuments).values(requiredDocuments.map((documentType) => ({ applicationId: application.id, documentType })));

@@ -273,6 +273,7 @@ export default function NeuroCityNetworkHome({
           <a href="/apply">Become a merchant</a>
           <a href="/admin">Administration</a>
           <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
         </nav>
         <small>© {new Date().getFullYear()} NeuroCity · Namibia</small>
       </footer>

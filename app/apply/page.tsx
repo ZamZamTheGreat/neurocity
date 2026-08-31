@@ -367,8 +367,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
               checked={form.termsAccepted}
               onChange={(e) => update("termsAccepted", e.target.checked)}
             />
-            I confirm that the information is accurate and accept the NeuroCity
-            merchant terms.
+            I confirm that the information is accurate and accept the <a href="/terms" target="_blank">NeuroCity Terms &amp; Conditions</a>, including the merchant provisions.
           </label>
           <label className="check wide">
             <input
