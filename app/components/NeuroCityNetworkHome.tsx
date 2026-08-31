@@ -272,6 +272,7 @@ export default function NeuroCityNetworkHome({
           <a href="/malls">Digital malls</a>
           <a href="/apply">Become a merchant</a>
           <a href="/admin">Administration</a>
+          <a href="/privacy">Privacy</a>
         </nav>
         <small>© {new Date().getFullYear()} NeuroCity · Namibia</small>
       </footer>

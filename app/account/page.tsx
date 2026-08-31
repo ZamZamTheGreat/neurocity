@@ -145,7 +145,8 @@ type Tab =
   | "Bag"
   | "Wishlist"
   | "Stores"
-  | "Addresses";
+  | "Addresses"
+  | "Privacy";
 const blankAddress = {
   label: "Home",
   recipientName: "",
@@ -263,6 +264,7 @@ export default function AccountPage() {
               "Wishlist",
               "Stores",
               "Addresses",
+              "Privacy",
             ] as Tab[]
           ).map((item) => (
             <button
@@ -540,6 +542,26 @@ export default function AccountPage() {
               </label>
               <button>Add address</button>
             </form>
+          </div>
+        )}
+        {tab === "Privacy" && (
+          <div className="account-panel privacy-centre">
+            <p className="eyebrow">Your information</p>
+            <h2>Privacy controls</h2>
+            <p>Download a portable JSON copy of the account, addresses, bag, saved items, orders, bookings and companion preferences linked to you.</p>
+            <div className="privacy-actions">
+              <a href="/api/account/privacy" download>Download my information</a>
+              <a href="/privacy">Read the privacy notice</a>
+            </div>
+            <hr />
+            <h3>Request account deletion</h3>
+            <p>This submits a review request. Transaction or verification records that NeuroCity must keep for legal, accounting, fraud or dispute purposes will be restricted and retained only as required.</p>
+            <button onClick={async () => {
+              if (!window.confirm("Submit an account deletion request? You can continue using your account while it is reviewed.")) return;
+              const response = await fetch("/api/account/privacy", { method: "DELETE" });
+              const result = await response.json();
+              setMessage(result.message ?? result.error);
+            }}>Request account deletion</button>
           </div>
         )}
       </section>

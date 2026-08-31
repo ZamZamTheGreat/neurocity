@@ -376,8 +376,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
               checked={form.privacyAccepted}
               onChange={(e) => update("privacyAccepted", e.target.checked)}
             />
-            I consent to NeuroCity processing this information and the uploaded
-            documents for application review.
+            I have read the <a href="/privacy" target="_blank">NeuroCity privacy notice</a> and consent to processing this information and the uploaded documents for application review.
           </label>
           {result && <p className="form-error">{result}</p>}
           <button className="submit-application" disabled={busy}>

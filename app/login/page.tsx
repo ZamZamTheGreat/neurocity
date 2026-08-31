@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">(
     searchParams.get("mode") === "register" ? "register" : "login",
   );
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", privacyAccepted: false });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -231,6 +231,12 @@ export default function LoginPage() {
                 ))}
               </div>
             )}
+            {mode === "register" && (
+              <label className="check wide">
+                <input required type="checkbox" checked={form.privacyAccepted} onChange={(event) => setForm({ ...form, privacyAccepted: event.target.checked })} />
+                <span>I have read and accept the <Link href="/privacy" target="_blank">NeuroCity privacy notice</Link>.</span>
+              </label>
+            )}
             {message && (
               <p className="form-error" role="alert">
                 {message}
@@ -241,7 +247,7 @@ export default function LoginPage() {
               disabled={
                 busy ||
                 (mode === "register" &&
-                  !passwordChecks.every((check) => check.met))
+                  (!passwordChecks.every((check) => check.met) || !form.privacyAccepted))
               }
             >
               {busy
@@ -277,7 +283,7 @@ export default function LoginPage() {
         </div>
         <p className="onboarding-privacy">
           NeuroCity uses your account information to provide shopping, order and
-          merchant services. We never store raw passwords.
+          merchant services. We never store raw passwords. <Link href="/privacy">Privacy notice</Link>
         </p>
       </section>
     </main>

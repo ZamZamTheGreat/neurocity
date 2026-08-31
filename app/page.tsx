@@ -992,6 +992,7 @@ export function MarketplaceExperience({
             <a href="/account">Customer account</a>
             <a href={applicationHref}>Become a merchant</a>
             <a href="/application-status">Application status</a>
+            <a href="/privacy">Privacy</a>
           </nav>
           <small>© {new Date().getFullYear()} NeuroCity · Namibia</small>
         </footer>
