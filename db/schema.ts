@@ -8,6 +8,8 @@ export const users = pgTable("users", {
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   platformRole: varchar("platform_role", { length: 32 }).notNull().default("customer"),
   status: varchar("status", { length: 32 }).notNull().default("active"),
+  privacyNoticeVersion: varchar("privacy_notice_version", { length: 32 }),
+  privacyAcceptedAt: timestamp("privacy_accepted_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("idx_users_email").on(table.email)]);
@@ -19,6 +21,15 @@ export const sessions = pgTable("sessions", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("idx_sessions_token_hash").on(table.tokenHash), index("idx_sessions_user").on(table.userId)]);
+
+export const dataSubjectRequests = pgTable("data_subject_requests", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  requestType: varchar("request_type", { length: 32 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("submitted"),
+  requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+}, (table) => [index("idx_data_subject_requests_user").on(table.userId), index("idx_data_subject_requests_status").on(table.status)]);
 
 export const customerCompanionProfiles = pgTable("customer_companion_profiles", {
   id: serial("id").primaryKey(),
