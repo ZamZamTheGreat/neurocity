@@ -157,7 +157,7 @@ export default function StorefrontPage() {
           >
             ♡ Save store
           </button>
-          <a className="store-account" href="/account">
+          <a className="store-account" href="/access">
             Account
           </a>
         </nav>

@@ -17,6 +17,8 @@ import "./network-home.css";
 import "./platform-shell.css";
 import "./digital-malls.css";
 import "./customer-dashboard-v2.css";
+import "./customer-experience-theme.css";
+import "./account-access.css";
 
 export const viewport: Viewport = {
   width: "device-width",

@@ -90,6 +90,11 @@ export function MarketplaceExperience({
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("workspace") === "merchant")
+      setView("merchant");
+  }, []);
+
+  useEffect(() => {
     const mall =
       mallSlug ?? new URLSearchParams(window.location.search).get("mall");
     const tenantQuery = mall ? `?mall=${encodeURIComponent(mall)}` : "";
@@ -312,12 +317,12 @@ export function MarketplaceExperience({
                 event.currentTarget.parentElement?.removeAttribute("open")
               }
             >
-              <a href="/account">My account</a>
-              <button onClick={() => setView("merchant")}>
-                Merchant dashboard
-              </button>
+              <a href="/account">Customer account</a>
+              <a href="/?workspace=merchant">Merchant workspace</a>
+              <a href="/mall-manager">Mall management</a>
+              <a href="/admin">Administration</a>
               <a href="/application-status">Track application</a>
-              <a href="/login">Sign in</a>
+              <a href="/access">All account options</a>
             </div>
           </details>
           <button

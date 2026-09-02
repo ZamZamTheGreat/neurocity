@@ -62,7 +62,7 @@ export default function NeuroCityNetworkHome({
         </nav>
         <div>
           <button onClick={() => askSelma()}>✦ Ask Selma</button>
-          <a href="/account">Account</a>
+          <a href="/access">Account</a>
         </div>
       </header>
       {!directoryOnly && (

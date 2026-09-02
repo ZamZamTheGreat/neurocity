@@ -6,6 +6,14 @@ import Link from "next/link";
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
+  const accountType = searchParams.get("account_type") ?? "customer";
+  const accountContext =
+    {
+      customer: { label: "Customer account", title: "Continue your shopping journey" },
+      merchant: { label: "Merchant workspace", title: "Continue to your business workspace" },
+      mall: { label: "Mall management", title: "Continue to your digital mall" },
+      administrator: { label: "NeuroCity administration", title: "Continue to platform operations" },
+    }[accountType] ?? { label: "NeuroCity account", title: "Continue to NeuroCity" };
   const requestedReturn = searchParams.get("return_to") ?? "/";
   const returnTo =
     requestedReturn.startsWith("/") && !requestedReturn.startsWith("//")
@@ -119,6 +127,10 @@ export default function LoginPage() {
           <Link href="/">Back to mall</Link>
         </div>
         <div className="onboarding-card">
+          <div className="login-account-context">
+            <Link href="/access">← Change account type</Link>
+            <span>{accountContext.label}</span>
+          </div>
           <div className="auth-tabs" role="tablist" aria-label="Account access">
             <button
               role="tab"
@@ -143,7 +155,7 @@ export default function LoginPage() {
             </p>
             <h2>
               {mode === "login"
-                ? "Continue your shopping journey"
+                ? accountContext.title
                 : "Create your customer account"}
             </h2>
             <ul className="info-list">

@@ -241,8 +241,8 @@ export function NeuroConcierge({
               <small>
                 <i />{" "}
                 {guest
-                  ? "Public guest session"
-                  : "Your NeuroCity shopping companion"}
+                  ? "Guest · live Namibian catalogues"
+                  : "Your local shopping companion"}
               </small>
             </div>
           </div>
