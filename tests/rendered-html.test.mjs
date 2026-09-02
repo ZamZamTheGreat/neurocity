@@ -52,6 +52,19 @@ test("keeps the commerce experience at the marketplace route", async () => {
   assert.match(html, /Search approved stores/);
 });
 
+test("keeps digital-mall branding isolated from the marketplace", async () => {
+  const networkHome = await readFile(new URL("../app/components/NeuroCityNetworkHome.tsx", import.meta.url), "utf8");
+  const marketplace = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const layout = await readFile(new URL("../app/malls/layout.tsx", import.meta.url), "utf8");
+  const mallTheme = await readFile(new URL("../app/digital-malls.css", import.meta.url), "utf8");
+  assert.match(networkHome, /digital-malls-home/);
+  assert.match(networkHome, /neurocity-malls-mark\.png/);
+  assert.match(marketplace, /platform\.kind === "mall" \? "#d4af37"/);
+  assert.match(layout, /manifest-malls\.webmanifest/);
+  assert.match(mallTheme, /\.white-label-mall/);
+  assert.match(mallTheme, /\.digital-malls-home/);
+});
+
 test("renders the public onboarding routes", async (t) => {
   const routes = [
     ["/login", /Create account/],

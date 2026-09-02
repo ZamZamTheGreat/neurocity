@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "NeuroCity — Windhoek's digital mall",
+  "name": "NeuroCity — Namibia's connected shopping network",
   "short_name": "NeuroCity",
-  "description": "Shop trusted Windhoek stores in one place, with pickup and delivery.",
+  "description": "Explore Namibia's marketplace, digital malls and local stores in one connected network.",
   "lang": "en-NA",
   "dir": "ltr",
   "start_url": "/?source=pwa",
@@ -10,17 +10,17 @@
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#07111f",
-  "theme_color": "#07111f",
+  "background_color": "#080808",
+  "theme_color": "#080808",
   "categories": ["shopping", "business", "lifestyle"],
   "icons": [
-    { "src": "/icons/neurocity-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/neurocity-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/neurocity-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icons/neurocity-malls-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/neurocity-malls-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/neurocity-malls-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Browse stores", "short_name": "Stores", "url": "/#stores", "icons": [{ "src": "/icons/neurocity-192.png", "sizes": "192x192" }] },
-    { "name": "My account", "short_name": "Account", "url": "/account", "icons": [{ "src": "/icons/neurocity-192.png", "sizes": "192x192" }] },
-    { "name": "Merchant dashboard", "short_name": "Dashboard", "url": "/dashboard", "icons": [{ "src": "/icons/neurocity-192.png", "sizes": "192x192" }] }
+    { "name": "Browse stores", "short_name": "Stores", "url": "/marketplace#stores", "icons": [{ "src": "/icons/neurocity-malls-192.png", "sizes": "192x192" }] },
+    { "name": "My account", "short_name": "Account", "url": "/account", "icons": [{ "src": "/icons/neurocity-malls-192.png", "sizes": "192x192" }] },
+    { "name": "Merchant dashboard", "short_name": "Dashboard", "url": "/dashboard", "icons": [{ "src": "/icons/neurocity-malls-192.png", "sizes": "192x192" }] }
   ]
 }
