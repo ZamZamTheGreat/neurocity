@@ -1,11 +1,11 @@
-const VERSION = "neurocity-shell-v3";
+const VERSION = "neurocity-shell-v4";
 const OFFLINE_URL = "/offline.html";
 const APP_SHELL = [
   OFFLINE_URL,
   "/manifest.webmanifest",
-  "/branding/neurocity-malls-mark.png",
-  "/icons/neurocity-malls-192.png",
-  "/icons/neurocity-malls-512.png"
+  "/branding/neurocity-malls-mark.png?v=20260902",
+  "/icons/neurocity-malls-192.png?v=20260902",
+  "/icons/neurocity-malls-512.png?v=20260902"
 ];
 
 self.addEventListener("install", (event) => {
