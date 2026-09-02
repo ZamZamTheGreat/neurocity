@@ -147,6 +147,28 @@ type Tab =
   | "Stores"
   | "Addresses"
   | "Privacy";
+const accountTabs: { id: Tab; label: string; icon: string }[] = [
+  { id: "Overview", label: "Home", icon: "⌂" },
+  { id: "Orders", label: "Orders", icon: "▣" },
+  { id: "Bookings", label: "Bookings", icon: "◷" },
+  { id: "Messages", label: "Messages", icon: "✦" },
+  { id: "Bag", label: "Bag", icon: "▱" },
+  { id: "Wishlist", label: "Wishlist", icon: "♡" },
+  { id: "Stores", label: "Saved stores", icon: "◇" },
+  { id: "Addresses", label: "Addresses", icon: "⌖" },
+  { id: "Privacy", label: "Privacy", icon: "◉" },
+];
+const tabDescriptions: Record<Tab, string> = {
+  Overview: "Everything you need to keep your shopping moving.",
+  Orders: "Track purchases, payments and fulfilment updates.",
+  Bookings: "Manage your service requests and appointments.",
+  Messages: "Continue conversations with stores in one place.",
+  Bag: "Review your items and complete one secure checkout.",
+  Wishlist: "Products you have saved for later.",
+  Stores: "Quick access to the businesses you follow.",
+  Addresses: "Manage your pickup and delivery details.",
+  Privacy: "Control your data and account preferences.",
+};
 const blankAddress = {
   label: "Home",
   recipientName: "",
@@ -241,8 +263,30 @@ export default function AccountPage() {
   );
   const bookings =
     (data as Account & { bookings?: ServiceBooking[] }).bookings ?? [];
+  const firstName = data.user.displayName.trim().split(/\s+/)[0] || "there";
+  const bagCount = data.cart.reduce((sum, item) => sum + item.quantity, 0);
+  const openConversations = data.conversations.filter(
+    (conversation) => conversation.status !== "closed",
+  ).length;
+  const activeOrders = data.orders.filter(
+    (order) => !["completed", "cancelled", "refunded"].includes(order.status),
+  );
+  const activeBookings = bookings.filter(
+    (booking) =>
+      !["completed", "declined", "cancelled"].includes(booking.status),
+  );
+  function tabCount(item: Tab) {
+    if (item === "Messages") return openConversations;
+    if (item === "Orders") return data.orders.length;
+    if (item === "Bookings") return activeBookings.length;
+    if (item === "Bag") return bagCount;
+    if (item === "Wishlist") return data.wishlist.length;
+    if (item === "Stores") return data.savedStores.length;
+    if (item === "Addresses") return data.addresses.length;
+    return 0;
+  }
   return (
-    <main className="customer-account">
+    <main className="customer-account" id="main-content">
       <aside>
         <a href="/" className="brand">
           <span>Neuro</span>
@@ -253,50 +297,17 @@ export default function AccountPage() {
           <strong>{data.user.displayName}</strong>
           <small>{data.user.email}</small>
         </div>
-        <nav>
-          {(
-            [
-              "Overview",
-              "Messages",
-              "Orders",
-              "Bookings",
-              "Bag",
-              "Wishlist",
-              "Stores",
-              "Addresses",
-              "Privacy",
-            ] as Tab[]
-          ).map((item) => (
+        <nav aria-label="Customer account">
+          {accountTabs.map((item) => (
             <button
-              key={item}
-              className={tab === item ? "active" : ""}
-              onClick={() => setTab(item)}
+              key={item.id}
+              className={tab === item.id ? "active" : ""}
+              onClick={() => setTab(item.id)}
+              aria-current={tab === item.id ? "page" : undefined}
             >
-              {item}
-              <b>
-                {item === "Messages"
-                  ? data.conversations.filter(
-                      (conversation) => conversation.status !== "closed",
-                    ).length
-                  : item === "Orders"
-                    ? data.orders.length
-                    : item === "Bookings"
-                      ? bookings.filter(
-                          (booking) =>
-                            !["completed", "declined", "cancelled"].includes(
-                              booking.status,
-                            ),
-                        ).length
-                      : item === "Bag"
-                        ? data.cart.length
-                        : item === "Wishlist"
-                          ? data.wishlist.length
-                          : item === "Stores"
-                            ? data.savedStores.length
-                            : item === "Addresses"
-                              ? data.addresses.length
-                              : ""}
-              </b>
+              <span className="account-nav-icon" aria-hidden="true">{item.icon}</span>
+              <span>{item.label}</span>
+              {tabCount(item.id) > 0 && <b>{tabCount(item.id)}</b>}
             </button>
           ))}
         </nav>
@@ -304,11 +315,17 @@ export default function AccountPage() {
       </aside>
       <section>
         <header>
-          <div>
+          <div className="account-heading-copy">
             <p className="eyebrow">Customer account</p>
-            <h1>{tab}</h1>
+            <h1>{tab === "Overview" ? `Hello, ${firstName}` : tab}</h1>
+            <p>{tabDescriptions[tab]}</p>
           </div>
-          <a href="/">Continue shopping</a>
+          <div className="account-header-actions">
+            <button onClick={() => setTab("Bag")} className="account-bag-shortcut">
+              Bag <b>{bagCount}</b>
+            </button>
+            <a href="/marketplace">Explore marketplace</a>
+          </div>
         </header>
         {message && (
           <button className="workspace-message" onClick={() => setMessage("")}>
@@ -317,32 +334,76 @@ export default function AccountPage() {
         )}
         {tab === "Overview" && (
           <>
+            <section className="customer-welcome-card">
+              <div>
+                <p className="eyebrow">Your shopping space</p>
+                <h2>What would you like to do?</h2>
+                <p>
+                  Discover local stores, ask Selma for help, or pick up where
+                  you left off.
+                </p>
+              </div>
+              <div className="customer-quick-actions">
+                <a href="/marketplace"><span aria-hidden="true">⌕</span> Browse stores</a>
+                <a href="/concierge"><span aria-hidden="true">✦</span> Ask Selma</a>
+                <button onClick={() => setTab("Bag")}><span aria-hidden="true">▱</span> Open bag</button>
+              </div>
+            </section>
             <div className="account-metrics">
-              <article>
-                <span>Orders</span>
-                <strong>{data.orders.length}</strong>
+              <article className={activeOrders.length ? "has-activity" : ""}>
+                <span>Active orders</span>
+                <strong>{activeOrders.length}</strong>
+                <small>{activeOrders.length ? "Being processed" : "Nothing pending"}</small>
               </article>
               <article>
-                <span>Bag items</span>
-                <strong>
-                  {data.cart.reduce((sum, item) => sum + item.quantity, 0)}
-                </strong>
+                <span>Bag total</span>
+                <strong>N${bagTotal.toFixed(2)}</strong>
+                <small>{bagCount} {bagCount === 1 ? "item" : "items"}</small>
               </article>
               <article>
-                <span>Wishlist</span>
-                <strong>{data.wishlist.length}</strong>
+                <span>Active bookings</span>
+                <strong>{activeBookings.length}</strong>
+                <small>{activeBookings.length ? "Awaiting completion" : "No appointments"}</small>
               </article>
               <article>
-                <span>Saved stores</span>
-                <strong>{data.savedStores.length}</strong>
+                <span>Store messages</span>
+                <strong>{openConversations}</strong>
+                <small>{openConversations ? "Open conversations" : "You're all caught up"}</small>
               </article>
             </div>
-            <div className="account-panel">
-              <h2>Recent orders</h2>
-              {data.orders.slice(0, 3).map((order) => (
-                <OrderRow key={order.id} order={order} />
-              ))}
-              {data.orders.length === 0 && <p>No orders yet.</p>}
+            <div className="customer-overview-grid">
+              <div className="account-panel">
+                <div className="account-panel-title">
+                  <div>
+                    <span className="account-section-kicker">Purchases</span>
+                    <h2>{activeOrders.length ? "Orders in progress" : "Recent orders"}</h2>
+                  </div>
+                  {data.orders.length > 0 && <button onClick={() => setTab("Orders")}>View all</button>}
+                </div>
+                {(activeOrders.length ? activeOrders : data.orders).slice(0, 3).map((order) => (
+                  <OrderRow key={order.id} order={order} />
+                ))}
+                {data.orders.length === 0 && (
+                  <div className="overview-empty">
+                    <span aria-hidden="true">▣</span>
+                    <div><strong>No orders yet</strong><p>Your purchases and live tracking will appear here.</p></div>
+                    <a href="/marketplace">Start shopping</a>
+                  </div>
+                )}
+              </div>
+              <aside className="customer-next-panel">
+                <span className="account-section-kicker">At a glance</span>
+                <h2>Your saved corner</h2>
+                <button onClick={() => setTab("Wishlist")}>
+                  <span>Wishlist</span><strong>{data.wishlist.length}</strong>
+                </button>
+                <button onClick={() => setTab("Stores")}>
+                  <span>Saved stores</span><strong>{data.savedStores.length}</strong>
+                </button>
+                <button onClick={() => setTab("Addresses")}>
+                  <span>Delivery addresses</span><strong>{data.addresses.length}</strong>
+                </button>
+              </aside>
             </div>
           </>
         )}

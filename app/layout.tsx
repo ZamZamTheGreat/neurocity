@@ -16,6 +16,7 @@ import "./mall-management.css";
 import "./network-home.css";
 import "./platform-shell.css";
 import "./digital-malls.css";
+import "./customer-dashboard-v2.css";
 
 export const viewport: Viewport = {
   width: "device-width",

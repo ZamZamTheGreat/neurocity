@@ -1,0 +1,172 @@
+.customer-account {
+  --account-ink: #11100e;
+  --account-muted: #716b61;
+  --account-line: #e8e1d6;
+  --account-gold: #c9a55b;
+  --account-gold-soft: #f6eddc;
+  --account-surface: #fffdf9;
+  grid-template-columns: 276px minmax(0, 1fr);
+  background: #f7f4ee;
+  color: var(--account-ink);
+}
+
+.customer-account > aside {
+  padding: 30px 20px 22px;
+  background: linear-gradient(180deg, #0b0b0a 0%, #17140f 100%);
+  border-right: 1px solid #ffffff12;
+}
+
+.customer-account > aside > .brand strong { color: var(--account-gold); }
+.customer-account > aside > div { border-bottom: 1px solid #ffffff16; margin-bottom: 18px; }
+.customer-account > aside > div > span {
+  color: #18130a;
+  background: linear-gradient(135deg, #f1d28c, #b78a38);
+}
+.customer-account > aside nav { gap: 6px; }
+.customer-account > aside nav button {
+  align-items: center;
+  justify-content: flex-start;
+  gap: 11px;
+  min-height: 44px;
+  color: #c7c1b7;
+  text-align: left;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+.customer-account > aside nav button:hover { background: #ffffff0d; color: #fff; transform: translateX(2px); }
+.customer-account > aside nav button.active { background: #c9a55b1f; color: #f7dfac; }
+.customer-account > aside nav button b {
+  min-width: 22px;
+  margin-left: auto;
+  padding: 3px 6px;
+  border-radius: 99px;
+  color: #17120a;
+  background: var(--account-gold);
+  font-size: 10px;
+  text-align: center;
+}
+.account-nav-icon { width: 22px; color: var(--account-gold); font-size: 18px; text-align: center; }
+
+.customer-account > section { width: min(1280px, 100%); padding: 44px clamp(24px, 4.5vw, 72px) 80px; }
+.customer-account > section > header { align-items: flex-end; margin-bottom: 28px; }
+.account-heading-copy > p:last-child { max-width: 620px; margin: 7px 0 0; color: var(--account-muted); }
+.customer-account > section > header h1 { letter-spacing: -1.6px; }
+.account-header-actions { display: flex; gap: 9px; }
+.account-header-actions > a,
+.account-header-actions > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 43px;
+  padding: 9px 14px;
+  border: 1px solid #dcd4c8;
+  border-radius: 10px;
+  background: #fff;
+  color: #171512;
+  font-weight: 700;
+}
+.account-header-actions > a { background: #15130f; color: #fff; border-color: #15130f; }
+.account-bag-shortcut b { margin-left: 8px; color: #936d28; }
+
+.customer-welcome-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: 18px;
+  padding: clamp(24px, 4vw, 40px);
+  border: 1px solid #292217;
+  border-radius: 22px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 84% 20%, #c9a55b33, transparent 33%),
+    linear-gradient(135deg, #0e0e0c, #221c12);
+  box-shadow: 0 18px 50px #3d2c0d14;
+}
+.customer-welcome-card h2 { margin: 4px 0 7px; font-size: clamp(25px, 3vw, 38px); letter-spacing: -1.1px; }
+.customer-welcome-card p:last-child { max-width: 560px; margin: 0; color: #c5beb3; }
+.customer-quick-actions { display: grid; grid-template-columns: repeat(3, auto); gap: 8px; }
+.customer-quick-actions a,
+.customer-quick-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid #ffffff24;
+  border-radius: 11px;
+  background: #ffffff0d;
+  color: #fff;
+  white-space: nowrap;
+}
+.customer-quick-actions a:first-child { background: var(--account-gold); color: #17120a; border-color: var(--account-gold); font-weight: 800; }
+
+.customer-account .account-metrics { margin: 0 0 18px; }
+.customer-account .account-metrics article { position: relative; overflow: hidden; min-height: 125px; border-color: var(--account-line); background: var(--account-surface); }
+.customer-account .account-metrics article::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: #ded6ca; }
+.customer-account .account-metrics article.has-activity::before { background: var(--account-gold); }
+.customer-account .account-metrics span { color: var(--account-muted); font-size: 12px; font-weight: 700; }
+.customer-account .account-metrics strong { font-size: clamp(25px, 3vw, 34px); letter-spacing: -1px; }
+.customer-account .account-metrics small { color: #8c857b; }
+
+.customer-overview-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; }
+.customer-account .account-panel { border-color: var(--account-line); background: var(--account-surface); }
+.account-panel-title { align-items: flex-start; margin-bottom: 8px; }
+.account-panel-title h2 { margin: 3px 0 0; }
+.account-panel-title > button { border: 0; background: none; color: #8a6424; font-weight: 800; }
+.account-section-kicker { color: #98712d; font-size: 10px; font-weight: 850; letter-spacing: 1.4px; text-transform: uppercase; }
+.customer-next-panel { align-self: start; padding: 22px; border: 1px solid var(--account-line); border-radius: 16px; background: #efe8dc; }
+.customer-next-panel h2 { margin: 4px 0 15px; }
+.customer-next-panel button { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 13px 0; border: 0; border-bottom: 1px solid #dcd1c0; background: none; text-align: left; }
+.customer-next-panel button:last-child { border-bottom: 0; }
+.customer-next-panel button strong { display: grid; place-items: center; min-width: 28px; height: 28px; border-radius: 50%; background: #fffaf1; color: #7d5a1e; }
+.overview-empty { display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: 14px; padding: 22px 0 5px; border-top: 1px solid var(--account-line); }
+.overview-empty > span { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; background: var(--account-gold-soft); color: #8a6424; font-size: 19px; }
+.overview-empty p { margin: 4px 0 0; color: var(--account-muted); }
+.overview-empty a { padding: 9px 12px; border-radius: 9px; background: #171512; color: #fff; font-weight: 700; }
+
+.customer-account .account-order { border-color: var(--account-line); box-shadow: 0 5px 18px #241b0d08; }
+.customer-account .account-order .order-status { background: var(--account-gold-soft); color: #76551e; font-weight: 800; }
+.customer-account .account-grid > article,
+.customer-account .address-card,
+.customer-account .address-layout > form { border-color: var(--account-line); background: var(--account-surface); }
+
+@media (max-width: 1050px) {
+  .customer-welcome-card { align-items: flex-start; flex-direction: column; }
+  .customer-quick-actions { width: 100%; grid-template-columns: repeat(3, 1fr); }
+  .customer-quick-actions a, .customer-quick-actions button { justify-content: center; }
+  .customer-overview-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+  .customer-account > aside { padding: 8px 10px; background: #0d0c0a; }
+  .customer-account > aside nav { display: flex; gap: 4px; }
+  .customer-account > aside nav button { flex: 0 0 auto; transform: none; }
+  .customer-account > aside nav button.active { background: var(--account-gold); color: #17120a; }
+  .customer-account > aside nav button.active .account-nav-icon { color: #17120a; }
+  .customer-account > aside nav button b { background: #fff; }
+  .account-header-actions { flex-shrink: 0; }
+}
+
+@media (max-width: 650px) {
+  .customer-account > section { padding: 22px 14px 92px; }
+  .customer-account > section > header { align-items: flex-start; flex-direction: column; }
+  .account-heading-copy > p:last-child { font-size: 13px; }
+  .account-header-actions { width: 100%; }
+  .account-header-actions > a, .account-header-actions > button { flex: 1; }
+  .customer-welcome-card { padding: 24px 19px; border-radius: 17px; }
+  .customer-quick-actions { grid-template-columns: 1fr 1fr; }
+  .customer-quick-actions a:first-child { grid-column: 1 / -1; }
+  .customer-quick-actions a, .customer-quick-actions button { padding: 10px 8px; font-size: 12px; }
+  .customer-account .account-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .customer-account .account-metrics article { min-height: 116px; }
+  .customer-account .account-metrics strong { font-size: 24px; }
+  .overview-empty { grid-template-columns: 40px 1fr; }
+  .overview-empty > a { grid-column: 1 / -1; text-align: center; }
+  .customer-next-panel { padding: 18px; }
+}
+
+@media (max-width: 390px) {
+  .account-header-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .customer-account .account-metrics { grid-template-columns: 1fr; }
+  .customer-account .account-metrics article { min-height: auto; }
+}
