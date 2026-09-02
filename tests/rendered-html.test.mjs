@@ -184,6 +184,23 @@ test("preserves critical payment and inventory controls", async () => {
   assert.match(adminOrders, /auditEvents/);
 });
 
+test("supports one PayToday checkout across multiple merchants with T+2 settlement", async () => {
+  const orders = await readFile(new URL("../app/api/orders/route.ts", import.meta.url), "utf8");
+  const paymentReturn = await readFile(new URL("../app/api/payments/paytoday/return/route.ts", import.meta.url), "utf8");
+  const settlements = await readFile(new URL("../lib/settlements.ts", import.meta.url), "utf8");
+  const account = await readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8");
+  const adminTransactions = await readFile(new URL("../app/api/admin/transactions/route.ts", import.meta.url), "utf8");
+  assert.match(orders, /merchantIds = \[\.\.\.new Set/);
+  assert.match(orders, /for \(const group of prepared\)/);
+  assert.match(orders, /paymentMethod: "paytoday"/);
+  assert.match(orders, /merchantPaymentAllocations/);
+  assert.doesNotMatch(account.slice(account.indexOf("function CheckoutBag"), account.indexOf("function OrderRow")), /EFT \/ bank transfer/);
+  assert.match(account, /Checkout entire bag/);
+  assert.match(paymentReturn, /makeCheckoutAllocationsPayable/);
+  assert.match(settlements, /addBusinessDays\(paidAt, 2\)/);
+  assert.match(adminTransactions, /merchant_allocation\.settled/);
+});
+
 test("supports product and service catalogue items", async () => {
   const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
   const merchantProducts = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");

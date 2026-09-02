@@ -134,6 +134,13 @@
       "when": 1788185687485,
       "tag": "0018_modern_luminals",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788377703625,
+      "tag": "0019_same_gravity",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { auditEvents, merchants, orderItems, orders, orderStatusEvents, paymentProofs, variantInventory } from "../../../../db/schema";
+import { auditEvents, merchantPaymentAllocations, merchants, orderItems, orders, orderStatusEvents, paymentProofs, variantInventory } from "../../../../db/schema";
 import { requirePilotMerchant } from "../auth";
 import { sendOrderStatusNotification } from "../../../../lib/order-mail";
 
@@ -42,6 +42,7 @@ export async function PATCH(request: Request) {
     await db.transaction(async (tx) => {
       await tx.update(orders).set({ status: payload.status!, updatedAt: new Date() }).where(eq(orders.id, current.id));
       if (["rejected", "cancelled"].includes(payload.status!)) {
+        await tx.update(merchantPaymentAllocations).set({ settlementStatus: current.paymentStatus === "paid" ? "refund_required" : "cancelled", updatedAt: new Date() }).where(eq(merchantPaymentAllocations.orderId, current.id));
         for (const item of items.filter((row) => row.variantId)) {
           const inventory = await tx.select().from(variantInventory).where(eq(variantInventory.variantId, item.variantId!)); let remaining = item.quantity;
           for (const row of inventory) { const released = Math.min(remaining, row.reserved); if (released > 0) await tx.update(variantInventory).set({ reserved: sql`greatest(0, ${variantInventory.reserved} - ${released})`, updatedAt: new Date() }).where(eq(variantInventory.id, row.id)); remaining -= released; if (!remaining) break; }

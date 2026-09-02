@@ -6,6 +6,7 @@ import ProductOptionsPanel from "./ProductOptionsPanel";
 import ProductCreatePanel, { type NewProduct } from "./ProductCreatePanel";
 import DeliveryZonesPanel, { type DeliveryZone } from "./DeliveryZonesPanel";
 import PaymentSettingsPanel, {
+  type MerchantSettlement,
   type PaymentSettings,
 } from "./PaymentSettingsPanel";
 
@@ -280,6 +281,8 @@ export default function MerchantWorkspace({
     referenceInstructions:
       "Use your NeuroCity order reference as the payment reference.",
   });
+  const [settlements, setSettlements] = useState<MerchantSettlement[]>([]);
+  const [settlementSummary, setSettlementSummary] = useState({ awaitingSettlement: 0, settled: 0 });
   const [stats, setStats] = useState({
     products: 0,
     publishedProducts: 0,
@@ -325,6 +328,8 @@ export default function MerchantWorkspace({
     setConversations(conversationData.conversations);
     setDeliveryZones(zoneData.zones);
     setPaymentSettings(paymentData.settings);
+    setSettlements(paymentData.settlements ?? []);
+    setSettlementSummary(paymentData.summary ?? { awaitingSettlement: 0, settled: 0 });
     setBookings(bookingData.bookings ?? []);
   }, []);
   const refreshLiveOperations = useCallback(async () => {
@@ -740,6 +745,8 @@ export default function MerchantWorkspace({
             <PaymentSettingsPanel
               settings={paymentSettings}
               setSettings={setPaymentSettings}
+              settlements={settlements}
+              settlementSummary={settlementSummary}
               setMessage={setMessage}
             />
             <DeliveryZonesPanel

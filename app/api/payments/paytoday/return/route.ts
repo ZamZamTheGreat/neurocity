@@ -3,6 +3,7 @@ import { getDb } from "../../../../../db";
 import { auditEvents, checkoutGroups, orders, paymentTransactions } from "../../../../../db/schema";
 import { getChatGPTUser } from "../../../../chatgpt-auth";
 import { lookupPayTodayPayment, normalizePayTodayStatus } from "../../../../../lib/paytoday";
+import { cancelCheckoutAllocationsAndReleaseStock, makeCheckoutAllocationsPayable } from "../../../../../lib/settlements";
 
 function accountRedirect(request: Request, result: string) {
   const url = new URL("/account", request.url);
@@ -30,8 +31,11 @@ export async function GET(request: Request) {
     const status = normalizePayTodayStatus(providerStatus);
     await db.transaction(async (tx) => {
       await tx.update(paymentTransactions).set({ status, lastCheckedAt: new Date(), providerMetadata: { status: providerStatus ?? null, reference: provider.intent?.reference ?? provider.reference ?? null }, updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));
-      await tx.update(checkoutGroups).set({ paymentStatus: status, status: status === "paid" ? "paid" : checkout.status, updatedAt: new Date() }).where(eq(checkoutGroups.id, checkout.id));
-      if (["paid", "failed", "cancelled", "expired"].includes(status)) await tx.update(orders).set({ paymentStatus: status, updatedAt: new Date() }).where(eq(orders.checkoutGroupId, checkout.id));
+      const checkoutStatus = status === "paid" ? "paid" : status === "failed" ? "payment_failed" : status;
+      await tx.update(checkoutGroups).set({ paymentStatus: status, status: checkoutStatus, updatedAt: new Date() }).where(eq(checkoutGroups.id, checkout.id));
+      if (["paid", "failed", "cancelled", "expired"].includes(status)) await tx.update(orders).set({ paymentStatus: status, status: status === "paid" ? "pending_merchant_confirmation" : checkoutStatus, updatedAt: new Date() }).where(eq(orders.checkoutGroupId, checkout.id));
+      if (status === "paid" && checkout.paymentStatus !== "paid") await makeCheckoutAllocationsPayable(tx, checkout.id, new Date());
+      if (["failed", "cancelled", "expired"].includes(status) && !["failed", "cancelled", "expired"].includes(checkout.paymentStatus)) await cancelCheckoutAllocationsAndReleaseStock(tx, checkout.id, Number(user.userId), new Date());
       await tx.insert(auditEvents).values({ actorRef: user.userId, action: `payment.paytoday.${status}`, resourceType: "checkout_group", resourceId: String(checkout.id), metadata: { reference: checkout.reference, transactionId: transaction.id } });
     });
     return accountRedirect(request, status);

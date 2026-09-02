@@ -648,7 +648,6 @@ function CheckoutBag({
 }) {
   const [checkoutMerchant, setCheckoutMerchant] = useState<number | null>(null);
   const [fulfillment, setFulfillment] = useState("pickup");
-  const [payment, setPayment] = useState("pay_on_collection");
   const [addressId, setAddressId] = useState<number | null>(
     data.addresses.find((item) => item.isDefault)?.id ??
       data.addresses[0]?.id ??
@@ -685,13 +684,8 @@ function CheckoutBag({
       ]),
     ).values(),
   ];
-  const checkoutItems = data.cart.filter(
-    (item) => item.merchantId === checkoutMerchant,
-  );
-  const checkoutTotal = checkoutItems.reduce(
-    (sum, item) => sum + Number(item.salePrice ?? item.price) * item.quantity,
-    0,
-  );
+  const checkoutItems = data.cart;
+  const checkoutTotal = total;
   const deliveryFee =
     fulfillment === "merchant_delivery" && deliveryQuote?.supported
       ? Number(deliveryQuote.deliveryFee ?? 0)
@@ -709,7 +703,7 @@ function CheckoutBag({
     const controller = new AbortController();
     setQuoting(true);
     fetch(
-      `/api/orders/quote?merchantId=${checkoutMerchant}&addressId=${addressId}`,
+      `/api/orders/quote?addressId=${addressId}`,
       { signal: controller.signal },
     )
       .then(async (response) => {
@@ -730,24 +724,12 @@ function CheckoutBag({
   }, [checkoutMerchant, addressId, fulfillment]);
   useEffect(() => {
     if (fulfillment !== "merchant_delivery" || !checkoutMerchant) return;
-    const merchant = merchants.find((item) => item.id === checkoutMerchant);
-    if (merchant?.paymentMethods.includes("paytoday")) setPayment("paytoday");
-    else if (merchant?.paymentMethods.includes("eft")) setPayment("eft");
   }, [fulfillment, checkoutMerchant]);
-  function begin(merchantId: number) {
-    const merchant = merchants.find((item) => item.id === merchantId);
-    const methods = merchant?.fulfillmentMethods ?? [];
-    const payments = merchant?.paymentMethods ?? [];
-    setCheckoutMerchant(merchantId);
+  function begin() {
+    const methods = merchants.length ? merchants[0].fulfillmentMethods.filter((method) => merchants.every((merchant) => merchant.fulfillmentMethods.includes(method))) : [];
+    setCheckoutMerchant(-1);
     setFulfillment(
       methods.includes("pickup") ? "pickup" : (methods[0] ?? "pickup"),
-    );
-    setPayment(
-      payments.includes("paytoday")
-        ? "paytoday"
-        : payments.includes("pay_on_collection")
-        ? "pay_on_collection"
-        : (payments[0] ?? "eft"),
     );
     setDeliveryQuote(null);
     setConfirmation(null);
@@ -759,23 +741,20 @@ function CheckoutBag({
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        merchantId: checkoutMerchant,
-        addressId,
-        fulfillmentMethod: fulfillment,
-        paymentMethod: payment,
+        fulfillment: merchants.map((merchant) => ({ merchantId: merchant.id, addressId, fulfillmentMethod: fulfillment })),
         customerNotes: notes,
       }),
     });
     const result = await response.json();
     setPlacing(false);
     if (!response.ok) return setMessage(result.error);
-    if (result.order.paymentUrl) {
+    if (result.checkout.paymentUrl) {
       setMessage("Opening PayToday secure payment…");
-      window.location.assign(result.order.paymentUrl);
+      window.location.assign(result.checkout.paymentUrl);
       return;
     }
-    setConfirmation(result.order);
-    setMessage(result.order.paymentError ? `${result.order.reference} was created, but payment could not start.` : `${result.order.reference} placed successfully.`);
+    setConfirmation({ reference: result.checkout.reference, total: result.checkout.total, paymentMethod: "paytoday", paymentInstructions: null });
+    setMessage(`${result.checkout.reference} created for ${result.checkout.merchantCount} stores.`);
     await reload();
   }
   if (confirmation)
@@ -787,31 +766,18 @@ function CheckoutBag({
         <p>Your order has been sent to the merchant for confirmation.</p>
         <strong>N${Number(confirmation.total).toFixed(2)}</strong>
         {confirmation.paymentError && <p className="checkout-warning">{confirmation.paymentError} Your order is saved; choose it under Orders to retry payment.</p>}
-        {confirmation.paymentMethod === "eft" &&
-          confirmation.paymentInstructions && (
-            <PaymentInstructionsCard
-              instructions={confirmation.paymentInstructions}
-              reference={confirmation.reference}
-            />
-          )}
-        <button onClick={() => setTab("Orders")}>
-          {confirmation.paymentMethod === "eft"
-            ? "Upload payment proof"
-            : "Track this order"}
-        </button>
+        <button onClick={() => setTab("Orders")}>Track these orders</button>
       </section>
     );
   if (checkoutMerchant) {
-    const merchant = merchants.find((item) => item.id === checkoutMerchant);
-    const methods = merchant?.fulfillmentMethods ?? [];
-    const payments = merchant?.paymentMethods ?? [];
+    const methods = merchants.length ? merchants[0].fulfillmentMethods.filter((method) => merchants.every((merchant) => merchant.fulfillmentMethods.includes(method))) : [];
     return (
       <section className="account-checkout">
         <header>
           <button onClick={() => setCheckoutMerchant(null)}>← Bag</button>
           <div>
             <p className="eyebrow">Secure checkout</p>
-            <h2>{merchant?.name}</h2>
+            <h2>{merchants.length} {merchants.length === 1 ? "store" : "stores"} · one payment</h2>
           </div>
         </header>
         <div className="checkout-layout">
@@ -819,19 +785,6 @@ function CheckoutBag({
             <section>
               <h3>1. Fulfilment</h3>
               <div className="checkout-options">
-                {payments.includes("paytoday") && (
-                  <label className={payment === "paytoday" ? "selected" : ""}>
-                    <input
-                      type="radio"
-                      checked={payment === "paytoday"}
-                      onChange={() => setPayment("paytoday")}
-                    />
-                    <span>
-                      <b>PayToday secure payment</b>
-                      <small>Pay the complete order total online</small>
-                    </span>
-                  </label>
-                )}
                 {methods.includes("pickup") && (
                   <label className={fulfillment === "pickup" ? "selected" : ""}>
                     <input
@@ -904,46 +857,8 @@ function CheckoutBag({
             <section>
               <h3>2. Payment</h3>
               <div className="checkout-options">
-                {fulfillment === "pickup" &&
-                  payments.includes("pay_on_collection") && (
-                    <label
-                      className={
-                        payment === "pay_on_collection" ? "selected" : ""
-                      }
-                    >
-                      <input
-                        type="radio"
-                        checked={payment === "pay_on_collection"}
-                        onChange={() => setPayment("pay_on_collection")}
-                      />
-                      <span>
-                        <b>Pay on collection</b>
-                        <small>Pay when collecting the order</small>
-                      </span>
-                    </label>
-                  )}
-                {payments.includes("eft") && (
-                  <label className={payment === "eft" ? "selected" : ""}>
-                    <input
-                      type="radio"
-                      checked={payment === "eft"}
-                      onChange={() => setPayment("eft")}
-                    />
-                    <span>
-                      <b>EFT / bank transfer</b>
-                      <small>
-                        Banking instructions appear after placing the order
-                      </small>
-                    </span>
-                  </label>
-                )}
+                <div className="selected"><span><b>PayToday secure payment</b><small>One payment to NeuroCity for the complete bag</small></span></div>
               </div>
-              {fulfillment === "merchant_delivery" &&
-                !payments.some((method) => ["eft", "paytoday"].includes(method)) && (
-                  <p className="checkout-warning">
-                    This store must offer an online payment method before accepting delivery orders.
-                  </p>
-                )}
             </section>
             <section>
               <h3>3. Order note</h3>
@@ -990,10 +905,8 @@ function CheckoutBag({
             <button
               disabled={
                 placing ||
-                payments.length === 0 ||
                 (fulfillment === "merchant_delivery" &&
-                  (!payments.some((method) => ["eft", "paytoday"].includes(method)) ||
-                    !addressId ||
+                  (!addressId ||
                     quoting ||
                     !deliveryQuote?.supported))
               }
@@ -1015,7 +928,7 @@ function CheckoutBag({
       <div className="account-panel-title">
         <div>
           <h2>Shopping bag</h2>
-          <small>Orders are placed separately for each store.</small>
+          <small>Everything in your bag is paid in one secure checkout.</small>
         </div>
         <strong>N${total.toFixed(2)}</strong>
       </div>
@@ -1070,15 +983,10 @@ function CheckoutBag({
                 </b>
               </article>
             ))}
-            <button
-              className="checkout-store-button"
-              onClick={() => begin(merchant.id)}
-            >
-              Checkout {merchant.name}
-            </button>
           </section>
         );
       })}
+      {data.cart.length > 0 && <button className="checkout-store-button" onClick={() => begin()}>Checkout entire bag · N${total.toFixed(2)}</button>}
       {data.cart.length === 0 && (
         <Empty text="Your saved bag will follow you across devices." />
       )}
@@ -1346,9 +1254,7 @@ function OrderActions({ order }: { order: Account["orders"][number] }) {
         </div>
       ))}
       <div>
-        {order.status === "pending_merchant_confirmation" && (
-          <button onClick={cancel}>Cancel order</button>
-        )}
+        {order.status === "pending_payment" && order.paymentStatus !== "paid" && <button onClick={cancel}>Cancel checkout order</button>}
         {!order.issues?.some((issue) => issue.status === "open") && (
           <button onClick={report}>Report an issue</button>
         )}
