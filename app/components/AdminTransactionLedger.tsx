@@ -61,6 +61,21 @@ export default function AdminTransactionLedger({ transactions, summary }: { tran
     const haystack = [row.checkoutReference, row.providerReference, row.customerName, row.customerEmail, ...row.orderReferences, ...row.allocations.map((item) => item.merchantName)].filter(Boolean).join(" ").toLowerCase();
     return matchesStatus && matchesMethod && haystack.includes(query.trim().toLowerCase());
   }), [transactions, status, method, query]);
+  const merchantBalances = useMemo(() => {
+    const balances = new Map<string, { merchant: string; pendingPayment: number; scheduled: number; dueNow: number; settled: number; refundReview: number }>();
+    const now = Date.now();
+    for (const allocation of transactions.flatMap((row) => row.allocations)) {
+      const current = balances.get(allocation.merchantName) ?? { merchant: allocation.merchantName, pendingPayment: 0, scheduled: 0, dueNow: 0, settled: 0, refundReview: 0 };
+      const amount = Number(allocation.netAmount);
+      if (allocation.settlementStatus === "pending_payment") current.pendingPayment += amount;
+      else if (allocation.settlementStatus === "settled") current.settled += amount;
+      else if (allocation.settlementStatus === "refund_required") current.refundReview += amount;
+      else if (["unpaid", "due"].includes(allocation.settlementStatus) || (allocation.settlementStatus === "scheduled" && allocation.settlementDueAt && new Date(allocation.settlementDueAt).getTime() <= now)) current.dueNow += amount;
+      else if (["scheduled", "processing"].includes(allocation.settlementStatus)) current.scheduled += amount;
+      balances.set(allocation.merchantName, current);
+    }
+    return [...balances.values()].sort((a, b) => b.dueNow + b.scheduled - a.dueNow - a.scheduled);
+  }, [transactions]);
   return <div className="admin-transaction-ledger">
     <section className="transaction-analytics transaction-ledger-summary">
       <article><span>Records</span><strong>{summary.totalRecords}</strong></article>
@@ -72,6 +87,7 @@ export default function AdminTransactionLedger({ transactions, summary }: { tran
       <article><span>Refund review</span><strong>{money(summary.refundRequiredValue ?? 0)}</strong></article>
     </section>
     {notice && <p className="workspace-message">{notice}</p>}
+    <section className="merchant-balance-summary"><div className="account-panel-title"><div><h3>Balances by merchant</h3><small>Reconciled from every customer checkout allocation.</small></div></div><div className="merchant-table"><div className="merchant-table-head"><span>Merchant</span><span>Pending payment</span><span>Scheduled</span><span>Due now</span><span>Settled</span><span>Refund review</span></div>{merchantBalances.map((item) => <article key={item.merchant}><strong>{item.merchant}</strong><span>{money(item.pendingPayment)}</span><span>{money(item.scheduled)}</span><span>{money(item.dueNow)}</span><span>{money(item.settled)}</span><span>{money(item.refundReview)}</span></article>)}</div>{!merchantBalances.length && <p>No merchant allocations have been recorded yet.</p>}</section>
     <section className="transaction-ledger-tools" aria-label="Transaction filters">
       <label><span>Search records</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Reference, customer or merchant…" /></label>
       <label><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All statuses</option><option value="successful">Successful</option><option value="pending">Awaiting payment</option><option value="failed">Failed / cancelled</option><option value="refunded">Refunded</option></select></label>

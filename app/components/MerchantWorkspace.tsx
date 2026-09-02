@@ -282,7 +282,7 @@ export default function MerchantWorkspace({
       "Use your NeuroCity order reference as the payment reference.",
   });
   const [settlements, setSettlements] = useState<MerchantSettlement[]>([]);
-  const [settlementSummary, setSettlementSummary] = useState({ awaitingSettlement: 0, settled: 0 });
+  const [settlementSummary, setSettlementSummary] = useState({ pendingCustomerPayment: 0, scheduled: 0, dueNow: 0, processing: 0, awaitingSettlement: 0, settled: 0, refundAdjustment: 0, grossSales: 0 });
   const [stats, setStats] = useState({
     products: 0,
     publishedProducts: 0,
@@ -329,7 +329,7 @@ export default function MerchantWorkspace({
     setDeliveryZones(zoneData.zones);
     setPaymentSettings(paymentData.settings);
     setSettlements(paymentData.settlements ?? []);
-    setSettlementSummary(paymentData.summary ?? { awaitingSettlement: 0, settled: 0 });
+    setSettlementSummary(paymentData.summary ?? { pendingCustomerPayment: 0, scheduled: 0, dueNow: 0, processing: 0, awaitingSettlement: 0, settled: 0, refundAdjustment: 0, grossSales: 0 });
     setBookings(bookingData.bookings ?? []);
   }, []);
   const refreshLiveOperations = useCallback(async () => {
