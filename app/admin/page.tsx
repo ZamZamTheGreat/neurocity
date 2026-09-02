@@ -68,6 +68,7 @@ export default function AdminPage() {
   const [mode, setMode] = useState<"login" | "register">("register");
   const [message, setMessage] = useState("");
   const [view, setView] = useState<View>("applications");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   async function load() {
@@ -258,6 +259,7 @@ export default function AdminPage() {
   }
   function switchView(next: View) {
     setView(next);
+    setMenuOpen(false);
     setFilter("all");
     setSearch("");
   }
@@ -293,6 +295,7 @@ export default function AdminPage() {
       </header>
       <section className="admin-welcome">
         <div>
+          <button className="workspace-menu-toggle admin-menu-toggle" onClick={() => setMenuOpen(true)} aria-label="Open administration menu" aria-expanded={menuOpen}><i aria-hidden="true"><span /><span /><span /></i><span>Menu</span></button>
           <p className="eyebrow">Operations centre</p>
           <h1>Merchant administration</h1>
           <ul className="info-list"><li>Review new business applications.</li><li>Manage approved merchant access from one place.</li></ul>
@@ -347,7 +350,8 @@ export default function AdminPage() {
           <small>With platform access</small>
         </button>
       </section>
-      <nav className="admin-tabs" aria-label="Administration sections">
+      <nav className={`admin-tabs${menuOpen ? " workspace-drawer-open" : ""}`} aria-label="Administration sections">
+        <div className="admin-drawer-heading"><b>Administration</b><button onClick={() => setMenuOpen(false)} aria-label="Close administration menu">×</button></div>
         <button
           className={view === "applications" ? "active" : ""}
           onClick={() => switchView("applications")}
@@ -384,6 +388,7 @@ export default function AdminPage() {
           <b>{platforms.length}</b>
         </button>
       </nav>
+      {menuOpen && <button className="workspace-drawer-backdrop admin-drawer-backdrop" onClick={() => setMenuOpen(false)} aria-label="Close administration menu" />}
       <section
         className={`admin-content ${view === "malls" ? "mall-admin-content" : ""}`}
       >

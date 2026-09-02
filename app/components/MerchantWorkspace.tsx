@@ -263,6 +263,7 @@ export default function MerchantWorkspace({
   onPreview: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("Setup");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [stock, setStock] = useState<Stock[]>([]);
   const [variants, setVariants] = useState<Variant[]>([]);
@@ -643,7 +644,8 @@ export default function MerchantWorkspace({
               : "";
   return (
     <section className="dashboard-shell merchant-dashboard-v2">
-      <aside>
+      <aside className={menuOpen ? "workspace-drawer-open" : ""}>
+        <button className="workspace-drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close merchant menu">×</button>
         <div className="merchant-mark">
           <img src={merchant?.logoUrl ?? "/lightwork-logo.png"} alt="" />
           <div>
@@ -661,7 +663,7 @@ export default function MerchantWorkspace({
                 <button
                   className={tab === item ? "active" : ""}
                   key={item}
-                  onClick={() => setTab(item)}
+                  onClick={() => { setTab(item); setMenuOpen(false); }}
                   aria-current={tab === item ? "page" : undefined}
                 >
                   <i>{tabIcons[item]}</i>
@@ -686,8 +688,10 @@ export default function MerchantWorkspace({
           </i>
         </div>
       </aside>
+      {menuOpen && <button className="workspace-drawer-backdrop" onClick={() => setMenuOpen(false)} aria-label="Close merchant menu" />}
       <div className="dashboard-main">
         <div className="dashboard-head">
+          <button className="workspace-menu-toggle" onClick={() => setMenuOpen(true)} aria-label="Open merchant menu" aria-expanded={menuOpen}><i aria-hidden="true"><span /><span /><span /></i><span>Menu</span></button>
           <div>
             <p className="eyebrow">
               Merchant workspace · {session.memberships[0].role}

@@ -185,6 +185,7 @@ export default function AccountPage() {
   const [data, setData] = useState<Account | null>(null);
   const [unauthorized, setUnauthorized] = useState(false);
   const [tab, setTab] = useState<Tab>("Overview");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [address, setAddress] = useState(blankAddress);
   const [message, setMessage] = useState("");
   const load = useCallback(async () => {
@@ -287,7 +288,14 @@ export default function AccountPage() {
   }
   return (
     <main className="customer-account" id="main-content">
-      <aside>
+      <aside className={menuOpen ? "mobile-open" : ""}>
+        <button
+          className="account-drawer-close"
+          onClick={() => setMenuOpen(false)}
+          aria-label="Close account menu"
+        >
+          ×
+        </button>
         <a href="/" className="brand">
           <span>Neuro</span>
           <strong>City</strong>
@@ -302,7 +310,10 @@ export default function AccountPage() {
             <button
               key={item.id}
               className={tab === item.id ? "active" : ""}
-              onClick={() => setTab(item.id)}
+              onClick={() => {
+                setTab(item.id);
+                setMenuOpen(false);
+              }}
               aria-current={tab === item.id ? "page" : undefined}
             >
               <span className="account-nav-icon" aria-hidden="true">{item.icon}</span>
@@ -313,8 +324,24 @@ export default function AccountPage() {
         </nav>
         <a href="/api/auth/logout?return_to=/">Sign out</a>
       </aside>
+      {menuOpen && (
+        <button
+          className="account-drawer-backdrop"
+          onClick={() => setMenuOpen(false)}
+          aria-label="Close account menu"
+        />
+      )}
       <section>
         <header>
+          <button
+            className="account-mobile-menu-toggle"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open account menu"
+            aria-expanded={menuOpen}
+          >
+            <i aria-hidden="true"><span /><span /><span /></i>
+            <span>Menu</span>
+          </button>
           <div className="account-heading-copy">
             <p className="eyebrow">Customer account</p>
             <h1>{tab === "Overview" ? `Hello, ${firstName}` : tab}</h1>
