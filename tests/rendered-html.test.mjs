@@ -68,6 +68,7 @@ test("keeps digital-mall branding isolated from the marketplace", async () => {
 test("renders the public onboarding routes", async (t) => {
   const routes = [
     ["/login", /Create account/],
+    ["/access", /How are you using NeuroCity/],
     ["/apply", /Apply as a merchant or service provider/],
     ["/application-status", /Track your application/],
     ["/malls", /Digital malls/],
@@ -79,6 +80,22 @@ test("renders the public onboarding routes", async (t) => {
       assert.match(await response.text(), marker);
     });
   }
+});
+
+test("keeps account selection available before sign in", async () => {
+  const response = await request("/api/auth/access");
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    authenticated: false,
+    merchantAccounts: [],
+    mallAccounts: [],
+  });
+  const source = await readFile(new URL("../app/access/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /Customer account/);
+  assert.match(source, /Merchant workspace/);
+  assert.match(source, /Mall management/);
+  assert.match(source, /NeuroCity administration/);
+  assert.match(source, /encodeURIComponent\(type\.destination\)/);
 });
 
 test("rejects malformed registration before touching the database", async (t) => {
