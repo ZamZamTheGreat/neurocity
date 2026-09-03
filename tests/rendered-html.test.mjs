@@ -101,6 +101,16 @@ test("keeps account selection available before sign in", async () => {
   assert.match(source, /account_type=\$\{type\.id\}/);
 });
 
+test("signs out without mutating immutable redirect headers", async () => {
+  const response = await request("/api/auth/logout?return_to=%2Faccess", {
+    redirect: "manual",
+  });
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get("location"), "http://localhost/access");
+  assert.match(response.headers.get("set-cookie") ?? "", /Max-Age=0/);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+});
+
 test("rejects malformed registration before touching the database", async (t) => {
   const cases = [
     { name: "", email: "shopper@example.com", password: "long-enough-password" },

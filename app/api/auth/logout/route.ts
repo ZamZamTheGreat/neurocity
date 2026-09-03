@@ -16,17 +16,24 @@ export async function GET(request: Request) {
   await endSession();
   const requested = new URL(request.url).searchParams.get("return_to") ?? "/";
   const returnTo = requested.startsWith("/") && !requested.startsWith("//") ? requested : "/";
-  const response = Response.redirect(new URL(returnTo, request.url), 303);
-  response.headers.append("set-cookie", expiredCookie(SESSION_COOKIE));
-  if (SESSION_COOKIE !== LEGACY_SESSION_COOKIE) response.headers.append("set-cookie", expiredCookie(LEGACY_SESSION_COOKIE));
-  response.headers.set("cache-control", "no-store");
-  return response;
+  const headers = new Headers({
+    location: new URL(returnTo, request.url).toString(),
+    "cache-control": "no-store",
+  });
+  headers.append("set-cookie", expiredCookie(SESSION_COOKIE));
+  if (SESSION_COOKIE !== LEGACY_SESSION_COOKIE)
+    headers.append("set-cookie", expiredCookie(LEGACY_SESSION_COOKIE));
+  return new Response(null, { status: 303, headers });
 }
 
 export async function POST() {
   await endSession();
-  const response = Response.json({ ok: true }, { headers: { "cache-control": "no-store" } });
-  response.headers.append("set-cookie", expiredCookie(SESSION_COOKIE));
-  if (SESSION_COOKIE !== LEGACY_SESSION_COOKIE) response.headers.append("set-cookie", expiredCookie(LEGACY_SESSION_COOKIE));
-  return response;
+  const headers = new Headers({
+    "cache-control": "no-store",
+    "content-type": "application/json",
+  });
+  headers.append("set-cookie", expiredCookie(SESSION_COOKIE));
+  if (SESSION_COOKIE !== LEGACY_SESSION_COOKIE)
+    headers.append("set-cookie", expiredCookie(LEGACY_SESSION_COOKIE));
+  return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
 }
