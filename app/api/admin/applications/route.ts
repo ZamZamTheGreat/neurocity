@@ -52,5 +52,13 @@ export async function DELETE(request: Request) {
     if (!deleted) throw new Error("Application deletion conflict.");
     await tx.insert(auditEvents).values({ actorRef: user.userId, action: "application.deleted", resourceType: "merchant_application", resourceId: String(application.id), metadata: { reference: application.reference, documentCount: storageKeys.length } });
   });
-  return Response.json({ ok: true, deletedApplicationId: application.id, deletedDocuments: storageKeys.length });
+  const storageResults = await Promise.allSettled(
+    storageKeys.map(async (storageKey) => {
+      const response = await fetch(createPresignedR2Url("DELETE", storageKey, 300), { method: "DELETE" });
+      if (!response.ok) throw new Error(`R2 deletion failed with status ${response.status}`);
+    }),
+  );
+  const storageFailures = storageResults.filter((result) => result.status === "rejected").length;
+  if (storageFailures) console.error("application document cleanup incomplete", { applicationId: application.id, storageFailures });
+  return Response.json({ ok: true, deletedApplicationId: application.id, deletedDocuments: storageKeys.length - storageFailures, storageFailures });
 }

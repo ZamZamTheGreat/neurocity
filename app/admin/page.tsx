@@ -18,6 +18,7 @@ type Document = {
 };
 type Application = {
   id: number;
+  merchantId: number | null;
   reference: string;
   status: string;
   tradingName: string;
@@ -71,6 +72,7 @@ export default function AdminPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   async function load() {
     const [response, orderResponse, transactionResponse, platformResponse] = await Promise.all([
       fetch("/api/admin/applications"),
@@ -139,7 +141,7 @@ export default function AdminPage() {
     ["active", "pilot", "onboarding"].includes(merchant.status),
   ).length;
   const uploaded = (items ?? []).filter((item) =>
-    item.documents?.every((document) => document.status === "uploaded"),
+    item.documents?.length === 4 && item.documents.every((document) => document.status === "uploaded"),
   ).length;
 
   async function authenticate(event: FormEvent) {
@@ -164,18 +166,28 @@ export default function AdminPage() {
         )
         ?.trim();
       if (!confirmation) return;
-      const response = await fetch("/api/admin/applications", {
-        method: "DELETE",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id, confirmation }),
-      });
-      const data = await response.json();
-      setMessage(
-        response.ok
-          ? `${application.reference} and its application documents were deleted.${data.storageFailures ? ` ${data.storageFailures} storage file(s) require manual cleanup.` : ""}`
-          : data.error,
-      );
-      if (response.ok) await load();
+      setDeletingId(id);
+      try {
+        const response = await fetch("/api/admin/applications", {
+          method: "DELETE",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ id, confirmation }),
+        });
+        const data = await response.json();
+        setMessage(
+          response.ok
+            ? `${application.reference} and its application documents were deleted.${data.storageFailures ? ` ${data.storageFailures} storage file(s) require manual cleanup.` : ""}`
+            : data.error,
+        );
+        if (response.ok) {
+          setItems((current) => current?.filter((item) => item.id !== id) ?? current);
+          void load();
+        }
+      } catch {
+        setMessage("The application could not be deleted. Check the connection and try again.");
+      } finally {
+        setDeletingId(null);
+      }
       return;
     }
     const notes = window.prompt("Add a review note (optional)") ?? "";
@@ -296,11 +308,16 @@ export default function AdminPage() {
       <section className="admin-welcome">
         <div>
           <button className="workspace-menu-toggle admin-menu-toggle" onClick={() => setMenuOpen(true)} aria-label="Open administration menu" aria-expanded={menuOpen}><i aria-hidden="true"><span /><span /><span /></i><span>Menu</span></button>
-          <p className="eyebrow">Operations centre</p>
-          <h1>Merchant administration</h1>
-          <ul className="info-list"><li>Review new business applications.</li><li>Manage approved merchant access from one place.</li></ul>
+          <p className="eyebrow">NeuroCity control room</p>
+          <h1>Platform operations</h1>
+          <p className="admin-welcome-copy">Review onboarding, protect marketplace quality and keep orders, payments and digital malls moving.</p>
         </div>
         <button onClick={load}>Refresh data</button>
+      </section>
+      <section className="admin-priority-bar" aria-label="Operational priorities">
+        <div><span className={pending ? "priority-dot attention" : "priority-dot"} /><p><strong>{pending} application{pending === 1 ? "" : "s"}</strong><small>awaiting an onboarding decision</small></p></div>
+        <div><span className={orderAnalytics.openIssues ? "priority-dot attention" : "priority-dot"} /><p><strong>{orderAnalytics.openIssues} open issue{orderAnalytics.openIssues === 1 ? "" : "s"}</strong><small>requiring order support</small></p></div>
+        <div><span className={transactionSummary.pendingCount ? "priority-dot attention" : "priority-dot"} /><p><strong>{transactionSummary.pendingCount} pending payment{transactionSummary.pendingCount === 1 ? "" : "s"}</strong><small>to reconcile in the ledger</small></p></div>
       </section>
       {message && (
         <button className="workspace-message" onClick={() => setMessage("")}>
@@ -464,7 +481,7 @@ export default function AdminPage() {
           )}
         </div>
         {view === "applications" ? (
-          <ApplicationList items={filteredApplications} review={review} />
+          <ApplicationList items={filteredApplications} review={review} deletingId={deletingId} />
         ) : view === "merchants" ? (
           <MerchantList
             merchants={filteredMerchants}
@@ -576,9 +593,11 @@ function AdminLogin({
 function ApplicationList({
   items,
   review,
+  deletingId,
 }: {
   items: Application[];
-  review: (id: number, status: string) => void;
+  review: (id: number, status: string) => Promise<void>;
+  deletingId: number | null;
 }) {
   if (!items.length)
     return (
@@ -677,12 +696,17 @@ function ApplicationList({
                 )}
               </div>
               <div>
-                <button
-                  className="danger-text"
-                  onClick={() => review(item.id, "delete")}
-                >
-                  Delete data
-                </button>
+                {item.merchantId ? (
+                  <span className="managed-record-note" title="Approved merchant records are retained for financial and audit integrity.">Managed under Merchants</span>
+                ) : (
+                  <button
+                    className="danger-text"
+                    disabled={deletingId === item.id}
+                    onClick={() => review(item.id, "delete")}
+                  >
+                    {deletingId === item.id ? "Deleting…" : "Delete data"}
+                  </button>
+                )}
                 {item.status !== "rejected" && (
                   <button
                     className="danger-text"

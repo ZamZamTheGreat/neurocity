@@ -20,6 +20,7 @@ import "./customer-dashboard-v2.css";
 import "./customer-experience-theme.css";
 import "./account-access.css";
 import "./workspace-drawers.css";
+import "./admin-dashboard-v2.css";
 
 export const viewport: Viewport = {
   width: "device-width",
