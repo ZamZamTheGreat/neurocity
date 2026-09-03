@@ -278,18 +278,23 @@ export default function LoginPage() {
             </button>
           </form>
           <div className="auth-switch">
-            <span>
-              {mode === "login"
-                ? "New to NeuroCity?"
-                : "Already have an account?"}
-            </span>
-            <button
-              onClick={() =>
-                changeMode(mode === "login" ? "register" : "login")
-              }
-            >
-              {mode === "login" ? "Create your account" : "Sign in instead"}
-            </button>
+            {mode === "login" && accountType !== "customer" ? (
+              <>
+                <span>Need access to this workspace?</span>
+                <Link href="/join">Choose how to join</Link>
+              </>
+            ) : (
+              <>
+                <span>{mode === "login" ? "New to NeuroCity?" : "Already have an account?"}</span>
+                <button onClick={() => changeMode(mode === "login" ? "register" : "login")}>
+                  {mode === "login" ? "Create your customer account" : "Sign in instead"}
+                </button>
+              </>
+            )}
+          </div>
+          <div className="new-account-route">
+            <span>Need a different type of NeuroCity account?</span>
+            <Link href="/join">View account creation options →</Link>
           </div>
           <aside>
             <b>Merchant too?</b>

@@ -91,6 +91,12 @@ export default function AccessPage() {
             : "Choose an account type and we’ll take you through the right sign-in and workspace."}
         </p>
         {access?.authenticated && <div className="access-identity"><span>{access.user?.displayName.slice(0, 1).toUpperCase()}</span><div><b>{access.user?.displayName}</b><small>{access.user?.email}</small></div><a href="/api/auth/logout?return_to=/">Sign out</a></div>}
+        {access && !access.authenticated && (
+          <div className="access-entry-actions">
+            <span>Already have an account? Choose a workspace below to sign in.</span>
+            <Link href="/join">Create an account</Link>
+          </div>
+        )}
       </section>
 
       {failed ? (

@@ -69,6 +69,7 @@ test("renders the public onboarding routes", async (t) => {
   const routes = [
     ["/login", /Create account/],
     ["/access", /How are you using NeuroCity/],
+    ["/join", /What would you like to create/],
     ["/apply", /Apply as a merchant or service provider/],
     ["/application-status", /Track your application/],
     ["/malls", /Digital malls/],
@@ -99,6 +100,14 @@ test("keeps account selection available before sign in", async () => {
   assert.match(source, /className="account-type-card"/);
   assert.match(source, /if \(access\?\.authenticated\) return type\.destination/);
   assert.match(source, /account_type=\$\{type\.id\}/);
+  assert.match(source, /href="\/join"/);
+});
+
+test("separates customer registration from merchant application", async () => {
+  const source = await readFile(new URL("../app/join/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /mode=register&account_type=customer/);
+  assert.match(source, /href="\/apply"/);
+  assert.match(source, /Mall-manager and administrator access is assigned/);
 });
 
 test("signs out without mutating immutable redirect headers", async () => {
