@@ -106,18 +106,31 @@ export default function AccessPage() {
               : type.id === "mall" && access.mallAccounts.length
                 ? access.mallAccounts.map((item) => item.name).join(", ")
                 : null;
+            const contents = <>
+              <div className="account-type-icon" aria-hidden="true">{type.icon}</div>
+              <p>{type.eyebrow}</p>
+              <h2>{type.title}</h2>
+              <span>{type.description}</span>
+              {detail && <small className="access-role-detail">Access: {detail}</small>}
+            </>;
+            if (enabled)
+              return (
+                <Link
+                  className="account-type-card"
+                  href={href(type)}
+                  key={type.id}
+                  aria-label={`${access.authenticated ? "Open" : "Sign in to"} ${type.title}`}
+                >
+                  {contents}
+                  <span className="account-card-action">
+                    {access.authenticated ? "Open workspace" : "Continue to sign in"}<b>→</b>
+                  </span>
+                </Link>
+              );
             return (
-              <article className={enabled ? "" : "unavailable"} key={type.id}>
-                <div className="account-type-icon" aria-hidden="true">{type.icon}</div>
-                <p>{type.eyebrow}</p>
-                <h2>{type.title}</h2>
-                <span>{type.description}</span>
-                {detail && <small className="access-role-detail">Access: {detail}</small>}
-                {enabled ? (
-                  <Link href={href(type)}>{access.authenticated ? "Open workspace" : "Continue to sign in"}<b>→</b></Link>
-                ) : (
-                  <div className="access-unavailable"><span>Not assigned to this account</span>{type.id === "merchant" && <Link href="/apply">Apply as a merchant</Link>}</div>
-                )}
+              <article className="unavailable" key={type.id}>
+                {contents}
+                <div className="access-unavailable"><span>Not assigned to this account</span>{type.id === "merchant" && <Link href="/apply">Apply as a merchant</Link>}</div>
               </article>
             );
           })}
