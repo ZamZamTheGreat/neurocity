@@ -120,6 +120,37 @@ test("signs out without mutating immutable redirect headers", async () => {
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
 
+test("accepts same-origin writes behind Render's forwarding proxy", async () => {
+  const response = await request("/api/auth/register", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: "https://neurocity-fhl1.onrender.com",
+      host: "internal-service:10000",
+      "x-forwarded-host": "neurocity-fhl1.onrender.com",
+      "x-forwarded-proto": "https",
+      "sec-fetch-site": "same-origin",
+    },
+    body: "{}",
+  });
+  assert.equal(response.status, 400);
+  assert.notEqual((await response.json()).error, "Invalid request origin.");
+});
+
+test("still blocks genuinely cross-site writes", async () => {
+  const response = await request("/api/auth/login", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: "https://malicious.example",
+      host: "neurocity-fhl1.onrender.com",
+      "sec-fetch-site": "cross-site",
+    },
+    body: "{}",
+  });
+  assert.equal(response.status, 403);
+});
+
 test("rejects malformed registration before touching the database", async (t) => {
   const cases = [
     { name: "", email: "shopper@example.com", password: "long-enough-password" },
