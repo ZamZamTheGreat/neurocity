@@ -121,7 +121,7 @@ export default function AccessPage() {
             </>;
             if (enabled)
               return (
-                <Link
+                <a
                   className="account-type-card"
                   href={href(type)}
                   key={type.id}
@@ -131,7 +131,7 @@ export default function AccessPage() {
                   <span className="account-card-action">
                     {access.authenticated ? "Open workspace" : "Continue to sign in"}<b>→</b>
                   </span>
-                </Link>
+                </a>
               );
             return (
               <article className="unavailable" key={type.id}>

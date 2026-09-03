@@ -97,7 +97,7 @@ test("keeps account selection available before sign in", async () => {
   assert.match(source, /Mall management/);
   assert.match(source, /NeuroCity administration/);
   assert.match(source, /encodeURIComponent\(type\.destination\)/);
-  assert.match(source, /className="account-type-card"/);
+  assert.match(source, /<a[\s\S]*className="account-type-card"/);
   assert.match(source, /if \(access\?\.authenticated\) return type\.destination/);
   assert.match(source, /account_type=\$\{type\.id\}/);
   assert.match(source, /href="\/join"/);
