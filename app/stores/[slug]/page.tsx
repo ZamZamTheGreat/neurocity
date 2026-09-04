@@ -126,16 +126,27 @@ export default function StorefrontPage() {
       data.products.map((product) => product.collection).filter(Boolean),
     ),
   ] as string[];
-  async function accountAction(body: object) {
+  async function accountAction(body: { action?: string; [key: string]: unknown }) {
     const response = await fetch("/api/account", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (response.status === 401)
-      return (window.location.href = `/login?return_to=${encodeURIComponent(`/stores/${slug}`)}`);
+    if (response.status === 401) {
+      window.location.href = `/login?return_to=${encodeURIComponent(`/stores/${slug}`)}`;
+      return undefined;
+    }
     const result = await response.json();
-    setNotice(response.ok ? "Saved to your NeuroCity account." : result.error);
+    setNotice(
+      response.ok
+        ? body.action === "cart"
+          ? "Added to your bag. Open your account when you are ready to checkout."
+          : body.action === "wishlist"
+            ? "Saved to your wishlist."
+            : "Store saved to your NeuroCity account."
+        : result.error,
+    );
+    return response.ok;
   }
   return (
     <main id="main-content" className="storefront-v2">
@@ -157,8 +168,8 @@ export default function StorefrontPage() {
           >
             ♡ Save store
           </button>
-          <a className="store-account" href="/access">
-            Account
+          <a className="store-account" href="/account?tab=Bag">
+            View bag
           </a>
         </nav>
       </header>
@@ -186,7 +197,7 @@ export default function StorefrontPage() {
               alt={`${store.name} logo`}
             />
           )}
-          <p className="store-kicker">Verified Windhoek store</p>
+          <p className="store-kicker">Verified Namibian store</p>
           <h1>{store.name}</h1>
           {store.tagline && <h2>{store.tagline}</h2>}
           <p className="store-description">{store.description}</p>
@@ -209,7 +220,7 @@ export default function StorefrontPage() {
               <span>{store.name.slice(0, 1)}</span>
             </div>
           )}
-          <small>Independent local merchant · Windhoek</small>
+          <small>Independent local merchant · Namibia</small>
         </div>
       </section>
       <section className="store-service-strip">
@@ -259,9 +270,8 @@ export default function StorefrontPage() {
             <p className="store-kicker">Shop {store.name}</p>
             <h2>Browse the catalogue</h2>
             <p>
-              {data.products.length}{" "}
-              {data.products.length === 1 ? "product" : "products"} available
-              from this store.
+              {products.length} of {data.products.length}{" "}
+              {data.products.length === 1 ? "item" : "items"} shown
             </p>
           </div>
           <label className="store-search">
@@ -401,7 +411,7 @@ function StoreProduct({
   accountAction,
 }: {
   product: Product;
-  accountAction: (body: object) => void;
+  accountAction: (body: { action?: string; [key: string]: unknown }) => Promise<boolean | undefined>;
 }) {
   const { slug } = useParams<{ slug: string }>();
   const [variantId, setVariantId] = useState(
@@ -413,6 +423,7 @@ function StoreProduct({
   );
   const variant = product.variants.find((item) => item.id === variantId);
   const price = variant?.salePrice ?? variant?.price;
+  const [adding, setAdding] = useState(false);
   async function ask() {
     const message = window.prompt(
       `What would you like to ask about ${product.name}?`,
@@ -562,7 +573,7 @@ function StoreProduct({
                 onChange={(event) => setVariantId(Number(event.target.value))}
               >
                 {product.variants.map((item) => (
-                  <option key={item.id} value={item.id}>
+                  <option key={item.id} value={item.id} disabled={item.available !== null && item.available < 1}>
                     {[item.size, item.color].filter(Boolean).join(" / ") ||
                       item.title}
                     {item.available !== null && item.available < 1
@@ -603,19 +614,18 @@ function StoreProduct({
               </div>
               <button
                 disabled={
+                  adding ||
                   !variant ||
                   (variant.available !== null && variant.available < 1)
                 }
-                onClick={() =>
-                  variant &&
-                  accountAction({
-                    action: "cart",
-                    variantId: variant.id,
-                    quantity: 1,
-                  })
-                }
+                onClick={async () => {
+                  if (!variant) return;
+                  setAdding(true);
+                  await accountAction({ action: "cart", variantId: variant.id, quantity: 1 });
+                  setAdding(false);
+                }}
               >
-                Add to bag
+                {adding ? "Adding…" : "Add to bag"}
               </button>
             </div>
           </>

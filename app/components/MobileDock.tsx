@@ -13,7 +13,12 @@ const items = [
 export function MobileDock() {
   const [path, setPath] = useState("");
   const [selmaOpen, setSelmaOpen] = useState(false);
-  useEffect(() => setPath(window.location.pathname), []);
+  useEffect(() => {
+    setPath(window.location.pathname);
+    const openSelma = () => setSelmaOpen(true);
+    window.addEventListener("neurocity:open-selma", openSelma);
+    return () => window.removeEventListener("neurocity:open-selma", openSelma);
+  }, []);
   return (
     <>
       <nav className={`mobile-dock${selmaOpen ? " selma-open" : ""}`} aria-label="Mobile navigation">

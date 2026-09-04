@@ -204,6 +204,13 @@ export default function AccountPage() {
   useEffect(() => {
     load();
   }, [load]);
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    const match = accountTabs.find(
+      (item) => item.id.toLowerCase() === requested?.toLowerCase(),
+    );
+    if (match) setTab(match.id);
+  }, []);
   async function action(body: object) {
     const response = await fetch("/api/account", {
       method: "POST",
@@ -372,7 +379,7 @@ export default function AccountPage() {
               </div>
               <div className="customer-quick-actions">
                 <a href="/marketplace"><span aria-hidden="true">⌕</span> Browse stores</a>
-                <a href="/concierge"><span aria-hidden="true">✦</span> Ask Selma</a>
+                <button onClick={() => window.dispatchEvent(new Event("neurocity:open-selma"))}><span aria-hidden="true">✦</span> Ask Selma</button>
                 <button onClick={() => setTab("Bag")}><span aria-hidden="true">▱</span> Open bag</button>
               </div>
             </section>
@@ -868,6 +875,11 @@ function CheckoutBag({
             <h2>{merchants.length} {merchants.length === 1 ? "store" : "stores"} · one payment</h2>
           </div>
         </header>
+        <ol className="checkout-progress" aria-label="Checkout progress">
+          <li className="complete"><span>1</span><b>Bag</b></li>
+          <li className="current"><span>2</span><b>Delivery &amp; payment</b></li>
+          <li><span>3</span><b>Confirmation</b></li>
+        </ol>
         <div className="checkout-layout">
           <div>
             <section>
@@ -959,24 +971,17 @@ function CheckoutBag({
             </section>
           </div>
           <aside>
-            <h3>Order summary</h3>
-            {checkoutItems.map((item) => (
-              <article key={item.id}>
-                <div>
-                  <b>{item.productName}</b>
-                  <small>
-                    {[item.size, item.color].filter(Boolean).join(" / ") ||
-                      item.title}{" "}
-                    · Qty {item.quantity}
-                  </small>
-                </div>
-                <strong>
-                  N$
-                  {(
-                    Number(item.salePrice ?? item.price) * item.quantity
-                  ).toFixed(2)}
-                </strong>
-              </article>
+            <div className="checkout-summary-heading"><div><small>ONE PAYMENT</small><h3>Order summary</h3></div><b>{checkoutItems.reduce((sum, item) => sum + item.quantity, 0)} items</b></div>
+            {merchants.map((merchant) => (
+              <section className="checkout-merchant-group" key={merchant.id}>
+                <header><span>{merchant.name}</span><small>{checkoutItems.filter((item) => item.merchantId === merchant.id).length} lines</small></header>
+                {checkoutItems.filter((item) => item.merchantId === merchant.id).map((item) => (
+                  <article key={item.id}>
+                    <div><b>{item.productName}</b><small>{[item.size, item.color].filter(Boolean).join(" / ") || item.title} · Qty {item.quantity}</small></div>
+                    <strong>N${(Number(item.salePrice ?? item.price) * item.quantity).toFixed(2)}</strong>
+                  </article>
+                ))}
+              </section>
             ))}
             <div className="checkout-totals">
               <span>
@@ -1000,7 +1005,7 @@ function CheckoutBag({
               }
               onClick={placeOrder}
             >
-              {placing ? "Placing order..." : "Place order"}
+              {placing ? "Checking stock and creating order…" : `Pay N$${(checkoutTotal + deliveryFee).toFixed(2)} with PayToday`}
             </button>
             <small>
               Prices, inventory and delivery eligibility are checked again
@@ -1049,20 +1054,11 @@ function CheckoutBag({
                     · {item.sku}
                   </span>
                 </div>
-                <input
-                  aria-label={`Quantity for ${item.productName}`}
-                  type="number"
-                  min="0"
-                  max="20"
-                  value={item.quantity}
-                  onChange={(event) =>
-                    updateCart({
-                      action: "cart",
-                      variantId: item.variantId,
-                      quantity: Number(event.target.value),
-                    })
-                  }
-                />
+                <div className="bag-quantity" aria-label={`Quantity for ${item.productName}`}>
+                  <button aria-label={`Remove one ${item.productName}`} onClick={() => updateCart({ action: "cart", variantId: item.variantId, quantity: Math.max(0, item.quantity - 1) })}>−</button>
+                  <span>{item.quantity}</span>
+                  <button aria-label={`Add one ${item.productName}`} disabled={item.quantity >= 20} onClick={() => updateCart({ action: "cart", variantId: item.variantId, quantity: item.quantity + 1 })}>+</button>
+                </div>
                 <b>
                   N$
                   {(

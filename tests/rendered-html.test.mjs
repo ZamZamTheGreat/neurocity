@@ -271,6 +271,20 @@ test("supports one PayToday checkout across multiple merchants with T+2 settleme
   assert.match(adminTransactions, /merchant_allocation\.settled/);
 });
 
+test("keeps the customer journey connected from storefront to multi-store checkout", async () => {
+  const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
+  const account = await readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8");
+  const mobileDock = await readFile(new URL("../app/components/MobileDock.tsx", import.meta.url), "utf8");
+  assert.match(storefront, /account\?tab=Bag/);
+  assert.match(storefront, /disabled=\{item\.available !== null && item\.available < 1\}/);
+  assert.match(storefront, /Added to your bag/);
+  assert.match(account, /checkout-merchant-group/);
+  assert.match(account, /ONE PAYMENT/);
+  assert.match(account, /neurocity:open-selma/);
+  assert.match(mobileDock, /neurocity:open-selma/);
+  assert.doesNotMatch(account, /href="\/concierge"/);
+});
+
 test("supports product and service catalogue items", async () => {
   const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
   const merchantProducts = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");
