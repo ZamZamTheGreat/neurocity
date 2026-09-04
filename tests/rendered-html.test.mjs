@@ -416,3 +416,14 @@ test("hides non-public merchants and inactive malls across public routes", async
   assert.match(mallPage, /eq\(platformTenants\.status, "active"\)/);
   assert.match(mallPage, /This digital mall is not currently open/);
 });
+
+test("publishes a completed onboarding storefront into the public marketplace", async () => {
+  const setup = await readFile(new URL("../app/api/merchant/setup/route.ts", import.meta.url), "utf8");
+  const stores = await readFile(new URL("../app/api/stores/route.ts", import.meta.url), "utf8");
+  assert.match(setup, /publishing && currentMerchant\.status === "onboarding" \? "active"/);
+  assert.match(setup, /merchant\.storefront_published/);
+  assert.match(setup, /fulfillmentMethods\.length === 0/);
+  assert.match(setup, /hours\.length !== 7 \|\| invalidOpenHours/);
+  assert.match(stores, /eq\(merchants\.isPublic, true\)/);
+  assert.match(stores, /inArray\(merchants\.status, \["pilot", "active"\]\)/);
+});
