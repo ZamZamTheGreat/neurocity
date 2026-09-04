@@ -18,6 +18,7 @@ type Message = {
   role: "user" | "companion";
   text: string;
   matches?: Match[];
+  imagePreview?: string;
 };
 type Profile = { companionName: string; customerName: string };
 const prompts = [
@@ -54,6 +55,7 @@ export function NeuroConcierge({
   const [profileError, setProfileError] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const submittedPromptKey = useRef(0);
 
   useEffect(() => {
@@ -119,7 +121,7 @@ export function NeuroConcierge({
   }, [open, messages, busy]);
   useEffect(() => {
     if (guest && messages.length)
-      sessionStorage.setItem(GUEST_CHAT_KEY, JSON.stringify(messages));
+      sessionStorage.setItem(GUEST_CHAT_KEY, JSON.stringify(messages.map(({ imagePreview: _imagePreview, ...message }) => message)));
   }, [guest, messages]);
   useEffect(() => {
     if (
@@ -207,6 +209,44 @@ export function NeuroConcierge({
       },
     ]);
     setRenaming(false);
+  }
+  async function findFromImage(file?: File) {
+    if (!file || busy || !profile) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setProfileError("Choose a JPG, PNG or WebP screenshot.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileError("Choose an image smaller than 5 MB.");
+      return;
+    }
+    setProfileError("");
+    const preview = URL.createObjectURL(file);
+    setMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", text: "Find this item or something similar.", imagePreview: preview }]);
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const visionResponse = await fetch("/api/concierge/visual-search", { method: "POST", body: form });
+      const vision = await visionResponse.json();
+      if (!visionResponse.ok) throw new Error(vision.error);
+      const mall = platformSlug ?? new URLSearchParams(window.location.search).get("mall");
+      const tenantQuery = mall ? `?mall=${encodeURIComponent(mall)}` : "";
+      const searchResponse = await fetch(`/api/concierge${tenantQuery}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ message: vision.query, history: [] }),
+      });
+      const search = await searchResponse.json();
+      if (!searchResponse.ok) throw new Error(search.error);
+      setMessages((current) => [...current, { id: crypto.randomUUID(), role: "companion", text: `${vision.summary} ${search.reply}`, matches: search.matches }]);
+    } catch (error) {
+      setMessages((current) => [...current, { id: crypto.randomUUID(), role: "companion", text: error instanceof Error ? error.message : "I could not analyse that image. Try again or describe the item." }]);
+    } finally {
+      setBusy(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
   }
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -308,7 +348,10 @@ export function NeuroConcierge({
                         {profile?.companionName.slice(0, 1).toUpperCase()}
                       </span>
                     )}
-                    <p>{message.text}</p>
+                    <div className="neuro-message-content">
+                      {message.imagePreview && <img src={message.imagePreview} alt="Customer shopping reference" />}
+                      <p>{message.text}</p>
+                    </div>
                   </div>
                   {message.matches?.length ? (
                     <div className="neuro-results">
@@ -368,6 +411,11 @@ export function NeuroConcierge({
               </div>
             )}
             <form onSubmit={submit}>
+              <input ref={imageInputRef} className="visual-search-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => void findFromImage(event.target.files?.[0])} />
+              <button className="visual-search-button" type="button" disabled={busy} onClick={() => imageInputRef.current?.click()} aria-label="Upload a screenshot or take a photo to search">
+                <span aria-hidden="true">▧</span>
+                <b>Photo</b>
+              </button>
               <label>
                 <span className="sr-only">Describe what you need</span>
                 <input
@@ -382,6 +430,7 @@ export function NeuroConcierge({
               </button>
             </form>
             <footer>
+              <span className="visual-privacy">Photos are analysed by OpenAI for this search and are not saved to your NeuroCity account or chat history.</span>
               {guest ? (
                 <>
                   <span>This chat is stored only in this browser session.</span>

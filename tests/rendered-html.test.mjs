@@ -285,6 +285,20 @@ test("keeps the customer journey connected from storefront to multi-store checko
   assert.doesNotMatch(account, /href="\/concierge"/);
 });
 
+test("supports private screenshot-led catalogue search in Selma", async () => {
+  const route = await readFile(new URL("../app/api/concierge/visual-search/route.ts", import.meta.url), "utf8");
+  const companion = await readFile(new URL("../app/components/NeuroConcierge.tsx", import.meta.url), "utf8");
+  assert.match(route, /input_image/);
+  assert.match(route, /store: false/);
+  assert.match(route, /MAX_IMAGE_BYTES/);
+  assert.match(route, /OPENAI_API_KEY/);
+  assert.match(companion, /accept="image\/jpeg,image\/png,image\/webp"/);
+  assert.match(companion, /api\/concierge\/visual-search/);
+  assert.match(companion, /imagePreview: _imagePreview/);
+  assert.match(companion, /analysed by OpenAI/);
+  assert.match(companion, /not saved to your NeuroCity account or chat history/);
+});
+
 test("supports product and service catalogue items", async () => {
   const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
   const merchantProducts = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");

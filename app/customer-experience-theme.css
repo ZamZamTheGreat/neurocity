@@ -190,6 +190,41 @@
   box-shadow: 0 6px 16px #8d651e26;
 }
 
+.neuro-assistant form .visual-search-input { display: none; }
+.neuro-assistant form .visual-search-button {
+  display: grid;
+  min-width: 54px;
+  padding: 7px 8px;
+  place-items: center;
+  gap: 1px;
+  border: 1px solid #d8cdbb;
+  background: #f5efe4;
+  color: #674d20;
+  box-shadow: none;
+}
+.visual-search-button span { font-size: 18px; line-height: 1; }
+.visual-search-button b { font-size: 8px; }
+.neuro-message-content { min-width: 0; }
+.neuro-message-content > img {
+  display: block;
+  width: min(210px, 62vw);
+  max-height: 220px;
+  margin: 0 0 7px auto;
+  border: 1px solid #d8cdbd;
+  border-radius: 13px;
+  background: #eee8de;
+  object-fit: cover;
+}
+.neuro-message-content > p { margin: 0; }
+.visual-privacy {
+  display: block;
+  width: 100%;
+  margin-bottom: 5px;
+  color: #71685b;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
 .neuro-assistant > footer { background: #fffdf9; color: #81786b; }
 .neuro-assistant > footer a { color: #8a6424; font-weight: 800; }
 .neuro-thinking { color: #7d7569; }
@@ -203,4 +238,5 @@
     border-radius: 0;
   }
   .neuro-assistant header { padding-top: max(18px, env(safe-area-inset-top)); }
+  .neuro-assistant form { grid-template-columns:54px minmax(0,1fr) auto; gap:7px; }
 }
