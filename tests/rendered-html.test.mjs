@@ -297,6 +297,23 @@ test("supports one PayToday checkout across multiple merchants with T+2 settleme
   assert.match(adminTransactions, /merchant_allocation\.settled/);
 });
 
+test("protects checkout and database capacity under concurrent traffic", async () => {
+  const database = await readFile(new URL("../db/index.ts", import.meta.url), "utf8");
+  const orders = await readFile(new URL("../app/api/orders/route.ts", import.meta.url), "utf8");
+  const health = await readFile(new URL("../app/api/health/route.ts", import.meta.url), "utf8");
+  const loadTest = await readFile(new URL("../scripts/load-test.mjs", import.meta.url), "utf8");
+  assert.match(database, /DB_POOL_MAX/);
+  assert.match(database, /connectionTimeoutMillis/);
+  assert.match(database, /getDatabasePoolStats/);
+  assert.match(orders, /pg_advisory_xact_lock/);
+  assert.match(orders, /Your shopping bag changed during checkout/);
+  assert.match(orders, /stock changed during checkout/);
+  assert.match(orders, /returning\(\{ id: variantInventory\.id \}\)/);
+  assert.match(health, /databaseLatencyMs/);
+  assert.match(loadTest, /LOAD_TEST_CONCURRENCY/);
+  assert.match(loadTest, /requestsPerSecond/);
+});
+
 test("keeps the customer journey connected from storefront to multi-store checkout", async () => {
   const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
   const account = await readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8");

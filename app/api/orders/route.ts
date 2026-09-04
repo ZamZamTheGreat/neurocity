@@ -47,6 +47,9 @@ export async function POST(request: Request) {
     const subtotal = prepared.reduce((sum, group) => sum + group.subtotal, 0), deliveryFee = prepared.reduce((sum, group) => sum + group.deliveryFee, 0), total = subtotal + deliveryFee;
     const reference = `NCP-${randomUUID().replaceAll("-", "").slice(0, 16).toUpperCase()}`, notes = payload.customerNotes?.trim().slice(0, 1000) || null;
     const created = await db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(${userId})`);
+      const currentCart = await tx.select({ id: customerCartItems.id }).from(customerCartItems).where(and(eq(customerCartItems.userId, userId), inArray(customerCartItems.id, cart.map((item) => item.cartId))));
+      if (currentCart.length !== cart.length) throw new Error("Your shopping bag changed during checkout. Review it and try again.");
       const [checkout] = await tx.insert(checkoutGroups).values({ reference, customerRef: user.userId, subtotal, deliveryFee, total, paymentProvider: "paytoday", status: "awaiting_payment" }).returning();
       const createdOrders: Array<{ order: typeof orders.$inferSelect; merchant: typeof merchants.$inferSelect; items: typeof cart }> = [];
       for (const group of prepared) {
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
         await tx.insert(orderStatusEvents).values({ orderId: order.id, status: order.status, actorRef: user.userId, note: `Created under combined checkout ${reference}` });
         createdOrders.push({ order, merchant: group.merchant, items: group.items });
       }
-      for (const item of cart) { let remaining = item.quantity; for (const stock of inventoryRows.filter((row) => row.variantId === item.variantId)) { const allocation = Math.min(remaining, Math.max(0, stock.onHand - stock.reserved - stock.safetyStock)); if (allocation > 0) await tx.update(variantInventory).set({ reserved: sql`${variantInventory.reserved} + ${allocation}`, updatedAt: new Date() }).where(eq(variantInventory.id, stock.id)); remaining -= allocation; if (!remaining) break; } }
+      for (const item of cart) { let remaining = item.quantity; for (const stock of inventoryRows.filter((row) => row.variantId === item.variantId)) { const allocation = Math.min(remaining, Math.max(0, stock.onHand - stock.reserved - stock.safetyStock)); if (allocation > 0) { const [reserved] = await tx.update(variantInventory).set({ reserved: sql`${variantInventory.reserved} + ${allocation}`, updatedAt: new Date() }).where(and(eq(variantInventory.id, stock.id), sql`${variantInventory.onHand} - ${variantInventory.reserved} - ${variantInventory.safetyStock} >= ${allocation}`)).returning({ id: variantInventory.id }); if (!reserved) throw new Error(`${item.productName} stock changed during checkout. Review your bag and try again.`); } remaining -= allocation; if (!remaining) break; } if (remaining) throw new Error(`${item.productName} no longer has enough available stock.`); }
       await tx.delete(customerCartItems).where(and(eq(customerCartItems.userId, userId), inArray(customerCartItems.id, cart.map((item) => item.cartId))));
       await tx.insert(auditEvents).values({ actorRef: user.userId, action: "checkout.created", resourceType: "checkout_group", resourceId: String(checkout.id), metadata: { reference, merchantCount: createdOrders.length, itemCount: cart.length, subtotal, deliveryFee, total } });
       return { checkout, orders: createdOrders };
