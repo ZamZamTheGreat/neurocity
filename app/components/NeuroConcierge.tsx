@@ -22,7 +22,7 @@ type Message = {
   matches?: Match[];
   imagePreview?: string;
 };
-type Profile = { companionName: string; customerName: string };
+type Profile = { id?: number; companionName: string; customerName: string; memoryEnabled: boolean };
 const prompts = [
   "A local birthday gift under N$800",
   "An outfit for a Windhoek weekend under N$2,000",
@@ -72,6 +72,7 @@ export function NeuroConcierge({
           const guestProfile = {
             companionName: "Selma",
             customerName: "there",
+            memoryEnabled: false,
           };
           setGuest(true);
           setProfile(guestProfile);
@@ -94,18 +95,24 @@ export function NeuroConcierge({
         const result = await response.json();
         if (!response.ok) throw new Error(result.error);
         const next = {
+          id: result.profile.id,
           companionName: result.profile.companionName,
           customerName: result.customer.displayName,
+          memoryEnabled: result.profile.memoryEnabled === true,
         };
         setProfile(next);
         setNewName(next.companionName);
-        setMessages([
+        const welcome: Message =
           {
             id: "welcome",
             role: "companion",
             text: `Hello ${next.customerName}, I’m ${next.companionName}—your local shopping companion. Tell me what you need, your town or preferred pickup area, and your budget in N$. I’ll check NeuroCity’s live Namibian catalogues.`,
-          },
-        ]);
+          };
+        let remembered: Message[] = [];
+        if (next.memoryEnabled && next.id) {
+          try { remembered = JSON.parse(localStorage.getItem(`neurocity_selma_chat_${next.id}`) ?? "[]") as Message[]; } catch { remembered = []; }
+        }
+        setMessages(remembered.length ? remembered : [welcome]);
       } catch {
         if (!cancelled)
           setProfileError("Your companion could not be opened right now.");
@@ -125,6 +132,10 @@ export function NeuroConcierge({
     if (guest && messages.length)
       sessionStorage.setItem(GUEST_CHAT_KEY, JSON.stringify(messages.map(({ imagePreview: _imagePreview, ...message }) => message)));
   }, [guest, messages]);
+  useEffect(() => {
+    if (!guest && profile?.id && profile.memoryEnabled && messages.length)
+      localStorage.setItem(`neurocity_selma_chat_${profile.id}`, JSON.stringify(messages.slice(-40).map(({ imagePreview: _imagePreview, ...message }) => message)));
+  }, [guest, profile, messages]);
   useEffect(() => {
     if (
       !open ||
@@ -212,6 +223,22 @@ export function NeuroConcierge({
     ]);
     setRenaming(false);
   }
+  async function toggleMemory() {
+    if (!profile || guest) return;
+    setProfileError("");
+    const enabled = !profile.memoryEnabled;
+    const response = await fetch("/api/concierge/profile", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ memoryEnabled: enabled }) });
+    const result = await response.json();
+    if (!response.ok) return setProfileError(result.error);
+    if (!enabled && profile.id) localStorage.removeItem(`neurocity_selma_chat_${profile.id}`);
+    setProfile({ ...profile, memoryEnabled: enabled });
+    setMessages((current) => [...current, { id: crypto.randomUUID(), role: "companion", text: enabled ? "Memory is on for this device. I’ll keep this conversation here until you clear it or turn memory off." : "Memory is off. This conversation will not be kept after you leave." }]);
+  }
+  function clearRememberedChat() {
+    if (!profile?.id) return;
+    localStorage.removeItem(`neurocity_selma_chat_${profile.id}`);
+    setMessages([{ id: "welcome", role: "companion", text: `Hello ${profile.customerName}, I’m ${profile.companionName}. What can I help you find today?` }]);
+  }
   async function findFromImage(file?: File) {
     if (!file || busy || !profile) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
@@ -290,12 +317,11 @@ export function NeuroConcierge({
           </div>
           <div className="companion-header-actions">
             {profile && !guest && (
-              <button
-                onClick={() => setRenaming(!renaming)}
-                aria-label="Rename your companion"
-              >
-                Rename
-              </button>
+              <>
+                <button onClick={() => void toggleMemory()} aria-pressed={profile.memoryEnabled}>{profile.memoryEnabled ? "Memory on" : "Memory off"}</button>
+                {profile.memoryEnabled && <button onClick={clearRememberedChat}>Clear chat</button>}
+                <button onClick={() => setRenaming(!renaming)} aria-label="Rename your companion">Rename</button>
+              </>
             )}
             {guest && <button onClick={endGuestChat}>End chat</button>}
             <button onClick={onClose} aria-label="Close companion">
@@ -445,7 +471,7 @@ export function NeuroConcierge({
                   </a>
                 </>
               ) : (
-                `${profile?.companionName} only recommends products currently published by approved stores.`
+                `${profile?.companionName} only recommends products currently published by approved stores. ${profile?.memoryEnabled ? "Memory is stored for this account on this device." : "Memory is off."}`
               )}
             </footer>
           </>

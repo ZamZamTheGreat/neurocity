@@ -380,6 +380,23 @@ test("grounds Selma's OpenAI reasoning in live catalogue results", async () => {
   assert.match(route, /eligibleBranchIds\.has\(item\.branchId\)/);
 });
 
+test("protects Selma costs and keeps signed-in memory opt-in", async () => {
+  const search = await readFile(new URL("../app/api/concierge/route.ts", import.meta.url), "utf8");
+  const visual = await readFile(new URL("../app/api/concierge/visual-search/route.ts", import.meta.url), "utf8");
+  const limiter = await readFile(new URL("../lib/concierge-rate-limit.ts", import.meta.url), "utf8");
+  const profile = await readFile(new URL("../app/api/concierge/profile/route.ts", import.meta.url), "utf8");
+  const companion = await readFile(new URL("../app/components/NeuroConcierge.tsx", import.meta.url), "utf8");
+  assert.match(search, /checkConciergeRateLimit\(request, "search"\)/);
+  assert.match(visual, /checkConciergeRateLimit\(request, "visual"\)/);
+  assert.match(limiter, /search: 20, visual: 5/);
+  assert.match(limiter, /status: 429|retry-after/);
+  assert.match(profile, /memoryEnabled !== undefined/);
+  assert.match(companion, /neurocity_selma_chat_\$\{next\.id\}/);
+  assert.match(companion, /Memory off/);
+  assert.match(companion, /Clear chat/);
+  assert.match(companion, /messages\.slice\(-40\)/);
+});
+
 test("supports product and service catalogue items", async () => {
   const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
   const merchantProducts = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");

@@ -2,6 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { merchants, platformTenantMerchants, products, productVariants, storeBranches, storeHours, variantInventory } from "../../../db/schema";
 import { resolvePlatformTenant } from "../../../lib/platform-tenant";
+import { checkConciergeRateLimit, rateLimitHeaders } from "../../../lib/concierge-rate-limit";
 
 const STOP = new Set(["a", "an", "and", "for", "from", "i", "in", "is", "me", "my", "need", "of", "or", "please", "show", "some", "the", "to", "want", "with"]);
 const COLOURS = ["black", "white", "red", "blue", "green", "purple", "maroon", "grey", "gray", "navy", "brown", "yellow", "pink", "orange"];
@@ -63,6 +64,8 @@ function windhoekClock() {
 
 export async function POST(request: Request) {
   try {
+    const limit = checkConciergeRateLimit(request, "search");
+    if (!limit.allowed) return Response.json({ error: "Selma has received too many requests from this connection. Please wait a few minutes and try again." }, { status: 429, headers: rateLimitHeaders(limit) });
     const contentLength = Number(request.headers.get("content-length") ?? 0);
     if (contentLength > 32_000) return Response.json({ error: "That request is too large." }, { status: 413 });
     const body = await request.json() as { message?: unknown; history?: unknown };

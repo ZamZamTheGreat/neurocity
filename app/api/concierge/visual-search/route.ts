@@ -1,3 +1,5 @@
+import { checkConciergeRateLimit, rateLimitHeaders } from "../../../../lib/concierge-rate-limit";
+
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -9,6 +11,8 @@ function outputText(result: { output?: { content?: { type?: string; text?: strin
 
 export async function POST(request: Request) {
   try {
+    const limit = checkConciergeRateLimit(request, "visual");
+    if (!limit.allowed) return Response.json({ error: "The photo-search limit has been reached. Please wait a few minutes or describe the item instead." }, { status: 429, headers: rateLimitHeaders(limit) });
     const form = await request.formData();
     const image = form.get("image");
     if (!(image instanceof File)) return Response.json({ error: "Choose a screenshot or photo first." }, { status: 400 });
