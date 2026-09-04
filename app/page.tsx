@@ -318,7 +318,7 @@ export function MarketplaceExperience({
               }
             >
               <a href="/account">Customer account</a>
-              <a href="/?workspace=merchant">Merchant workspace</a>
+              <a href="/marketplace?workspace=merchant">Merchant workspace</a>
               <a href="/mall-manager">Mall management</a>
               <a href="/admin">Administration</a>
               <a href="/application-status">Track application</a>

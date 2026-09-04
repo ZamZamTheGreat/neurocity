@@ -25,7 +25,7 @@ const accountTypes = [
     eyebrow: "Business",
     title: "Merchant workspace",
     description: "Manage your storefront, catalogue, orders, bookings, inventory and settlements.",
-    destination: "/?workspace=merchant",
+    destination: "/marketplace?workspace=merchant",
   },
   {
     id: "mall",

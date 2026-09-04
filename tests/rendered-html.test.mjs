@@ -94,6 +94,8 @@ test("keeps account selection available before sign in", async () => {
   const source = await readFile(new URL("../app/access/page.tsx", import.meta.url), "utf8");
   assert.match(source, /Customer account/);
   assert.match(source, /Merchant workspace/);
+  assert.match(source, /destination: "\/marketplace\?workspace=merchant"/);
+  assert.doesNotMatch(source, /destination: "\/\?workspace=merchant"/);
   assert.match(source, /Mall management/);
   assert.match(source, /NeuroCity administration/);
   assert.match(source, /encodeURIComponent\(type\.destination\)/);
