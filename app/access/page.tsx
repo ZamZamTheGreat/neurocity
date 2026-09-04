@@ -133,10 +133,25 @@ export default function AccessPage() {
                   </span>
                 </a>
               );
+            if (type.id === "merchant" && access.authenticated)
+              return (
+                <a
+                  className="account-type-card account-type-application"
+                  href="/apply"
+                  key={type.id}
+                  aria-label="Apply for a NeuroCity Marketplace merchant storefront"
+                >
+                  {contents}
+                  <small className="access-role-detail">No merchant workspace is connected yet.</small>
+                  <span className="account-card-action">
+                    Apply to NeuroCity Marketplace<b>→</b>
+                  </span>
+                </a>
+              );
             return (
               <article className="unavailable" key={type.id}>
                 {contents}
-                <div className="access-unavailable"><span>Not assigned to this account</span>{type.id === "merchant" && <Link href="/apply">Apply as a merchant</Link>}</div>
+                <div className="access-unavailable"><span>Not assigned to this account</span></div>
               </article>
             );
           })}

@@ -111,8 +111,12 @@ test("separates customer registration from merchant application", async () => {
 });
 
 test("lets a signed-in customer apply with the same NeuroCity account", async () => {
+  const access = await readFile(new URL("../app/access/page.tsx", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/apply/page.tsx", import.meta.url), "utf8");
   const route = await readFile(new URL("../app/api/applications/route.ts", import.meta.url), "utf8");
+  assert.match(access, /href="\/apply"/);
+  assert.match(access, /Apply to NeuroCity Marketplace/);
+  assert.match(access, /No merchant workspace is connected yet/);
   assert.match(page, /fetch\("\/api\/auth\/access"\)/);
   assert.match(page, /Using your NeuroCity account/);
   assert.match(page, /No new password is needed/);
