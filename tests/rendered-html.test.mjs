@@ -358,6 +358,18 @@ test("supports private screenshot-led catalogue search in Selma", async () => {
   assert.match(companion, /not saved to your NeuroCity account or chat history/);
 });
 
+test("grounds Selma's OpenAI reasoning in live catalogue results", async () => {
+  const route = await readFile(new URL("../app/api/concierge/route.ts", import.meta.url), "utf8");
+  assert.match(route, /OPENAI_CONCIERGE_MODEL/);
+  assert.match(route, /reasoning: \{ effort: "low" \}/);
+  assert.match(route, /liveCatalogueFacets/);
+  assert.match(route, /Do not invent products, stores, prices or availability/);
+  assert.match(route, /reasoning: intent \? "openai" : "local_fallback"/);
+  assert.match(route, /eq\(products\.status, "published"\)/);
+  assert.match(route, /eq\(merchants\.isPublic, true\)/);
+  assert.match(route, /item\.onHand - item\.reserved - item\.safetyStock > 0/);
+});
+
 test("supports product and service catalogue items", async () => {
   const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
   const merchantProducts = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");
