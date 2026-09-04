@@ -122,6 +122,11 @@ test("lets a signed-in customer apply with the same NeuroCity account", async ()
   assert.match(access, /onClick=\{loadAccess\}/);
   assert.match(access, /Apply for another storefront/);
   assert.match(access, /Track an application/);
+  assert.match(access, /aria-label="NeuroCity navigation"/);
+  assert.match(access, /href="\/marketplace"/);
+  assert.match(access, /href="\/malls"/);
+  assert.match(access, /aria-current="page"/);
+  assert.match(access, /Start shopping/);
   assert.match(page, /fetch\("\/api\/auth\/access"\)/);
   assert.match(page, /Using your NeuroCity account/);
   assert.match(page, /No new password is needed/);

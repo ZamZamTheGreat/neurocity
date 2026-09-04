@@ -84,7 +84,13 @@ export default function AccessPage() {
           <img src="/branding/neurocity-malls-mark.png" alt="" />
           <span><b className="network-wordmark">Neuro<span>City</span></b><small>One identity · every workspace</small></span>
         </Link>
-        <Link href="/">Back to NeuroCity</Link>
+        <nav className="account-centre-nav" aria-label="NeuroCity navigation">
+          <Link href="/">Network</Link>
+          <Link href="/marketplace">Marketplace</Link>
+          <Link href="/malls">Digital malls</Link>
+          <Link href="/access" aria-current="page">Account centre</Link>
+        </nav>
+        <Link className="account-centre-shop" href="/marketplace">Start shopping <span>→</span></Link>
       </header>
 
       <section className="access-intro">
