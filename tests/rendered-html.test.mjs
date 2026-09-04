@@ -363,7 +363,7 @@ test("grounds Selma's OpenAI reasoning in live catalogue results", async () => {
   assert.match(route, /OPENAI_CONCIERGE_MODEL/);
   assert.match(route, /reasoning: \{ effort: "low" \}/);
   assert.match(route, /liveCatalogueFacets/);
-  assert.match(route, /Do not invent products, stores, prices or availability/);
+  assert.match(route, /Do not invent products, stores, branches, prices, hours or availability/);
   assert.match(route, /reasoning: intent \? "openai" : "local_fallback"/);
   assert.match(route, /eq\(products\.status, "published"\)/);
   assert.match(route, /eq\(merchants\.isPublic, true\)/);
@@ -373,6 +373,11 @@ test("grounds Selma's OpenAI reasoning in live catalogue results", async () => {
   assert.match(route, /function numericPrice/);
   assert.match(route, /history\.length > 20/);
   assert.doesNotMatch(route, /relevant\.length \? relevant : ranked/);
+  assert.match(route, /timeZone: "Africa\/Windhoek"/);
+  assert.match(route, /intent\?\.needsLocation/);
+  assert.match(route, /intent\?\.fulfillment === "pickup"/);
+  assert.match(route, /intent\?\.availability === "open_now"/);
+  assert.match(route, /eligibleBranchIds\.has\(item\.branchId\)/);
 });
 
 test("supports product and service catalogue items", async () => {

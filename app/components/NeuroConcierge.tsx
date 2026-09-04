@@ -11,6 +11,8 @@ type Match = {
   availableUnits: number;
   colours: string[];
   sizes: string[];
+  fulfillment?: { pickup: boolean; delivery: boolean };
+  branches?: { name: string; address: string; city: string }[];
   store: { name: string; slug: string };
 };
 type Message = {
@@ -380,6 +382,9 @@ export function NeuroConcierge({
                             <strong>{money(match.price)}</strong>
                             {match.availableUnits > 0 && (
                               <em>{match.availableUnits} available</em>
+                            )}
+                            {match.branches?.[0] && (
+                              <small>{match.branches[0].city} · {match.fulfillment?.pickup ? "Pickup" : ""}{match.fulfillment?.pickup && match.fulfillment?.delivery ? " + " : ""}{match.fulfillment?.delivery ? "Delivery" : ""}</small>
                             )}
                           </div>
                           <a href={`/stores/${match.store.slug}#shop`}>View</a>
