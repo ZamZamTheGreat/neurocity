@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 type Access = {
@@ -49,7 +49,8 @@ export default function AccessPage() {
   const [access, setAccess] = useState<Access | null>(null);
   const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
+  const loadAccess = useCallback(() => {
+    setFailed(false);
     fetch("/api/auth/access", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("access_unavailable");
@@ -58,6 +59,10 @@ export default function AccessPage() {
       .then(setAccess)
       .catch(() => setFailed(true));
   }, []);
+
+  useEffect(() => {
+    loadAccess();
+  }, [loadAccess]);
 
   function available(id: (typeof accountTypes)[number]["id"]) {
     if (!access?.authenticated) return true;
@@ -100,7 +105,7 @@ export default function AccessPage() {
       </section>
 
       {failed ? (
-        <div className="access-error">We couldn’t check your account access. Please refresh and try again.</div>
+        <div className="access-error" role="alert"><span>We couldn’t check your account access.</span><button type="button" onClick={loadAccess}>Try again</button></div>
       ) : !access ? (
         <div className="access-loading">Checking your account access…</div>
       ) : (
@@ -114,6 +119,15 @@ export default function AccessPage() {
                 : null;
             const contents = <>
               <div className="account-type-icon" aria-hidden="true">{type.icon}</div>
+              <small className={`account-access-state ${access.authenticated && enabled ? "ready" : "restricted"}`}>
+                {!access.authenticated
+                  ? "Sign-in required"
+                  : enabled
+                    ? "Ready to open"
+                    : type.id === "merchant"
+                      ? "Application required"
+                      : "Access not assigned"}
+              </small>
               <p>{type.eyebrow}</p>
               <h2>{type.title}</h2>
               <span>{type.description}</span>
@@ -156,6 +170,13 @@ export default function AccessPage() {
             );
           })}
         </section>
+      )}
+      {access?.authenticated && (
+        <nav className="access-quick-actions" aria-label="Account shortcuts">
+          <div><b>Business shortcuts</b><span>Grow your NeuroCity presence from the same account.</span></div>
+          <Link href="/apply">Apply for another storefront</Link>
+          <Link href="/application-status">Track an application</Link>
+        </nav>
       )}
       <footer>
         <b>One NeuroCity account</b>

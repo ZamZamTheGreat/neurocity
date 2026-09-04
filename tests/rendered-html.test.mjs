@@ -117,6 +117,11 @@ test("lets a signed-in customer apply with the same NeuroCity account", async ()
   assert.match(access, /href="\/apply"/);
   assert.match(access, /Apply to NeuroCity Marketplace/);
   assert.match(access, /No merchant workspace is connected yet/);
+  assert.match(access, /Ready to open/);
+  assert.match(access, /Application required/);
+  assert.match(access, /onClick=\{loadAccess\}/);
+  assert.match(access, /Apply for another storefront/);
+  assert.match(access, /Track an application/);
   assert.match(page, /fetch\("\/api\/auth\/access"\)/);
   assert.match(page, /Using your NeuroCity account/);
   assert.match(page, /No new password is needed/);
