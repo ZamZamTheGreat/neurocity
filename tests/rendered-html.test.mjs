@@ -328,6 +328,11 @@ test("keeps merchant approval transactional and document-gated", async () => {
   assert.match(patchHandler, /tx\.insert\(merchants\)/);
   assert.match(patchHandler, /tx\.insert\(merchantMemberships\)/);
   assert.match(patchHandler, /tx\.insert\(platformTenantMerchants\)/);
+  assert.match(patchHandler, /transitions\[application\.status\]/);
+  assert.match(patchHandler, /eq\(users\.status, "active"\)/);
+  assert.match(patchHandler, /onConflictDoUpdate/);
+  assert.match(patchHandler, /Application was changed by another administrator/);
+  assert.match(await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8"), /Awaiting documents/);
   assert.doesNotMatch(patchHandler, /storageKeys/);
 });
 

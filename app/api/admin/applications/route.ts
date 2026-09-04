@@ -6,7 +6,18 @@ import { createPresignedR2Url } from "../../../../lib/r2";
 import { getChatGPTUser } from "../../../chatgpt-auth";
 
 const allowed = new Set(["under_review", "more_information_required", "approved", "rejected"]);
-const slugify = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 180);
+const transitions: Record<string, Set<string>> = {
+  submitted: new Set(["under_review", "more_information_required", "approved", "rejected"]),
+  under_review: new Set(["more_information_required", "approved", "rejected"]),
+  more_information_required: new Set(["under_review", "approved", "rejected"]),
+  rejected: new Set(["under_review"]),
+  approved: new Set(),
+};
+const slugify = (value: string, applicationId: number) => {
+  const suffix = `-${applicationId}`;
+  const stem = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "merchant";
+  return `${stem.slice(0, 200 - suffix.length)}${suffix}`;
+};
 const documentViewUrl = (storageKey: string, originalName: string | null) => { try { return createPresignedR2Url("GET", storageKey, 300, `inline; filename="${(originalName ?? "document").replace(/["\\]/g, "-")}"`); } catch { return null; } };
 
 export async function GET() { const user = await getChatGPTUser(); if (user?.platformRole !== "administrator") return Response.json({ error: "Administrator access required." }, { status: 403 }); const db = getDb(); const applications = await db.select().from(merchantApplications).orderBy(desc(merchantApplications.submittedAt)); const merchantList = await db.select().from(merchants).orderBy(desc(merchants.createdAt)); const tenants = await db.select({ id: platformTenants.id, name: platformTenants.name }).from(platformTenants); const documents = applications.length ? await db.select().from(applicationDocuments).where(inArray(applicationDocuments.applicationId, applications.map((item) => item.id))) : []; const withDocuments = applications.map((application) => ({ ...application, targetPlatformName: application.platformTenantId ? tenants.find((tenant) => tenant.id === application.platformTenantId)?.name ?? "Digital mall" : "NeuroCity Marketplace", documents: documents.filter((document) => document.applicationId === application.id).map((document) => ({ ...document, viewUrl: document.status === "uploaded" && document.storageKey ? documentViewUrl(document.storageKey, document.originalName) : null })) })); return Response.json({ applications: withDocuments, merchants: merchantList }); }
@@ -18,15 +29,34 @@ export async function PATCH(request: Request) {
   if (!Number.isInteger(id) || !status || !allowed.has(status)) return Response.json({ error: "Valid application and review status required." }, { status: 400 });
   const db = getDb(); const [application] = await db.select().from(merchantApplications).where(eq(merchantApplications.id, id!)).limit(1);
   if (!application) return Response.json({ error: "Application not found." }, { status: 404 });
+  if (!transitions[application.status]?.has(status)) {
+    const message = application.status === "approved"
+      ? "This application is already approved. Manage suspension or removal from the Merchants section."
+      : `This application cannot move from ${application.status.replaceAll("_", " ")} to ${status.replaceAll("_", " ")}.`;
+    return Response.json({ error: message }, { status: 409 });
+  }
+  let account: typeof users.$inferSelect | undefined;
+  let tenant: typeof platformTenants.$inferSelect | undefined;
   if (status === "approved") {
-    const documents = await db.select({ status: applicationDocuments.status }).from(applicationDocuments).where(eq(applicationDocuments.applicationId, application.id));
-    if (documents.length !== 4 || documents.some((document) => document.status !== "uploaded")) return Response.json({ error: "All four required documents must be uploaded before approval." }, { status: 409 });
+    const documents = await db.select({ documentType: applicationDocuments.documentType, status: applicationDocuments.status }).from(applicationDocuments).where(eq(applicationDocuments.applicationId, application.id));
+    const requiredDocuments = new Set(["business_registration", "representative_identification", "proof_of_business_address", "bank_confirmation_letter"]);
+    if (documents.length !== requiredDocuments.size || documents.some((document) => !requiredDocuments.has(document.documentType) || document.status !== "uploaded")) return Response.json({ error: "All four required documents must be uploaded before approval." }, { status: 409 });
+    [account] = await db.select().from(users).where(and(eq(users.email, application.email), eq(users.status, "active"))).limit(1);
+    if (!account) return Response.json({ error: "The applicant account is unavailable. Ask the applicant to contact NeuroCity support before approval." }, { status: 409 });
+    [tenant] = application.platformTenantId
+      ? await db.select().from(platformTenants).where(and(eq(platformTenants.id, application.platformTenantId), eq(platformTenants.status, "active"))).limit(1)
+      : await db.select().from(platformTenants).where(and(eq(platformTenants.slug, "neurocity"), eq(platformTenants.status, "active"))).limit(1);
+    if (!tenant) return Response.json({ error: "The destination marketplace or mall is unavailable. Reactivate it before approving this application." }, { status: 409 });
   }
   let merchantId = application.merchantId;
   await db.transaction(async (tx) => {
-    if (status === "approved" && !merchantId) { const [merchant] = await tx.insert(merchants).values({ name: application.tradingName, slug: `${slugify(application.tradingName) || "merchant"}-${application.id}`, category: application.category, offeringType: application.offeringType, locationType: application.locationType, mainOperatingArea: application.mainOperatingArea, status: "onboarding", contactName: application.representativeName, contactEmail: application.email, contactPhone: application.phone, website: application.website, pickupLocation: application.physicalAddress, deliveryMode: application.deliveryAvailable ? "merchant_managed" : "pickup_only", setupStep: 1 }).returning(); merchantId = merchant.id; }
-    if (status === "approved" && merchantId) { const [account] = await tx.select().from(users).where(eq(users.email, application.email)).limit(1); if (account) await tx.insert(merchantMemberships).values({ merchantId, userRef: String(account.id), email: account.email, displayName: account.displayName, role: "owner", status: "active" }).onConflictDoNothing(); const [tenant] = application.platformTenantId ? await tx.select().from(platformTenants).where(eq(platformTenants.id, application.platformTenantId)).limit(1) : await tx.select().from(platformTenants).where(eq(platformTenants.slug, "neurocity")).limit(1); if (tenant) await tx.insert(platformTenantMerchants).values({ tenantId: tenant.id, merchantId, status: "active" }).onConflictDoNothing(); }
-    await tx.update(merchantApplications).set({ status, reviewNotes: notes?.trim() || null, reviewedAt: new Date(), reviewedBy: Number(user.userId), merchantId }).where(and(eq(merchantApplications.id, application.id), eq(merchantApplications.status, application.status)));
+    if (status === "approved" && !merchantId) { const [merchant] = await tx.insert(merchants).values({ name: application.tradingName, slug: slugify(application.tradingName, application.id), category: application.category, offeringType: application.offeringType, locationType: application.locationType, mainOperatingArea: application.mainOperatingArea, status: "onboarding", contactName: application.representativeName, contactEmail: application.email, contactPhone: application.phone, website: application.website, pickupLocation: application.physicalAddress, deliveryMode: application.deliveryAvailable ? "merchant_managed" : "pickup_only", setupStep: 1 }).returning(); merchantId = merchant.id; }
+    if (status === "approved" && merchantId && account && tenant) {
+      await tx.insert(merchantMemberships).values({ merchantId, userRef: String(account.id), email: account.email, displayName: account.displayName, role: "owner", status: "active" }).onConflictDoUpdate({ target: [merchantMemberships.merchantId, merchantMemberships.userRef], set: { email: account.email, displayName: account.displayName, role: "owner", status: "active" } });
+      await tx.insert(platformTenantMerchants).values({ tenantId: tenant.id, merchantId, status: "active" }).onConflictDoUpdate({ target: [platformTenantMerchants.tenantId, platformTenantMerchants.merchantId], set: { status: "active" } });
+    }
+    const [updated] = await tx.update(merchantApplications).set({ status, reviewNotes: notes?.trim() || null, reviewedAt: new Date(), reviewedBy: Number(user.userId), merchantId }).where(and(eq(merchantApplications.id, application.id), eq(merchantApplications.status, application.status))).returning({ id: merchantApplications.id });
+    if (!updated) throw new Error("Application was changed by another administrator. Refresh and try again.");
     await tx.insert(auditEvents).values({ actorRef: user.userId, action: `application.${status}`, resourceType: "merchant_application", resourceId: String(application.id), metadata: { notes: notes?.trim() || null, merchantId } });
   });
   const appUrl = process.env.APP_URL ?? "https://neurocity-fhl1.onrender.com";

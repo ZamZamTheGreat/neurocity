@@ -707,7 +707,7 @@ function ApplicationList({
                     {deletingId === item.id ? "Deleting…" : "Delete data"}
                   </button>
                 )}
-                {item.status !== "rejected" && (
+                {!item.merchantId && item.status !== "rejected" && (
                   <button
                     className="danger-text"
                     onClick={() => review(item.id, "rejected")}
@@ -715,12 +715,14 @@ function ApplicationList({
                     Reject
                   </button>
                 )}
-                {item.status !== "approved" && (
+                {!item.merchantId && item.status !== "approved" && (
                   <button
                     className="primary-action"
+                    disabled={completeDocuments !== 4}
+                    title={completeDocuments !== 4 ? "All four required documents must be uploaded first." : "Create the merchant workspace and owner access."}
                     onClick={() => review(item.id, "approved")}
                   >
-                    Approve merchant
+                    {completeDocuments === 4 ? "Approve merchant" : `Awaiting documents (${completeDocuments}/4)`}
                   </button>
                 )}
               </div>
