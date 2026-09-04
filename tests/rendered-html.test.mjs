@@ -314,6 +314,20 @@ test("protects checkout and database capacity under concurrent traffic", async (
   assert.match(loadTest, /requestsPerSecond/);
 });
 
+test("supports guided iOS Home Screen installation", async () => {
+  const installer = await readFile(new URL("../app/components/PwaInstaller.tsx", import.meta.url), "utf8");
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8");
+  assert.match(installer, /iPad\|iPhone\|iPod/);
+  assert.match(installer, /navigator\.standalone|navigatorWithStandalone\.standalone/);
+  assert.match(installer, /display-mode: standalone/);
+  assert.match(installer, /Add to Home Screen/);
+  assert.match(installer, /aria-modal="true"/);
+  assert.match(layout, /appleWebApp/);
+  assert.match(layout, /neurocity-malls-180/);
+  assert.equal(JSON.parse(manifest).display, "standalone");
+});
+
 test("keeps the customer journey connected from storefront to multi-store checkout", async () => {
   const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
   const account = await readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8");
