@@ -22,14 +22,16 @@ export async function POST(request: Request) {
     const aiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
+      signal: AbortSignal.timeout(15_000),
       body: JSON.stringify({
         model: process.env.OPENAI_VISION_MODEL ?? "gpt-5.4-mini",
         store: false,
         max_output_tokens: 220,
+        text: { format: { type: "json_schema", name: "visual_product_search", strict: true, schema: { type: "object", additionalProperties: false, properties: { summary: { type: "string" }, query: { type: "string" }, category: { type: "string" }, colours: { type: "array", items: { type: "string" }, maxItems: 6 }, attributes: { type: "array", items: { type: "string" }, maxItems: 10 } }, required: ["summary", "query", "category", "colours", "attributes"] } } },
         input: [{
           role: "user",
           content: [
-            { type: "input_text", text: "Identify the main purchasable item in this image for a Namibian marketplace search. Return only compact JSON with keys summary (one friendly sentence), query (specific search phrase), category, colours (array), and attributes (array). Do not identify people, infer sensitive traits, or reproduce personal information visible in the image." },
+            { type: "input_text", text: "Identify the main purchasable item in this image for a Namibian marketplace search. Do not identify people, infer sensitive traits, or reproduce personal information visible in the image." },
             { type: "input_image", image_url: dataUrl, detail: "low" },
           ],
         }],
@@ -40,7 +42,7 @@ export async function POST(request: Request) {
       console.error("visual search analysis failed", { status: aiResponse.status, error: result.error?.message });
       return Response.json({ error: "Selma could not analyse this image right now. Try again or describe the item." }, { status: 502 });
     }
-    const raw = outputText(result)?.trim().replace(/^```json\s*/i, "").replace(/```$/, "");
+    const raw = outputText(result)?.trim();
     if (!raw) return Response.json({ error: "Selma could not identify a clear item. Try a closer screenshot or describe it." }, { status: 422 });
     const analysis = JSON.parse(raw) as { summary?: string; query?: string; category?: string; colours?: string[]; attributes?: string[] };
     const query = [analysis.query, analysis.category, ...(analysis.colours ?? []), ...(analysis.attributes ?? [])].filter(Boolean).join(" ").slice(0, 300);

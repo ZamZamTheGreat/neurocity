@@ -6,6 +6,7 @@ import { resolvePlatformTenant } from "../../../lib/platform-tenant";
 const STOP = new Set(["a", "an", "and", "for", "from", "i", "in", "is", "me", "my", "need", "of", "or", "please", "show", "some", "the", "to", "want", "with"]);
 const COLOURS = ["black", "white", "red", "blue", "green", "purple", "maroon", "grey", "gray", "navy", "brown", "yellow", "pink", "orange"];
 const SIZES = ["xxs", "xs", "small", "medium", "large", "xl", "xxl", "2xl", "3xl"];
+const GENERIC_SEARCH_TERMS = new Set(["available", "browse", "buy", "cheapest", "collect", "expensive", "find", "item", "items", "local", "locally", "product", "products", "service", "services", "something", "today"]);
 
 type SearchIntent = { searchTerms: string[]; categories: string[]; brands: string[]; colours: string[]; sizes: string[]; itemType: "any" | "product" | "service"; budgetMin: number | null; budgetMax: number | null; sort: "relevance" | "price_asc" | "price_desc" };
 
@@ -47,9 +48,22 @@ function parseBudget(query: string) {
   return match ? Number(match[1].replaceAll(",", "")) : null;
 }
 
+function numericPrice(...values: unknown[]) {
+  const raw = values.find((value) => value !== null && value !== undefined && value !== "");
+  if (raw === undefined) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
 export async function POST(request: Request) {
   try {
-    const { message = "", history = [] } = await request.json() as { message?: string; history?: { role?: string; text?: string }[] };
+    const contentLength = Number(request.headers.get("content-length") ?? 0);
+    if (contentLength > 32_000) return Response.json({ error: "That request is too large." }, { status: 413 });
+    const body = await request.json() as { message?: unknown; history?: unknown };
+    if (typeof body.message !== "string" || (body.history !== undefined && !Array.isArray(body.history))) return Response.json({ error: "Enter a valid shopping request." }, { status: 400 });
+    const message = body.message;
+    const history = (Array.isArray(body.history) ? body.history : []) as { role?: string; text?: string }[];
+    if (history.length > 20) return Response.json({ error: "Too much conversation context was supplied." }, { status: 400 });
     const query = message.trim().toLowerCase();
     if (query.length < 2 || query.length > 300) return Response.json({ error: "Describe what you need in 2 to 300 characters." }, { status: 400 });
     const db = getDb(); const platform = await resolvePlatformTenant(request);
@@ -71,19 +85,22 @@ export async function POST(request: Request) {
     const terms = [...new Set([...(intent?.searchTerms ?? []), ...(intent?.categories ?? []), ...(intent?.brands ?? []), ...localTerms].flatMap((value) => value.toLowerCase().split(/[^a-z0-9]+/)).filter((term) => term.length > 1 && !STOP.has(term)))];
     const ranked = catalogue.map((product) => {
       const options = active.filter((item) => item.productId === product.id).filter((option) => inventory.filter((item) => item.variantId === option.id).some((item) => item.onHand - item.reserved - item.safetyStock > 0));
-      const prices = options.map((item) => Number(item.salePrice ?? item.price)).filter(Number.isFinite); const price = prices.length ? Math.min(...prices) : Number(product.salePrice ?? product.price);
+      const prices = options.map((item) => numericPrice(item.salePrice, item.price)).filter((value): value is number => value !== null); const price = prices.length ? Math.min(...prices) : numericPrice(product.salePrice, product.price);
       const searchable = [product.name, product.collection, product.category, product.brand, product.description, product.storeName, ...options.flatMap((item) => [item.title, item.color, item.size])].filter(Boolean).join(" ").toLowerCase();
       const availableUnits = product.itemType === "service" ? 1 : options.reduce((total, option) => total + inventory.filter((item) => item.variantId === option.id).reduce((sum, item) => sum + Math.max(0, item.onHand - item.reserved - item.safetyStock), 0), 0);
+      const coreTerms = terms.filter((term) => !COLOURS.includes(term) && !SIZES.includes(term) && !GENERIC_SEARCH_TERMS.has(term));
+      const matchesCore = coreTerms.some((term) => searchable.includes(term)) || Boolean(intent?.categories.some((category) => product.category?.toLowerCase().includes(category.toLowerCase()))) || Boolean(intent?.brands.some((brand) => product.brand?.toLowerCase().includes(brand.toLowerCase())));
+      const broadFilteredRequest = coreTerms.length === 0 && (budget !== null || minimumBudget !== null || Boolean(intent && (intent.itemType !== "any" || intent.sort !== "relevance")));
       let score = terms.reduce((total, term) => total + (product.name.toLowerCase().includes(term) ? 8 : searchable.includes(term) ? 3 : 0), 0);
       if (intent?.categories.some((category) => product.category?.toLowerCase().includes(category.toLowerCase()))) score += 10;
       if (intent?.brands.some((brand) => product.brand?.toLowerCase().includes(brand.toLowerCase()))) score += 10;
       if (colours.some((colour) => searchable.includes(colour))) score += 8; if (sizes.some((size) => options.some((option) => option.size?.toLowerCase() === size))) score += 6; if (budget !== null && Number.isFinite(price) && price <= budget) score += 5; if (availableUnits > 0) score += 2;
-      return { product, options, searchable, price, availableUnits, score };
-    }).filter((item) => (item.product.itemType === "service" || item.options.length > 0) && item.availableUnits > 0).filter((item) => !intent || intent.itemType === "any" || item.product.itemType === intent.itemType).filter((item) => budget === null || !Number.isFinite(item.price) || item.price <= budget).filter((item) => minimumBudget === null || !Number.isFinite(item.price) || item.price >= minimumBudget).filter((item) => !colours.length || colours.some((colour) => item.searchable.includes(colour))).filter((item) => !sizes.length || sizes.some((size) => item.options.some((option) => option.size?.toLowerCase() === size))).sort((a, b) => intent?.sort === "price_asc" ? a.price - b.price : intent?.sort === "price_desc" ? b.price - a.price : b.score - a.score || b.availableUnits - a.availableUnits || a.price - b.price);
-    const relevant = ranked.filter((item) => item.score > 0); const selected = (relevant.length ? relevant : ranked).slice(0, 6);
+      return { product, options, searchable, price, availableUnits, score, matchesCore: matchesCore || broadFilteredRequest };
+    }).filter((item) => (item.product.itemType === "service" || item.options.length > 0) && item.availableUnits > 0).filter((item) => !intent || intent.itemType === "any" || item.product.itemType === intent.itemType).filter((item) => budget === null || (item.price !== null && item.price <= budget)).filter((item) => minimumBudget === null || (item.price !== null && item.price >= minimumBudget)).filter((item) => !colours.length || colours.some((colour) => item.searchable.includes(colour))).filter((item) => !sizes.length || sizes.some((size) => item.options.some((option) => option.size?.toLowerCase() === size))).sort((a, b) => { const left = a.price ?? Number.POSITIVE_INFINITY, right = b.price ?? Number.POSITIVE_INFINITY; if (intent?.sort === "price_asc") return left - right; if (intent?.sort === "price_desc") return (b.price ?? Number.NEGATIVE_INFINITY) - (a.price ?? Number.NEGATIVE_INFINITY); return b.score - a.score || b.availableUnits - a.availableUnits || left - right; });
+    const selected = ranked.filter((item) => item.matchesCore).slice(0, 6);
     const constraints = [budget !== null ? `under N$${budget.toLocaleString("en-NA")}` : "", colours.join(" or "), sizes.length ? `size ${sizes.join("/")}` : ""].filter(Boolean).join(", ");
     const reply = selected.length ? `I found ${selected.length} live ${selected.length === 1 ? "match" : "matches"}${constraints ? ` for ${constraints}` : ""} from local stores on ${platform.name}. Prices are in Namibian dollars, and I checked the available options and stock just now.` : `I couldn't find an in-stock match on ${platform.name} with every detail. Try a slightly wider budget, another colour or a broader size, and I’ll check the local catalogues again.`;
-    return Response.json({ reply, understood: { budget, minimumBudget, colours, sizes, itemType: intent?.itemType ?? "any", terms }, reasoning: intent ? "openai" : "local_fallback", platform: { name: platform.name, slug: platform.slug }, searchedAt: new Date().toISOString(), matches: selected.map(({ product, options, price, availableUnits }) => ({ id: product.id, itemType: product.itemType, name: product.name, collection: product.collection, description: product.description, price: Number.isFinite(price) ? price : null, imageUrl: product.imageUrl?.startsWith("r2://") ? `/api/stores/${encodeURIComponent(product.storeSlug)}/media?type=product&productId=${product.id}` : product.imageUrl, badge: product.badge, store: { id: product.storeId, name: product.storeName, slug: product.storeSlug }, availableUnits, colours: [...new Set(options.map((item) => item.color).filter(Boolean))], sizes: [...new Set(options.map((item) => item.size).filter(Boolean))] })) }, { headers: { "cache-control": "no-store, no-cache, must-revalidate" } });
+    return Response.json({ reply, understood: { budget, minimumBudget, colours, sizes, itemType: intent?.itemType ?? "any", terms }, reasoning: intent ? "openai" : "local_fallback", platform: { name: platform.name, slug: platform.slug }, searchedAt: new Date().toISOString(), matches: selected.map(({ product, options, price, availableUnits }) => ({ id: product.id, itemType: product.itemType, name: product.name, collection: product.collection, description: product.description, price, imageUrl: product.imageUrl?.startsWith("r2://") ? `/api/stores/${encodeURIComponent(product.storeSlug)}/media?type=product&productId=${product.id}` : product.imageUrl, badge: product.badge, store: { id: product.storeId, name: product.storeName, slug: product.storeSlug }, availableUnits, colours: [...new Set(options.map((item) => item.color).filter(Boolean))], sizes: [...new Set(options.map((item) => item.size).filter(Boolean))] })) }, { headers: { "cache-control": "no-store, no-cache, must-revalidate" } });
   } catch (error) {
     console.error("concierge search failed", error);
     return Response.json({ error: "Selma couldn't search the live catalogue right now. Please try again." }, { status: 500 });

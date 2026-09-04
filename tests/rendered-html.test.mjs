@@ -368,6 +368,11 @@ test("grounds Selma's OpenAI reasoning in live catalogue results", async () => {
   assert.match(route, /eq\(products\.status, "published"\)/);
   assert.match(route, /eq\(merchants\.isPublic, true\)/);
   assert.match(route, /item\.onHand - item\.reserved - item\.safetyStock > 0/);
+  assert.match(route, /const selected = ranked\.filter\(\(item\) => item\.matchesCore\)/);
+  assert.match(route, /item\.price !== null && item\.price <= budget/);
+  assert.match(route, /function numericPrice/);
+  assert.match(route, /history\.length > 20/);
+  assert.doesNotMatch(route, /relevant\.length \? relevant : ranked/);
 });
 
 test("supports product and service catalogue items", async () => {
