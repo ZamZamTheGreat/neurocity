@@ -110,6 +110,18 @@ test("separates customer registration from merchant application", async () => {
   assert.match(source, /Mall-manager and administrator access is assigned/);
 });
 
+test("lets a signed-in customer apply with the same NeuroCity account", async () => {
+  const page = await readFile(new URL("../app/apply/page.tsx", import.meta.url), "utf8");
+  const route = await readFile(new URL("../app/api/applications/route.ts", import.meta.url), "utf8");
+  assert.match(page, /fetch\("\/api\/auth\/access"\)/);
+  assert.match(page, /Using your NeuroCity account/);
+  assert.match(page, /No new password is needed/);
+  assert.match(page, /disabled=\{Boolean\(account\)\}/);
+  assert.match(route, /const signedInUser = await getChatGPTUser\(\)/);
+  assert.match(route, /Use the email address belonging to your signed-in NeuroCity account/);
+  assert.match(route, /if \(!signedInUser\).*createSession/s);
+});
+
 test("signs out without mutating immutable redirect headers", async () => {
   const response = await request("/api/auth/logout?return_to=%2Faccess", {
     redirect: "manual",

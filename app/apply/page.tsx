@@ -47,6 +47,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
   const [reference, setReference] = useState(resumedReference);
   const [result, setResult] = useState("");
   const [busy, setBusy] = useState(false);
+  const [account, setAccount] = useState<{ displayName: string; email: string } | null>(null);
   const [mallName, setMallName] = useState(
     mallSlug ? "" : "NeuroCity Marketplace",
   );
@@ -60,6 +61,21 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
       .then((data) => setMallName(data.platform?.name ?? ""))
       .catch(() => setMallName(""));
   }, [mallSlug]);
+
+  useEffect(() => {
+    fetch("/api/auth/access")
+      .then((response) => response.json())
+      .then((data) => {
+        if (!data.authenticated || !data.user) return;
+        setAccount({ displayName: data.user.displayName, email: data.user.email });
+        setForm((current) => ({
+          ...current,
+          representativeName: current.representativeName || data.user.displayName,
+          email: data.user.email,
+        }));
+      })
+      .catch(() => undefined);
+  }, []);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -102,7 +118,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
         </nav>
         <div className="platform-header-actions">
           <a href="/application-status">Track application</a>
-          <a className="platform-account-action" href="/login">Account</a>
+          <a className="platform-account-action" href="/access">Account</a>
         </div>
       </header>
       <section className="application-intro">
@@ -214,6 +230,13 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
             helper="Briefly explain what the business does. Product and service listings will be added later."
           />
           <h2>Authorised representative</h2>
+          {account && (
+            <div className="document-list wide">
+              <strong>Using your NeuroCity account</strong>
+              <span>{account.displayName} · {account.email}</span>
+              <small>Your approved storefront will be added to this account alongside your customer account.</small>
+            </div>
+          )}
           <Field
             label="Full name"
             value={form.representativeName}
@@ -229,6 +252,8 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
             type="email"
             value={form.email}
             onChange={(v) => update("email", v)}
+            disabled={Boolean(account)}
+            helper={account ? "This verified account email will own the merchant workspace." : undefined}
           />
           <Field
             label="Business phone or WhatsApp number"
@@ -255,7 +280,12 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
             helper="Add only the profiles customers should use. Enter one profile or contact per line; Instagram, Facebook, TikTok, LinkedIn and WhatsApp are supported."
           />
           <h2>Secure application access</h2>
-          <label>
+          {account ? (
+            <div className="document-list wide">
+              <strong>You are already signed in</strong>
+              <span>No new password is needed. Continue with your existing NeuroCity account.</span>
+            </div>
+          ) : <><label>
             Create password
             <input
               required
@@ -282,7 +312,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
                 update("confirmPassword", event.target.value)
               }
             />
-          </label>
+          </label></>}
           <h2>Location and operations</h2>
           <Field
             label="Registered business address"
@@ -506,6 +536,7 @@ function Field({
   helper,
   wide = false,
   required = true,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -515,6 +546,7 @@ function Field({
   helper?: string;
   wide?: boolean;
   required?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <label className={wide ? "wide" : ""}>
@@ -522,6 +554,7 @@ function Field({
       {wide ? (
         <textarea
           required={required}
+          disabled={disabled}
           value={value}
           placeholder={placeholder}
           onChange={(e) => onChange(e.target.value)}
@@ -529,6 +562,7 @@ function Field({
       ) : (
         <input
           required={required}
+          disabled={disabled}
           type={type}
           min={type === "number" ? 1 : undefined}
           value={value}

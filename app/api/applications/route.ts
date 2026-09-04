@@ -6,7 +6,7 @@ import { getDb } from "../../../db";
 import { applicationDocuments, merchantApplications, platformTenants, users } from "../../../db/schema";
 import { sendMail } from "../../../lib/mail";
 import { isMerchantCategory } from "../../../lib/merchant-categories";
-import { createSession, sessionCookieOptions, SESSION_COOKIE } from "../../chatgpt-auth";
+import { createSession, getChatGPTUser, sessionCookieOptions, SESSION_COOKIE } from "../../chatgpt-auth";
 import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from "../../../lib/privacy";
 
 const requiredDocuments = ["business_registration", "representative_identification", "proof_of_business_address", "bank_confirmation_letter"];
@@ -36,19 +36,22 @@ export async function POST(request: Request) {
     if (!offeringTypes.has(String(data.offeringType ?? ""))) return Response.json({ error: "Choose whether the business offers products, services or both." }, { status: 400 });
     if (!locationTypes.has(String(data.locationType ?? ""))) return Response.json({ error: "Choose how customers access this business." }, { status: 400 });
     if (!String(data.email).includes("@") || data.termsAccepted !== true || data.privacyAccepted !== true) return Response.json({ error: "A valid email and acceptance of the merchant terms and privacy notice are required." }, { status: 400 });
+    const normalizedEmail = String(data.email).trim().toLowerCase();
+    const signedInUser = await getChatGPTUser();
+    if (signedInUser && signedInUser.email.toLowerCase() !== normalizedEmail) return Response.json({ error: "Use the email address belonging to your signed-in NeuroCity account." }, { status: 403 });
     const password = String(data.password ?? "");
-    if (password.length < 10) return Response.json({ error: "Create a password of at least 10 characters." }, { status: 400 });
-    if (password !== String(data.confirmPassword ?? "")) return Response.json({ error: "The passwords do not match." }, { status: 400 });
+    if (!signedInUser && password.length < 10) return Response.json({ error: "Create a password of at least 10 characters." }, { status: 400 });
+    if (!signedInUser && password !== String(data.confirmPassword ?? "")) return Response.json({ error: "The passwords do not match." }, { status: 400 });
     const reference = `NCA-${new Date().getFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`;
     const db = getDb();
-    const normalizedEmail = String(data.email).trim().toLowerCase();
     const requestedPlatformSlug = String(data.mallSlug ?? "neurocity").trim() || "neurocity";
     const [targetPlatform] = await db.select().from(platformTenants).where(and(eq(platformTenants.slug, requestedPlatformSlug), eq(platformTenants.status, "active"))).limit(1);
     if (!targetPlatform || (requestedPlatformSlug !== "neurocity" && targetPlatform.kind !== "mall")) return Response.json({ error: "This marketplace or digital mall is not accepting applications." }, { status: 404 });
     const [existingUser] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
     if (existingUser && existingUser.status !== "active") return Response.json({ error: "This account is unavailable. Contact NeuroCity support." }, { status: 403 });
-    if (existingUser?.passwordHash && !(await compare(password, existingUser.passwordHash))) return Response.json({ error: "An account already exists for this email. Enter that account’s password to continue." }, { status: 409 });
-    if (existingUser && !existingUser.passwordHash) return Response.json({ error: "This email already has an account that cannot use password sign-in. Contact NeuroCity support." }, { status: 409 });
+    if (!signedInUser && existingUser?.passwordHash && !(await compare(password, existingUser.passwordHash))) return Response.json({ error: "An account already exists for this email. Enter that account’s password to continue." }, { status: 409 });
+    if (!signedInUser && existingUser && !existingUser.passwordHash) return Response.json({ error: "This email already has an account that cannot use password sign-in. Contact NeuroCity support." }, { status: 409 });
+    if (signedInUser && (!existingUser || String(existingUser.id) !== signedInUser.userId)) return Response.json({ error: "Your signed-in account could not be verified. Sign in again and retry." }, { status: 401 });
     const passwordHash = existingUser ? null : await hash(password, 12);
     const { application, user } = await db.transaction(async (tx) => {
       const acceptedAt = new Date();
@@ -59,8 +62,10 @@ export async function POST(request: Request) {
       await tx.insert(applicationDocuments).values(requiredDocuments.map((documentType) => ({ applicationId: application.id, documentType })));
       return { application, user };
     });
-    const session = await createSession(user.id);
-    (await cookies()).set(SESSION_COOKIE, session.token, sessionCookieOptions(session.expiresAt));
+    if (!signedInUser) {
+      const session = await createSession(user.id);
+      (await cookies()).set(SESSION_COOKIE, session.token, sessionCookieOptions(session.expiresAt));
+    }
     const appUrl = process.env.APP_URL ?? "https://neurocity-fhl1.onrender.com";
     await Promise.allSettled([
       sendMail({ to: application.email, subject: `NeuroCity application ${reference} received`, text: `Hello ${application.representativeName},\n\nWe received the merchant application for ${application.tradingName}. Your reference is ${reference}.\n\nNeuroCity will email you when its review status changes.\n\n${appUrl}` }),
