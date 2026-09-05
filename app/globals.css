@@ -5689,3 +5689,26 @@ main {
 /* Guided storefront image cropping */
 .image-editor-backdrop{position:fixed;inset:0;z-index:10000;background:rgba(2,7,13,.82);display:grid;place-items:center;padding:20px}.image-editor-panel{width:min(680px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:24px;padding:22px;color:#111;box-shadow:0 28px 80px rgba(0,0,0,.4)}.image-editor-panel>header,.image-editor-panel>footer{display:flex;align-items:center;justify-content:space-between;gap:16px}.image-editor-panel>header button{border:0;background:#eee;border-radius:50%;width:40px;height:40px;font-size:24px}.image-crop-preview{margin:18px 0;overflow:hidden;background:#111;border-radius:16px;display:grid;place-items:center}.image-crop-preview img{width:100%;height:100%;object-fit:cover;transition:transform .12s}.image-editor-controls{display:grid;gap:12px}.image-editor-controls label{display:grid;grid-template-columns:150px 1fr;align-items:center;gap:12px}.image-editor-controls input{width:100%}.image-editor-panel>footer{justify-content:flex-end;margin-top:18px}.product-gallery-admin{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.product-gallery-admin label{min-height:120px;border:1px dashed #aaa;border-radius:14px;display:grid;place-items:center;overflow:hidden;cursor:pointer}.product-gallery-admin img{width:100%;height:120px;object-fit:cover}.store-product-thumbnails{display:flex;gap:7px;padding:8px}.store-product-thumbnails button{border:2px solid transparent;padding:0;border-radius:8px;overflow:hidden}.store-product-thumbnails button.active{border-color:#19c98b}.store-product-thumbnails img{width:46px;height:46px;object-fit:cover;display:block}
 @media(max-width:600px){.image-editor-controls label{grid-template-columns:1fr}.image-editor-panel{padding:16px}.product-gallery-admin{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Merchant media workflow */
+.brand-media-grid{display:grid;grid-template-columns:minmax(0,.72fr) minmax(0,1.28fr);gap:14px}
+.setup-fields .brand-media-grid .media-upload{display:grid;grid-template-columns:112px minmax(0,1fr);align-items:center;gap:16px;min-height:150px;padding:14px;border:1px solid #d9d5ce;background:#fff;text-align:left}
+.setup-fields .brand-media-grid .media-upload:hover{border-color:#18a876;background:#fbfdfc}
+.media-preview{display:grid;width:112px;height:112px;place-items:center;overflow:hidden;border-radius:10px;background:#e9ece8;color:#677069}
+.media-upload-banner .media-preview{height:88px}
+.media-preview img{width:100%;height:100%;object-fit:cover}
+.media-upload-logo .media-preview img{object-fit:contain;background:#f4f5f2}
+.media-preview b{font-size:.72rem;letter-spacing:.12em}
+.media-upload-copy{display:grid;gap:7px;min-width:0}
+.setup-fields .media-upload-copy strong{color:#20231f;font-size:1rem}
+.setup-fields .media-upload-copy small{color:#697069;font-size:.78rem;line-height:1.45}
+.setup-fields .media-upload-copy em{width:max-content;padding:7px 10px;border-radius:7px;background:#12231c;color:#fff;font-size:.72rem;font-style:normal;font-weight:800}
+.product-gallery-admin{width:auto;height:auto;background:transparent}
+.product-gallery-admin label{position:relative;align-content:center;min-width:0;background:#eeefec}
+.product-gallery-admin label>span{padding:8px;color:#717770;font-size:.72rem;text-align:center}
+.product-gallery-admin label>em{position:absolute;right:7px;bottom:7px;left:7px;padding:7px;border-radius:6px;background:#121713dd;color:#fff;font-size:.66rem;font-style:normal;font-weight:800;text-align:center}
+.product-gallery-admin label:focus-within{outline:3px solid #18c98e3d;outline-offset:2px}
+.image-editor-panel>header>div p{margin:5px 0 0;color:#697069;font-size:.82rem;line-height:1.45}
+.image-output-note{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;padding:12px 14px;border-radius:9px;background:#eef3ef;color:#36473f;font-size:.78rem}
+.image-editor-error{padding:11px 13px;border-radius:8px;background:#fff0ee;color:#8d2f26;font-size:.82rem}
+@media(max-width:760px){.brand-media-grid{grid-template-columns:1fr}.setup-fields .brand-media-grid .media-upload{grid-template-columns:88px minmax(0,1fr);min-height:120px}.media-preview{width:88px;height:88px}.media-upload-banner .media-preview{height:70px}.product-gallery-admin label{min-height:105px}.product-gallery-admin img{height:105px}.image-output-note{align-items:flex-start;flex-direction:column;gap:3px}}

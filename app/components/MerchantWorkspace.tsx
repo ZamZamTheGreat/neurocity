@@ -436,7 +436,7 @@ export default function MerchantWorkspace({
     );
   }
   async function uploadMedia(type: "logo" | "banner", file?: File) {
-    if (!merchant || !file) return;
+    if (!merchant || !file) return false;
     setMessage(`Uploading ${type}…`);
     const response = await fetch("/api/merchant/media", {
       method: "POST",
@@ -449,16 +449,18 @@ export default function MerchantWorkspace({
       }),
     });
     const data = await response.json();
-    if (!response.ok) return setMessage(data.error);
+    if (!response.ok) { setMessage(data.error); return false; }
     const upload = await fetch(data.uploadUrl, {
       method: "PUT",
       headers: { "content-type": file.type },
       body: file,
     });
-    if (!upload.ok)
-      return setMessage(
+    if (!upload.ok) {
+      setMessage(
         `${type === "logo" ? "Logo" : "Banner"} upload failed. Please try again.`,
       );
+      return false;
+    }
     setMerchant({
       ...merchant,
       [type === "logo" ? "logoUrl" : "bannerUrl"]: data.storageValue,
@@ -466,6 +468,7 @@ export default function MerchantWorkspace({
     setMessage(
       `${type === "logo" ? "Logo" : "Banner"} uploaded. Save the storefront to publish this image.`,
     );
+    return true;
   }
   async function saveVariant(variant: Variant) {
     const inventory = variant.stock[0];
@@ -1031,7 +1034,7 @@ function SetupPanel({
 }: {
   merchant: Merchant;
   setMerchant: (merchant: Merchant) => void;
-  uploadMedia: (type: "logo" | "banner", file?: File) => void;
+  uploadMedia: (type: "logo" | "banner", file?: File) => Promise<boolean>;
   saveSetup: () => void;
   inviteEmail: string;
   setInviteEmail: (email: string) => void;
@@ -1040,6 +1043,8 @@ function SetupPanel({
   canInvite: boolean;
 }) {
   const [mediaCrop, setMediaCrop] = useState<{ file: File; type: "logo" | "banner" } | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<Partial<Record<"logo" | "banner", string>>>({});
+  const mediaSource = (type: "logo" | "banner") => mediaPreview[type] ?? ((type === "logo" ? merchant.logoUrl : merchant.bannerUrl)?.startsWith("r2://") ? `/api/merchant/media?type=${type}` : type === "logo" ? merchant.logoUrl : merchant.bannerUrl);
   const updateHour = (dayOfWeek: number, values: Partial<StoreHour>) =>
     setMerchant({
       ...merchant,
@@ -1122,35 +1127,24 @@ function SetupPanel({
               }
             />
           </label>
-          <label className="media-upload">
-            Store logo
-            <span>
-              {merchant.logoUrl
-                ? "Image selected · choose another to replace"
-                : "JPG, PNG or WebP · up to 10 MB"}
-            </span>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) setMediaCrop({ file, type: "logo" }); e.target.value = ""; }}
-            />
-          </label>
-          <label className="media-upload">
-            Store banner
-            <span>
-              {merchant.bannerUrl
-                ? "Image selected · choose another to replace"
-                : "JPG, PNG or WebP · up to 10 MB"}
-            </span>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => { const file = e.target.files?.[0]; if (file) setMediaCrop({ file, type: "banner" }); e.target.value = ""; }}
-            />
-          </label>
+          <div className="brand-media-grid wide">
+            {(["logo", "banner"] as const).map((type) => (
+              <label className={`media-upload media-upload-${type}`} key={type}>
+                <span className="media-preview">
+                  {mediaSource(type) ? <img src={mediaSource(type)!} alt={`Current store ${type}`} /> : <b>{type === "logo" ? "LOGO" : "BANNER"}</b>}
+                </span>
+                <span className="media-upload-copy">
+                  <strong>Store {type}</strong>
+                  <small>{type === "logo" ? "Square image · shown on store cards and your storefront" : "Wide image · shown across the top of your storefront"}</small>
+                  <em>{mediaSource(type) ? "Replace image" : "Choose image"}</em>
+                </span>
+                <input type="file" accept="image/jpeg,image/png,image/webp" aria-label={`Upload store ${type}`} onChange={(e) => { const file = e.target.files?.[0]; if (file) setMediaCrop({ file, type }); e.target.value = ""; }} />
+              </label>
+            ))}
+          </div>
         </div>
       </section>
-      {mediaCrop && <ImageCropper file={mediaCrop.file} aspect={mediaCrop.type === "banner" ? 16 / 5 : 1} width={mediaCrop.type === "banner" ? 1600 : 800} title={mediaCrop.type === "banner" ? "Crop storefront banner" : "Crop store logo"} onCancel={() => setMediaCrop(null)} onApply={(file) => { uploadMedia(mediaCrop.type, file); setMediaCrop(null); }} />}
+      {mediaCrop && <ImageCropper file={mediaCrop.file} aspect={mediaCrop.type === "banner" ? 16 / 5 : 1} width={mediaCrop.type === "banner" ? 1600 : 800} title={mediaCrop.type === "banner" ? "Crop storefront banner" : "Crop store logo"} onCancel={() => setMediaCrop(null)} onApply={async (file) => { const type = mediaCrop.type; if (await uploadMedia(type, file)) { setMediaPreview((current) => ({ ...current, [type]: URL.createObjectURL(file) })); setMediaCrop(null); } }} />}
       <section className="setup-section">
         <header>
           <span>2</span>
@@ -1450,7 +1444,7 @@ function CatalogueManager({
     await reload();
   }
   async function uploadImage(product: Product, slot: number, file?: File) {
-    if (!file) return;
+    if (!file) return false;
     setMessage(`Uploading image for ${product.name}...`);
     const response = await fetch("/api/merchant/products/media", {
       method: "POST",
@@ -1464,14 +1458,16 @@ function CatalogueManager({
       }),
     });
     const data = await response.json();
-    if (!response.ok) return setMessage(data.error);
+    if (!response.ok) { setMessage(data.error); return false; }
     const upload = await fetch(data.uploadUrl, {
       method: "PUT",
       headers: { "content-type": file.type },
       body: file,
     });
-    if (!upload.ok)
-      return setMessage("Product image upload failed. Please try again.");
+    if (!upload.ok) {
+      setMessage("Product image upload failed. Please try again.");
+      return false;
+    }
     const gallery = [...(product.storageImageUrls ?? [])]; gallery[slot] = data.storageValue;
     const saved = await fetch("/api/merchant/products", {
       method: "PATCH",
@@ -1484,9 +1480,10 @@ function CatalogueManager({
       }),
     });
     const savedData = await saved.json();
-    if (!saved.ok) return setMessage(savedData.error);
+    if (!saved.ok) { setMessage(savedData.error); return false; }
     setMessage(`${product.name} image updated.`);
     await reload();
+    return true;
   }
   async function archiveProduct(product: Product) {
     if (
@@ -1575,7 +1572,7 @@ function ProductEditor({
   product: Product;
   onChange: (product: Product) => void;
   onSave: (confirmed: boolean) => void;
-  onUpload: (slot: number, file?: File) => void;
+  onUpload: (slot: number, file?: File) => Promise<boolean>;
   onArchive: () => void;
 }) {
   const [confirmed, setConfirmed] = useState(false);
@@ -1583,10 +1580,11 @@ function ProductEditor({
   return (
     <article className="catalogue-card">
       <header>
-        <div className="catalogue-image product-gallery-admin">
+        <div className="catalogue-image product-gallery-admin" aria-label="Product image gallery">
           {[0, 1, 2].map((slot) => <label key={slot}>
             {product.imageUrls?.[slot] ? <img src={product.imageUrls[slot]} alt={`${product.name} view ${slot + 1}`} /> : <span>{slot === 0 ? "Main image" : `Add view ${slot + 1}`}</span>}
-            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) setCrop({ file, slot }); event.target.value = ""; }} />
+            <em>{product.imageUrls?.[slot] ? "Replace" : slot === 0 ? "Add main image" : "Add another view"}</em>
+            <input type="file" aria-label={`${product.imageUrls?.[slot] ? "Replace" : "Upload"} ${product.name} image ${slot + 1}`} accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) setCrop({ file, slot }); event.target.value = ""; }} />
           </label>)}
         </div>
         <div>
@@ -1732,7 +1730,7 @@ function ProductEditor({
           <button onClick={() => onSave(confirmed)}>Save product</button>
         </div>
       </footer>
-      {crop && <ImageCropper file={crop.file} aspect={4 / 5} width={1200} title={`Crop ${product.name} · image ${crop.slot + 1}`} onCancel={() => setCrop(null)} onApply={(file) => { onUpload(crop.slot, file); setCrop(null); }} />}
+      {crop && <ImageCropper file={crop.file} aspect={4 / 5} width={1200} title={`Crop ${product.name} · image ${crop.slot + 1}`} onCancel={() => setCrop(null)} onApply={async (file) => { if (await onUpload(crop.slot, file)) setCrop(null); }} />}
     </article>
   );
 }
