@@ -380,6 +380,16 @@ test("grounds Selma's OpenAI reasoning in live catalogue results", async () => {
   assert.match(route, /eligibleBranchIds\.has\(item\.branchId\)/);
 });
 
+test("lets Selma distinguish preorder catalogue items from live stock", async () => {
+  const route = await readFile(new URL("../app/api/concierge/route.ts", import.meta.url), "utf8");
+  const concierge = await readFile(new URL("../app/components/NeuroConcierge.tsx", import.meta.url), "utf8");
+  assert.match(route, /\["available", "preorder", "out_of_stock"\]/);
+  assert.match(route, /available by preorder rather than from stock/);
+  assert.match(route, /availability !== "out_of_stock"/);
+  assert.match(concierge, /Available by preorder/);
+  assert.doesNotMatch(route, /does not have any in-stock published products yet/);
+});
+
 test("protects Selma costs and keeps signed-in memory opt-in", async () => {
   const search = await readFile(new URL("../app/api/concierge/route.ts", import.meta.url), "utf8");
   const visual = await readFile(new URL("../app/api/concierge/visual-search/route.ts", import.meta.url), "utf8");

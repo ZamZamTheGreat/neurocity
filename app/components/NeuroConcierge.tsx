@@ -9,6 +9,7 @@ type Match = {
   price: number | null;
   imageUrl: string | null;
   availableUnits: number;
+  availability?: "in_stock" | "preorder" | "out_of_stock" | "bookable";
   colours: string[];
   sizes: string[];
   fulfillment?: { pickup: boolean; delivery: boolean };
@@ -406,9 +407,13 @@ export function NeuroConcierge({
                                 : ""}
                             </p>
                             <strong>{money(match.price)}</strong>
-                            {match.availableUnits > 0 && (
-                              <em>{match.availableUnits} available</em>
-                            )}
+                            {match.availability === "preorder" ? (
+                              <em>Available by preorder</em>
+                            ) : match.availability === "bookable" ? (
+                              <em>Available to book</em>
+                            ) : match.availableUnits > 0 ? (
+                              <em>{match.availableUnits} in stock</em>
+                            ) : null}
                             {match.branches?.[0] && (
                               <small>{match.branches[0].city} · {match.fulfillment?.pickup ? "Pickup" : ""}{match.fulfillment?.pickup && match.fulfillment?.delivery ? " + " : ""}{match.fulfillment?.delivery ? "Delivery" : ""}</small>
                             )}
