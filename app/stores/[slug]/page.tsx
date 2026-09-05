@@ -23,6 +23,7 @@ type Product = {
   brand: string | null;
   description: string;
   imageUrl: string | null;
+  imageUrls: string[];
   badge?: string | null;
   price: number | null;
   salePrice: number | null;
@@ -415,6 +416,9 @@ function StoreProduct({
   accountAction: (body: { action?: string; [key: string]: unknown }) => Promise<boolean | undefined>;
 }) {
   const { slug } = useParams<{ slug: string }>();
+  const [imageIndex, setImageIndex] = useState(0);
+  const gallery = product.imageUrls?.length ? product.imageUrls : product.imageUrl ? [product.imageUrl] : [];
+  const activeImage = gallery[imageIndex] ?? gallery[0] ?? null;
   const [variantId, setVariantId] = useState(
     product.variants.find(
       (item) => item.available === null || item.available > 0,
@@ -493,8 +497,8 @@ function StoreProduct({
     return (
       <article className="store-product-v2 service-card">
         <div className="store-product-image">
-          {product.imageUrl ? (
-            <img src={product.imageUrl} alt={product.name} />
+          {activeImage ? (
+            <img src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
           ) : (
             <span>Service image coming soon</span>
           )}
@@ -508,6 +512,7 @@ function StoreProduct({
             ♡
           </button>
         </div>
+        {gallery.length > 1 && <div className="store-product-thumbnails" aria-label={`${product.name} images`}>{gallery.map((image, index) => <button className={index === imageIndex ? "active" : ""} key={image} onClick={() => setImageIndex(index)} aria-label={`View image ${index + 1}`}><img src={image} alt="" /></button>)}</div>}
         <div className="store-product-copy">
           <small>
             {product.brand ?? "Local service"}
@@ -545,8 +550,8 @@ function StoreProduct({
   return (
     <article className="store-product-v2">
       <div className="store-product-image">
-        {product.imageUrl ? (
-          <img src={product.imageUrl} alt={product.name} />
+        {activeImage ? (
+          <img src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
         ) : (
           <span>Image coming soon</span>
         )}
@@ -560,6 +565,7 @@ function StoreProduct({
           ♡
         </button>
       </div>
+      {gallery.length > 1 && <div className="store-product-thumbnails" aria-label={`${product.name} images`}>{gallery.map((image, index) => <button className={index === imageIndex ? "active" : ""} key={image} onClick={() => setImageIndex(index)} aria-label={`View image ${index + 1}`}><img src={image} alt="" /></button>)}</div>}
       <div className="store-product-copy">
         <small>
           {product.brand ?? "Local brand"}

@@ -17,7 +17,7 @@ export async function GET() {
   const access = await requirePilotMerchant();
   if (!access) return Response.json({ error: "Merchant authentication required." }, { status: 401 });
   const rows = await getDb().select().from(products).where(eq(products.merchantId, access.merchantId)).orderBy(asc(products.id));
-  return Response.json({ products: rows.map((product) => ({ ...product, storageImageUrl: product.imageUrl, imageUrl: product.imageUrl?.startsWith("r2://") ? `/api/merchant/products/media?productId=${product.id}` : product.imageUrl })) });
+  return Response.json({ products: rows.map((product) => { const stored = (product.imageUrls as string[] | null) ?? (product.imageUrl ? [product.imageUrl] : []); return { ...product, storageImageUrl: product.imageUrl, storageImageUrls: stored, imageUrls: stored.map((url, slot) => url.startsWith("r2://") ? `/api/merchant/products/media?productId=${product.id}&slot=${slot}` : url), imageUrl: stored[0]?.startsWith("r2://") ? `/api/merchant/products/media?productId=${product.id}&slot=0` : stored[0] ?? product.imageUrl }; }) });
 }
 
 export async function POST(request: Request) {
@@ -92,6 +92,7 @@ export async function PATCH(request: Request) {
     const collection = optionalText(payload.collection, current.collection);
     const badge = optionalText(payload.badge, current.badge);
     const imageUrl = optionalText(payload.imageUrl, current.imageUrl);
+    const imageUrls = payload.imageUrls === undefined ? current.imageUrls : Array.isArray(payload.imageUrls) ? payload.imageUrls.filter((value): value is string => typeof value === "string" && value.length > 0).slice(0, 3) : current.imageUrls;
     const itemType = text(payload.itemType, current.itemType);
     const pricingModel = text(payload.pricingModel, current.pricingModel);
     const durationMinutes = payload.durationMinutes === undefined ? current.durationMinutes : payload.durationMinutes === null || payload.durationMinutes === "" ? null : Number(payload.durationMinutes);
@@ -107,8 +108,9 @@ export async function PATCH(request: Request) {
     if (duplicate && duplicate.id !== current.id) return Response.json({ error: "That SKU is already used in your catalogue." }, { status: 409 });
     if (status === "published" && (!payload.merchantConfirmed || (pricingModel !== "quote" && price === null) || !description || !category || !imageUrl)) return Response.json({ error: "Publishing requires confirmation, pricing, category, description and an image." }, { status: 409 });
     if (imageUrl?.startsWith("r2://") && !imageUrl.slice(5).startsWith(`merchants/${access.merchantId}/products/${current.id}/`)) return Response.json({ error: "Invalid product image." }, { status: 403 });
+    if ((imageUrls as string[]).some((url) => url.startsWith("r2://") && !url.slice(5).startsWith(`merchants/${access.merchantId}/products/${current.id}/`))) return Response.json({ error: "Invalid product gallery image." }, { status: 403 });
 
-    const [updated] = await db.update(products).set({ itemType, name, sku, collection, category, brand, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, status, availability, imageUrl, badge }).where(and(eq(products.id, current.id), eq(products.merchantId, access.merchantId))).returning();
+    const [updated] = await db.update(products).set({ itemType, name, sku, collection, category, brand, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, status, availability, imageUrl: (imageUrls as string[])[0] ?? imageUrl, imageUrls, badge }).where(and(eq(products.id, current.id), eq(products.merchantId, access.merchantId))).returning();
     const existingVariants = await db.select().from(productVariants).where(eq(productVariants.productId, current.id));
     if (itemType === "product" && price !== null && existingVariants.length === 0) {
       await db.insert(productVariants).values({ productId: current.id, sku: `M${access.merchantId}-${sku}-DEFAULT`, title: "Standard", attributes: { inventoryMode: "merchant_confirmed" }, price, salePrice, status: status === "published" ? "active" : "draft", imageUrl });

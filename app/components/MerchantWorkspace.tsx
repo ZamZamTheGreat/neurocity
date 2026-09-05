@@ -10,6 +10,7 @@ import PaymentSettingsPanel, {
   type PaymentSettings,
 } from "./PaymentSettingsPanel";
 import TurnstileChallenge from "./TurnstileChallenge";
+import ImageCropper from "./ImageCropper";
 
 type Tab =
   | "Overview"
@@ -39,6 +40,8 @@ type Product = {
   availability: string;
   imageUrl: string | null;
   storageImageUrl: string | null;
+  imageUrls: string[];
+  storageImageUrls: string[];
   badge: string | null;
 };
 type Stock = {
@@ -1036,6 +1039,7 @@ function SetupPanel({
   inviteCode: string;
   canInvite: boolean;
 }) {
+  const [mediaCrop, setMediaCrop] = useState<{ file: File; type: "logo" | "banner" } | null>(null);
   const updateHour = (dayOfWeek: number, values: Partial<StoreHour>) =>
     setMerchant({
       ...merchant,
@@ -1128,7 +1132,7 @@ function SetupPanel({
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => uploadMedia("logo", e.target.files?.[0])}
+              onChange={(e) => { const file = e.target.files?.[0]; if (file) setMediaCrop({ file, type: "logo" }); e.target.value = ""; }}
             />
           </label>
           <label className="media-upload">
@@ -1141,11 +1145,12 @@ function SetupPanel({
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => uploadMedia("banner", e.target.files?.[0])}
+              onChange={(e) => { const file = e.target.files?.[0]; if (file) setMediaCrop({ file, type: "banner" }); e.target.value = ""; }}
             />
           </label>
         </div>
       </section>
+      {mediaCrop && <ImageCropper file={mediaCrop.file} aspect={mediaCrop.type === "banner" ? 16 / 5 : 1} width={mediaCrop.type === "banner" ? 1600 : 800} title={mediaCrop.type === "banner" ? "Crop storefront banner" : "Crop store logo"} onCancel={() => setMediaCrop(null)} onApply={(file) => { uploadMedia(mediaCrop.type, file); setMediaCrop(null); }} />}
       <section className="setup-section">
         <header>
           <span>2</span>
@@ -1433,6 +1438,7 @@ function CatalogueManager({
       body: JSON.stringify({
         ...product,
         imageUrl: product.storageImageUrl,
+        imageUrls: product.storageImageUrls,
         merchantConfirmed: confirmed,
       }),
     });
@@ -1443,7 +1449,7 @@ function CatalogueManager({
     );
     await reload();
   }
-  async function uploadImage(product: Product, file?: File) {
+  async function uploadImage(product: Product, slot: number, file?: File) {
     if (!file) return;
     setMessage(`Uploading image for ${product.name}...`);
     const response = await fetch("/api/merchant/products/media", {
@@ -1454,6 +1460,7 @@ function CatalogueManager({
         filename: file.name,
         mimeType: file.type,
         sizeBytes: file.size,
+        slot,
       }),
     });
     const data = await response.json();
@@ -1465,12 +1472,14 @@ function CatalogueManager({
     });
     if (!upload.ok)
       return setMessage("Product image upload failed. Please try again.");
+    const gallery = [...(product.storageImageUrls ?? [])]; gallery[slot] = data.storageValue;
     const saved = await fetch("/api/merchant/products", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         id: product.id,
-        imageUrl: data.storageValue,
+        imageUrl: gallery[0],
+        imageUrls: gallery,
         merchantConfirmed: product.status === "published",
       }),
     });
@@ -1534,7 +1543,7 @@ function CatalogueManager({
                     )
                   }
                   onSave={(confirmed) => saveProduct(product, confirmed)}
-                  onUpload={(file) => uploadImage(product, file)}
+                  onUpload={(slot, file) => uploadImage(product, slot, file)}
                   onArchive={() => archiveProduct(product)}
                 />
                 <ProductOptionsPanel
@@ -1566,27 +1575,19 @@ function ProductEditor({
   product: Product;
   onChange: (product: Product) => void;
   onSave: (confirmed: boolean) => void;
-  onUpload: (file?: File) => void;
+  onUpload: (slot: number, file?: File) => void;
   onArchive: () => void;
 }) {
   const [confirmed, setConfirmed] = useState(false);
+  const [crop, setCrop] = useState<{ file: File; slot: number } | null>(null);
   return (
     <article className="catalogue-card">
       <header>
-        <div className="catalogue-image">
-          {product.imageUrl ? (
-            <img src={product.imageUrl} alt={product.name} />
-          ) : (
-            <span>No image</span>
-          )}
-          <label>
-            Replace image
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(event) => onUpload(event.target.files?.[0])}
-            />
-          </label>
+        <div className="catalogue-image product-gallery-admin">
+          {[0, 1, 2].map((slot) => <label key={slot}>
+            {product.imageUrls?.[slot] ? <img src={product.imageUrls[slot]} alt={`${product.name} view ${slot + 1}`} /> : <span>{slot === 0 ? "Main image" : `Add view ${slot + 1}`}</span>}
+            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) setCrop({ file, slot }); event.target.value = ""; }} />
+          </label>)}
         </div>
         <div>
           <span className={`catalogue-status status-${product.status}`}>
@@ -1731,6 +1732,7 @@ function ProductEditor({
           <button onClick={() => onSave(confirmed)}>Save product</button>
         </div>
       </footer>
+      {crop && <ImageCropper file={crop.file} aspect={4 / 5} width={1200} title={`Crop ${product.name} · image ${crop.slot + 1}`} onCancel={() => setCrop(null)} onApply={(file) => { onUpload(crop.slot, file); setCrop(null); }} />}
     </article>
   );
 }

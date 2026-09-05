@@ -11,9 +11,9 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   const [store] = await getDb().select({ id: merchants.id, logoUrl: merchants.logoUrl, bannerUrl: merchants.bannerUrl }).from(merchants).where(and(eq(merchants.slug, slug), eq(merchants.isPublic, true), inArray(merchants.status, ["pilot", "active"]))).limit(1);
   let value = type === "logo" ? store?.logoUrl : store?.bannerUrl;
   if (type === "product" && store) {
-    const productId = Number(new URL(request.url).searchParams.get("productId"));
-    const [product] = await getDb().select({ imageUrl: products.imageUrl }).from(products).where(and(eq(products.id, productId), eq(products.merchantId, store.id), eq(products.status, "published"))).limit(1);
-    value = product?.imageUrl;
+    const url = new URL(request.url); const productId = Number(url.searchParams.get("productId")); const slot = Math.max(0, Math.min(2, Number(url.searchParams.get("slot") ?? 0)));
+    const [product] = await getDb().select({ imageUrl: products.imageUrl, imageUrls: products.imageUrls }).from(products).where(and(eq(products.id, productId), eq(products.merchantId, store.id), eq(products.status, "published"))).limit(1);
+    value = ((product?.imageUrls as string[] | null) ?? [])[slot] ?? (slot === 0 ? product?.imageUrl : null);
   }
   if (!store || !value) return Response.json({ error: "Image not found." }, { status: 404 });
   if (!value.startsWith("r2://")) return Response.redirect(new URL(value, request.url), 302);
