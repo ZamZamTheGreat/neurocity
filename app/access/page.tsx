@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 
 type Access = {
   authenticated: boolean;
@@ -80,17 +79,17 @@ export default function AccessPage() {
   return (
     <main className="account-access" id="main-content">
       <header>
-        <Link href="/" className="network-brand">
+        <a href="/" className="network-brand">
           <img src="/branding/neurocity-malls-mark.png" alt="" />
           <span><b className="network-wordmark">Neuro<span>City</span></b><small>One identity · every workspace</small></span>
-        </Link>
+        </a>
         <nav className="account-centre-nav" aria-label="NeuroCity navigation">
-          <Link href="/">Network</Link>
-          <Link href="/marketplace">Marketplace</Link>
-          <Link href="/malls">Digital malls</Link>
-          <Link href="/access" aria-current="page">Account centre</Link>
+          <a href="/">Network</a>
+          <a href="/marketplace">Marketplace</a>
+          <a href="/malls">Digital malls</a>
+          <a href="/access" aria-current="page">Account centre</a>
         </nav>
-        <Link className="account-centre-shop" href="/marketplace">Start shopping <span>→</span></Link>
+        <a className="account-centre-shop" href="/marketplace">Start shopping <span>→</span></a>
       </header>
 
       <section className="access-intro">
@@ -105,7 +104,7 @@ export default function AccessPage() {
         {access && !access.authenticated && (
           <div className="access-entry-actions">
             <span>Already have an account? Choose a workspace below to sign in.</span>
-            <Link href="/join">Create an account</Link>
+            <a href="/join">Create an account</a>
           </div>
         )}
       </section>
@@ -180,8 +179,8 @@ export default function AccessPage() {
       {access?.authenticated && (
         <nav className="access-quick-actions" aria-label="Account shortcuts">
           <div><b>Business shortcuts</b><span>Grow your NeuroCity presence from the same account.</span></div>
-          <Link href="/apply">Apply for another storefront</Link>
-          <Link href="/application-status">Track an application</Link>
+          <a href="/apply">Apply for another storefront</a>
+          <a href="/application-status">Track an application</a>
         </nav>
       )}
       <footer>

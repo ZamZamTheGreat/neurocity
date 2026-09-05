@@ -105,6 +105,14 @@ test("keeps account selection available before sign in", async () => {
   assert.match(source, /href="\/join"/);
 });
 
+test("keeps Account Centre navigation independent of Vinext client links", async () => {
+  const access = await readFile(new URL("../app/access/page.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(access, /from "next\/link"/);
+  assert.match(access, /<a href="\/marketplace">Marketplace<\/a>/);
+  assert.match(access, /<a href="\/malls">Digital malls<\/a>/);
+  assert.match(access, /className="account-centre-shop" href="\/marketplace"/);
+});
+
 test("separates customer registration from merchant application", async () => {
   const source = await readFile(new URL("../app/join/page.tsx", import.meta.url), "utf8");
   assert.match(source, /mode=register&account_type=customer/);
