@@ -31,7 +31,7 @@ export default function StatusPage() {
       <header className="platform-public-header">
         <a href="/" className="brand"><span>Neuro</span><strong>City</strong></a>
         <nav className="platform-nav" aria-label="Primary navigation">
-          <a href="/">Network</a><a href="/marketplace">Marketplace</a><a href="/malls">Digital malls</a>
+          <a href="/">Network</a><a href="/marketplace">Marketplace</a><a href="/malls">Shop by mall</a>
         </nav>
         <div className="platform-header-actions"><a href="/apply">Apply</a><a className="platform-account-action" href="/login">Account</a></div>
       </header>

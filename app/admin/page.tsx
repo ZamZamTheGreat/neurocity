@@ -65,6 +65,7 @@ export default function AdminPage() {
     name: "Sergej Witbooi",
     email: "sergejwitbooi@gmail.com",
     password: "",
+    mfaCode: "",
   });
   const [mode, setMode] = useState<"login" | "register">("register");
   const [message, setMessage] = useState("");
@@ -520,8 +521,8 @@ function AdminLogin({
   message,
   authenticate,
 }: {
-  auth: { name: string; email: string; password: string };
-  setAuth: (value: { name: string; email: string; password: string }) => void;
+  auth: { name: string; email: string; password: string; mfaCode: string };
+  setAuth: (value: { name: string; email: string; password: string; mfaCode: string }) => void;
   mode: "login" | "register";
   setMode: (value: "login" | "register") => void;
   message: string;
@@ -572,6 +573,12 @@ function AdminLogin({
             }
           />
         </label>
+        {mode === "login" && (
+          <label>
+            Authenticator code
+            <input type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={auth.mfaCode} onChange={(event) => setAuth({ ...auth, mfaCode: event.target.value.replace(/\D/g, "").slice(0, 6) })} placeholder="000000" />
+          </label>
+        )}
         {message && <p className="form-error">{message}</p>}
         <button>
           {mode === "register" ? "Create administrator" : "Sign in"}

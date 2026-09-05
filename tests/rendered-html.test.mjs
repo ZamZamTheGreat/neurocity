@@ -38,7 +38,8 @@ test("renders the NeuroCity network gateway", async () => {
   assert.match(html, /NeuroCity/);
   assert.match(html, /Shop local Namibian businesses/);
   assert.match(html, /marketplace/i);
-  assert.match(html, /Digital malls/);
+  assert.match(html, /Shop by mall/);
+  assert.match(html, /How NeuroCity is organised/);
   assert.match(html, /Selma/);
   const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(source, /Review your order/);
@@ -77,7 +78,7 @@ test("renders the public onboarding routes", async (t) => {
     ["/join", /What would you like to create/],
     ["/apply", /Apply as a merchant or service provider/],
     ["/application-status", /Track your application/],
-    ["/malls", /Digital malls/],
+    ["/malls", /Shop by mall/],
   ];
   for (const [path, marker] of routes) {
     await t.test(path, async () => {
@@ -128,7 +129,7 @@ test("keeps Account Centre navigation independent of Vinext client links", async
   const access = await readFile(new URL("../app/access/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(access, /from "next\/link"/);
   assert.match(access, /<a href="\/marketplace">Marketplace<\/a>/);
-  assert.match(access, /<a href="\/malls">Digital malls<\/a>/);
+  assert.match(access, /<a href="\/malls">Shop by mall<\/a>/);
   assert.match(access, /className="account-centre-shop" href="\/marketplace"/);
 });
 
@@ -159,10 +160,22 @@ test("lets a signed-in customer apply with the same NeuroCity account", async ()
   assert.match(page, /fetch\("\/api\/auth\/access"\)/);
   assert.match(page, /Using your NeuroCity account/);
   assert.match(page, /No new password is needed/);
+  assert.match(page, /APPLICATION_DRAFT_KEY/);
+  assert.match(page, /Draft saved automatically/);
   assert.match(page, /disabled=\{Boolean\(account\)\}/);
   assert.match(route, /const signedInUser = await getChatGPTUser\(\)/);
   assert.match(route, /Use the email address belonging to your signed-in NeuroCity account/);
   assert.match(route, /if \(!signedInUser\).*createSession/s);
+});
+
+test("requires authenticator MFA for administrator sign-in", async () => {
+  const login = await readFile(new URL("../app/api/auth/login/route.ts", import.meta.url), "utf8");
+  const google = await readFile(new URL("../app/api/auth/google/callback/route.ts", import.meta.url), "utf8");
+  const screen = await readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8");
+  assert.match(login, /user\.platformRole === "administrator"/);
+  assert.match(login, /verifyAdminMfa\(mfaCode\)/);
+  assert.match(google, /administrator_password_required/);
+  assert.match(screen, /Authenticator code/);
 });
 
 test("requires a same-origin POST before signing out", async () => {
@@ -285,6 +298,18 @@ test("protects merchant operations from anonymous access", async (t) => {
       await expectJsonError(path, status, error);
     });
   }
+});
+
+test("adds guarded bulk catalogue import and WhatsApp order updates", async () => {
+  const bulk = await readFile(new URL("../app/api/merchant/products/bulk/route.ts", import.meta.url), "utf8");
+  const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");
+  const orderRoute = await readFile(new URL("../app/api/merchant/orders/route.ts", import.meta.url), "utf8");
+  assert.match(bulk, /payload\.rows\.length > 250/);
+  assert.match(bulk, /catalogue\.bulk_imported/);
+  assert.match(bulk, /db\.transaction/);
+  assert.match(workspace, /neurocity-catalogue-template\.csv/);
+  assert.match(workspace, /Send WhatsApp update/);
+  assert.match(orderRoute, /sendWhatsAppOrderUpdate/);
 });
 
 test("preserves tenant and ownership predicates in sensitive routes", async () => {

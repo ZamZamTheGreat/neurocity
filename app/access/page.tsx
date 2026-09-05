@@ -86,7 +86,7 @@ export default function AccessPage() {
         <nav className="account-centre-nav" aria-label="NeuroCity navigation">
           <a href="/">Network</a>
           <a href="/marketplace">Marketplace</a>
-          <a href="/malls">Digital malls</a>
+          <a href="/malls">Shop by mall</a>
           <a href="/access" aria-current="page">Account centre</a>
         </nav>
         <a className="account-centre-shop" href="/marketplace">Start shopping <span>→</span></a>

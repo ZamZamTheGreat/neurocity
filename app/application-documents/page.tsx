@@ -63,7 +63,7 @@ export default function DocumentsPage() {
         <nav className="platform-nav" aria-label="Primary navigation">
           <a href="/">Network</a>
           <a href="/marketplace">Marketplace</a>
-          <a href="/malls">Digital malls</a>
+          <a href="/malls">Shop by mall</a>
         </nav>
         <div className="platform-header-actions">
           <a href="/application-status">Application status</a>

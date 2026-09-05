@@ -32,6 +32,7 @@ export async function GET(request: Request) {
       [user] = await db.update(users).set({ emailVerifiedAt: new Date(), updatedAt: new Date() }).where(eq(users.id, user.id)).returning();
     }
     if (user.status !== "active") return loginError(request, "account_unavailable", flow.returnTo);
+    if (user.platformRole === "administrator") return loginError(request, "administrator_password_required", flow.returnTo);
     const session = await createSession(user.id);
     jar.set(SESSION_COOKIE, session.token, sessionCookieOptions(session.expiresAt));
     return Response.redirect(new URL(flow.create && flow.returnTo === "/" ? "/account?welcome=1" : flow.returnTo, request.url));

@@ -23,7 +23,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">(
     searchParams.get("mode") === "register" ? "register" : "login",
   );
-  const [form, setForm] = useState({ name: "", email: "", password: "", privacyAccepted: false, termsAccepted: false });
+  const [form, setForm] = useState({ name: "", email: "", password: "", mfaCode: "", privacyAccepted: false, termsAccepted: false });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -44,7 +44,7 @@ export default function LoginPage() {
   }, []);
   useEffect(() => {
     const oauthError = searchParams.get("oauth_error");
-    if (oauthError) setMessage(oauthError === "account_not_found" ? "No NeuroCity account uses that Google email. Create an account with Google first." : "Google sign-in could not be completed. Please try again.");
+    if (oauthError) setMessage(oauthError === "account_not_found" ? "No NeuroCity account uses that Google email. Create an account with Google first." : oauthError === "administrator_password_required" ? "Administrators must sign in with their password and authenticator code." : "Google sign-in could not be completed. Please try again.");
   }, [searchParams]);
 
   function changeMode(next: "login" | "register") {
@@ -256,6 +256,13 @@ export default function LoginPage() {
                 </button>
               </div>
             </label>
+            {mode === "login" && accountType === "administrator" && (
+              <label>
+                Authenticator code
+                <span>Enter the current six-digit code from your authenticator app</span>
+                <input required name="one-time-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={form.mfaCode} onChange={(event) => setForm({ ...form, mfaCode: event.target.value.replace(/\D/g, "").slice(0, 6) })} placeholder="000000" />
+              </label>
+            )}
             {mode === "register" && (
               <div
                 className="password-checks"

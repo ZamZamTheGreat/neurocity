@@ -4,6 +4,7 @@ export * from "../lib/security-rate-limit";
 export * from "../lib/upload-security";
 export * from "../lib/turnstile";
 export * from "../lib/r2";
+export * from "../lib/admin-mfa";
 export * as registration from "../app/api/auth/register/route";
 export * as login from "../app/api/auth/login/route";
 export * as logout from "../app/api/auth/logout/route";

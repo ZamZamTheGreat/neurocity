@@ -56,7 +56,7 @@ export default function NeuroCityNetworkHome({
           </a>
           <a href="/marketplace">Marketplace</a>
           <a className={directoryOnly ? "active" : ""} href="/malls">
-            Digital malls
+            Shop by mall
           </a>
           <a href="/marketplace#stores">Stores</a>
         </nav>
@@ -101,6 +101,12 @@ export default function NeuroCityNetworkHome({
               </div>
             </aside>
           </section>
+          <section className="network-language-guide" aria-label="How NeuroCity is organised">
+            <article><b>NeuroCity</b><span>The connected shopping network and your shared account.</span></article>
+            <article><b>Marketplace</b><span>Browse products and stores across the whole network.</span></article>
+            <article><b>Shop by mall</b><span>Visit the online version of a participating physical mall.</span></article>
+            <article><b>Selma</b><span>Your shopping assistant for finding and comparing local options.</span></article>
+          </section>
           <section className="network-paths">
             <article>
               <span>01</span>
@@ -115,9 +121,9 @@ export default function NeuroCityNetworkHome({
               <span>02</span>
               <div>
                 <small>SHOP BY PLACE</small>
-                <h2>Visit a digital mall</h2>
+                <h2>Visit a mall online</h2>
                 <ul className="info-list"><li>Browse participating shopping centres and their stores.</li></ul>
-                <a href="/malls">Browse digital malls →</a>
+                <a href="/malls">Shop by mall →</a>
               </div>
             </article>
             <article>
@@ -160,7 +166,7 @@ export default function NeuroCityNetworkHome({
           <div><b>3</b><span><strong>Shop through NeuroCity</strong><small>Use the same account, bag and checkout across the network.</small></span></div>
         </div>
         {loading ? (
-          <div className="mall-directory-empty">Loading digital malls…</div>
+          <div className="mall-directory-empty">Loading participating malls…</div>
         ) : malls.length ? (
           <div className="network-mall-grid">
             {malls.map((mall) => (
@@ -234,7 +240,7 @@ export default function NeuroCityNetworkHome({
               <br />
               The whole network.
             </h2>
-            <ul className="info-list"><li>Search live Namibian stores.</li><li>Compare local options and prices in N$.</li><li>Focus on a specific digital mall.</li></ul>
+            <ul className="info-list"><li>Search live Namibian stores.</li><li>Compare local options and prices in N$.</li><li>Focus on stores from a specific mall.</li></ul>
             <button onClick={() => askSelma()}>
               Ask Selma what you need →
             </button>
@@ -262,7 +268,7 @@ export default function NeuroCityNetworkHome({
         <p>Namibia&apos;s connected commerce and digital-mall network.</p>
         <nav>
           <a href="/marketplace">Marketplace</a>
-          <a href="/malls">Digital malls</a>
+          <a href="/malls">Shop by mall</a>
           <a href="/apply">Become a merchant</a>
           <a href="/admin">Administration</a>
           <a href="/privacy">Privacy</a>

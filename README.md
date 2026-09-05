@@ -19,6 +19,7 @@ Validate the blueprint with 5–10 pilot merchants and shortlisted payment provi
 ## Automated tests
 
 - `npm test` builds the production application and runs the fast rendering and access-boundary suite.
+- `npm run test:security` bundles the routes against an isolated in-memory database and runs the dedicated security suite serially.
 - `npm run test:integration` starts an isolated disposable PostgreSQL 16 Docker container, applies every migration, builds the application, runs the database-backed customer/merchant/checkout journey, and removes the container.
 - `npm run test:all` runs both suites.
 - `npm run test:load` runs a read-only concurrency test against `LOAD_TEST_URL` (defaults to local development). Tune `LOAD_TEST_REQUESTS`, `LOAD_TEST_CONCURRENCY`, and the comma-separated `LOAD_TEST_PATHS` environment variables. Run this from CI or a trusted host with valid TLS; never point it at a third-party service without permission.
@@ -39,3 +40,11 @@ The PayToday checkout adapter remains hidden until all three credentials are con
 - `PAYTODAY_PRIVATE_KEY`
 
 Never commit these values. The checkout return URL is generated from the public request origin and ends at `/api/payments/paytoday/return`.
+
+## Administrator MFA
+
+Administrator password sign-in requires a six-digit TOTP code. Generate a private Base32 secret, add it to the administrator's authenticator app, and set the same value as `ADMIN_MFA_SECRET` in the deployment environment. NeuroCity refuses administrator sign-in when this secret is absent. Administrator Google sign-in is intentionally routed back to password and authenticator-code access so OAuth cannot bypass MFA.
+
+## WhatsApp order updates
+
+Merchants always have a manual **Send WhatsApp update** action when an order includes a customer phone number. To send approved template updates automatically after each order-status change, configure `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, and `WHATSAPP_ORDER_TEMPLATE`. The template body receives the order reference, store name, readable status, and merchant note in that order. Failed WhatsApp delivery never rolls back a valid order update and is recorded in the audit log.

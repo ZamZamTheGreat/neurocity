@@ -194,6 +194,31 @@ type ServiceBooking = {
 const pretty = (value: string) => value.replaceAll("_", " ");
 const money = (value: number | null) =>
   value === null ? "Not set" : `N$${value.toFixed(2)}`;
+const whatsappNumber = (value: string) => {
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = `264${digits.slice(1)}`;
+  return digits;
+};
+function parseCatalogueCsv(source: string) {
+  const records: string[][] = [];
+  let record: string[] = [], field = "", quoted = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === '"' && quoted && source[index + 1] === '"') { field += '"'; index += 1; }
+    else if (character === '"') quoted = !quoted;
+    else if (character === "," && !quoted) { record.push(field); field = ""; }
+    else if ((character === "\n" || character === "\r") && !quoted) {
+      if (character === "\r" && source[index + 1] === "\n") index += 1;
+      record.push(field); if (record.some((value) => value.trim())) records.push(record); record = []; field = "";
+    } else field += character;
+  }
+  record.push(field); if (record.some((value) => value.trim())) records.push(record);
+  const headers = (records.shift() ?? []).map((value) => value.trim().toLowerCase());
+  const required = ["name", "sku", "category", "description", "price"];
+  if (!required.every((header) => headers.includes(header))) throw new Error("Missing required columns");
+  return records.map((values) => Object.fromEntries(headers.map((header, index) => [header === "sale_price" ? "salePrice" : header, values[index]?.trim() ?? ""])));
+}
 const dayNames = [
   "Sunday",
   "Monday",
@@ -1409,6 +1434,31 @@ function CatalogueManager({
 }) {
   const [creating, setCreating] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
+  const downloadTemplate = () => {
+    const csv = "name,sku,category,description,price,sale_price,brand,collection,stock\nExample product,EXAMPLE-001,Fashion,Describe the product,199.00,,Your brand,New arrivals,10\n";
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    link.download = "neurocity-catalogue-template.csv";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+  async function importCatalogue(file?: File) {
+    if (!file) return;
+    setImportBusy(true);
+    try {
+      const rows = parseCatalogueCsv(await file.text());
+      const response = await fetch("/api/merchant/products/bulk", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rows }) });
+      const data = await response.json();
+      if (!response.ok) return setMessage(data.invalid?.length ? `${data.error} Rows: ${data.invalid.map((item: { row: number; fields: string[] }) => `${item.row} (${item.fields.join(", ")})`).join("; ")}` : data.error);
+      setMessage(`${data.imported} product${data.imported === 1 ? "" : "s"} imported as drafts. Add images and review them before publishing.`);
+      await reload();
+    } catch {
+      setMessage("The CSV could not be read. Download the template and keep its column headings unchanged.");
+    } finally {
+      setImportBusy(false);
+    }
+  }
   async function createProduct(product: NewProduct, addAnother = false) {
     setCreateBusy(true);
     const response = await fetch("/api/merchant/products", {
@@ -1514,7 +1564,11 @@ function CatalogueManager({
           <h2>Catalogue manager</h2>
           <ul className="info-list"><li>Manage product details and customer options.</li><li>Control prices and stock in one place.</li></ul>
         </div>
-        <button onClick={() => setCreating(true)}>+ Add product</button>
+        <div className="catalogue-actions">
+          <button className="secondary" onClick={downloadTemplate}>Download CSV template</button>
+          <label className="catalogue-import-button">{importBusy ? "Importing…" : "Import CSV"}<input type="file" accept=".csv,text/csv" disabled={importBusy} onChange={(event) => { void importCatalogue(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
+          <button onClick={() => setCreating(true)}>+ Add product</button>
+        </div>
       </div>
       <ProductCreatePanel
         open={creating}
@@ -2281,6 +2335,7 @@ function MerchantOrderCard({
   const nextPrimary = order.allowedTransitions.find(
     (status) => !["rejected", "cancelled", "delivery_failed"].includes(status),
   );
+  const whatsappUpdate = order.customerPhone ? `https://wa.me/${whatsappNumber(order.customerPhone)}?text=${encodeURIComponent(`Hi ${order.customerName ?? "there"}, an update for your NeuroCity order ${order.reference}: ${pretty(order.status)}. Reply here if you need help.`)}` : null;
   const guidance: Record<string, string> = {
     pending_merchant_confirmation: "Check the items and confirm that you can fulfil this order.",
     accepted: order.paymentMethod === "eft" && order.paymentStatus !== "paid" ? "Review the customer's payment proof before preparing the order." : "Payment is clear. Start preparing the customer's items.",
@@ -2454,6 +2509,7 @@ function MerchantOrderCard({
           <small>{nextPrimary ? "RECOMMENDED ACTION" : "ORDER STATUS"}</small>
           <span>{nextPrimary ? `Move this order to ${pretty(nextPrimary)}.` : guidance[order.status]}</span>
         </div>
+        {whatsappUpdate && <a className="order-whatsapp-action" href={whatsappUpdate} target="_blank" rel="noreferrer">Send WhatsApp update</a>}
         {order.allowedTransitions.filter((next) => next !== nextPrimary).map((next) => (
           <button
             className={

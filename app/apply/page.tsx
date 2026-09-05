@@ -39,6 +39,7 @@ const requiredDocuments = [
   { type: "proof_of_business_address", label: "Proof of business address" },
   { type: "bank_confirmation_letter", label: "Bank confirmation letter" },
 ];
+const APPLICATION_DRAFT_KEY = "neurocity:merchant-application-draft";
 
 export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
   const searchParams = useSearchParams();
@@ -57,6 +58,25 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
   );
   const update = (name: string, value: string | number | boolean) =>
     setForm((current) => ({ ...current, [name]: value }));
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(APPLICATION_DRAFT_KEY);
+      if (saved) queueMicrotask(() => setForm((current) => ({ ...current, ...JSON.parse(saved), password: "", confirmPassword: "", termsAccepted: false, privacyAccepted: false })));
+    } catch { /* Ignore unavailable or invalid browser storage. */ }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const draft: Record<string, string | boolean> = { ...form };
+      delete draft.password;
+      delete draft.confirmPassword;
+      delete draft.termsAccepted;
+      delete draft.privacyAccepted;
+      localStorage.setItem(APPLICATION_DRAFT_KEY, JSON.stringify(draft));
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [form]);
 
   useEffect(() => {
     if (!mallSlug) return;
@@ -92,6 +112,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
     });
     const data = await response.json();
     if (response.ok) {
+      localStorage.removeItem(APPLICATION_DRAFT_KEY);
       setReference(data.application.reference);
       window.history.replaceState(
         null,
@@ -122,7 +143,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
         <nav className="platform-nav" aria-label="Primary navigation">
           <a href="/">Network</a>
           <a href="/marketplace">Marketplace</a>
-          <a href="/malls">Digital malls</a>
+          <a href="/malls">Shop by mall</a>
         </nav>
         <div className="platform-header-actions">
           <a href="/application-status">Track application</a>
@@ -134,20 +155,21 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
         <h1>Apply as a merchant or service provider</h1>
         <ul className="info-list">
           <li>Apply to operate a digital storefront in {mallName || "this mall"}.</li>
-          <li>Tell us who you are and how your business operates.</li>
-          <li>Complete catalogue and storefront setup after approval.</li>
+          <li>Start with the essential business and contact details.</li>
+          <li>Your draft saves on this device while you complete the form.</li>
+          <li>Upload verification documents next; catalogue setup happens after approval.</li>
         </ul>
         <div>
-          <span>1 · Business</span>
-          <span>2 · Operations</span>
-          <span>3 · Documents</span>
-          <span>4 · Review</span>
+          <span>1 · Apply</span>
+          <span>2 · Verify documents</span>
+          <span>3 · Review</span>
         </div>
       </section>
       {reference ? (
         <ApplicationDocuments reference={reference} />
       ) : (
         <form className="application-form" onSubmit={submit}>
+          <p className="application-draft-status" role="status">Draft saved automatically on this device</p>
           <h2>Business identity</h2>
           <div className="document-list wide">
             <strong>Applying to {mallName || "digital mall"}</strong>
@@ -235,6 +257,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
             value={form.description}
             onChange={(v) => update("description", v)}
             wide
+            required={false}
             helper="Briefly explain what the business does. Product and service listings will be added later."
           />
           <h2>Authorised representative</h2>
@@ -254,6 +277,8 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
             label="Role or relationship to the business"
             value={form.representativeRole}
             onChange={(v) => update("representativeRole", v)}
+            required={false}
+            placeholder="Optional"
           />
           <Field
             label="Business email"
@@ -327,6 +352,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
             value={form.physicalAddress}
             onChange={(v) => update("physicalAddress", v)}
             wide
+            required={false}
             helper="This should match the proof of business address uploaded in the next step."
           />
           <label>

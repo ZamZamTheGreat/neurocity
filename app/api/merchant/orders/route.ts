@@ -4,6 +4,7 @@ import { getDb } from "../../../../db";
 import { auditEvents, merchantPaymentAllocations, merchants, orderItems, orders, orderStatusEvents, paymentProofs, variantInventory } from "../../../../db/schema";
 import { requirePilotMerchant } from "../auth";
 import { sendOrderStatusNotification } from "../../../../lib/order-mail";
+import { sendWhatsAppOrderUpdate } from "../../../../lib/whatsapp-orders";
 
 const transitions: Record<string, string[]> = {
   pending_merchant_confirmation: ["accepted", "rejected"],
@@ -59,8 +60,14 @@ export async function PATCH(request: Request) {
       await tx.insert(auditEvents).values({ actorRef: access.user.userId, action: "order.status_changed", resourceType: "order", resourceId: String(current.id), metadata: { from: current.status, to: payload.status }, createdAt: new Date() });
     });
     const [merchant] = await db.select({ name: merchants.name }).from(merchants).where(eq(merchants.id, current.merchantId)).limit(1);
-    if (current.customerEmail) await sendOrderStatusNotification({ reference: `NC-${String(current.id).padStart(6, "0")}`, storeName: merchant?.name ?? "The store", customerName: current.customerName ?? "Customer", customerEmail: current.customerEmail, status: payload.status, total: current.total, fulfillmentMethod: current.fulfillmentMethod ?? "pickup", note: payload.note });
-    return Response.json({ order: { ...current, status: payload.status, allowedTransitions: transitions[payload.status] ?? [] } });
+    const reference = `NC-${String(current.id).padStart(6, "0")}`;
+    const [, whatsappResult] = await Promise.allSettled([
+      current.customerEmail ? sendOrderStatusNotification({ reference, storeName: merchant?.name ?? "The store", customerName: current.customerName ?? "Customer", customerEmail: current.customerEmail, status: payload.status, total: current.total, fulfillmentMethod: current.fulfillmentMethod ?? "pickup", note: payload.note }) : Promise.resolve(),
+      sendWhatsAppOrderUpdate({ phone: current.customerPhone ?? "", reference, storeName: merchant?.name ?? "The store", status: payload.status, note: payload.note }),
+    ]);
+    const whatsapp = whatsappResult.status === "fulfilled" ? whatsappResult.value : { delivered: false as const, reason: whatsappResult.reason instanceof Error ? whatsappResult.reason.message : "delivery_failed" };
+    await db.insert(auditEvents).values({ actorRef: access.user.userId, action: whatsapp.delivered ? "order.whatsapp_sent" : "order.whatsapp_skipped", resourceType: "order", resourceId: String(current.id), metadata: { status: payload.status, reason: "reason" in whatsapp ? whatsapp.reason : null } }).catch((error) => console.error("order notification audit failed", error));
+    return Response.json({ order: { ...current, status: payload.status, allowedTransitions: transitions[payload.status] ?? [] }, whatsapp });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Order update failed" }, { status: 500 });
   }

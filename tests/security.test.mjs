@@ -39,6 +39,20 @@ test("login accepts credentials, refuses inactive accounts and throttles guesses
   await security.pg.query("update users set status = 'active' where email = $1", [process.env.ADMIN_EMAIL]);
   for (let i = 0; i < 8; i++) assert.equal((await call(security.login.POST, { email: process.env.ADMIN_EMAIL, password: "wrong" })).status, 401);
   assert.equal((await call(security.login.POST, { email: process.env.ADMIN_EMAIL, password: "wrong" })).status, 429);
+  await security.pg.query("update security_rate_limits set expires_at = now() - interval '1 second'");
+});
+
+test("administrator MFA accepts only a current authenticator code", async () => {
+  await security.pg.query("delete from security_rate_limits");
+  await security.pg.query("update users set platform_role = 'administrator' where email = $1", [process.env.ADMIN_EMAIL]);
+  assert.equal((await call(security.login.POST, { email: process.env.ADMIN_EMAIL, password: "security-test-password", mfaCode: "000000" }, new Map())).status, 401);
+  const currentCode = security.totpCode(process.env.ADMIN_MFA_SECRET);
+  assert.equal((await call(security.login.POST, { email: process.env.ADMIN_EMAIL, password: "security-test-password", mfaCode: currentCode }, new Map())).status, 200);
+  await security.pg.query("update users set platform_role = 'customer' where email = $1", [process.env.ADMIN_EMAIL]);
+});
+
+test("TOTP generation follows the RFC 6238 reference vector", () => {
+  assert.equal(security.totpCode("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", 59_000), "287082");
 });
 
 test("persistent limiter admits exactly the configured number of concurrent attempts", async () => {
@@ -94,7 +108,7 @@ test("body limit checks actual streamed bytes even without content-length", asyn
 test("GET logout preserves the session; POST invalidates it", async () => {
   const count = Number((await security.pg.query("select count(*) from sessions")).rows[0].count);
   assert.ok(count > 0);
-  const response = await security.cookieContext.run(jar, () => security.logout.GET());
+  const response = await security.cookieContext.run(jar, () => security.logout.GET(new Request("http://localhost/api/auth/logout?return_to=/account")));
   assert.equal(response.status, 200);
   assert.match(await response.text(), /method="post"/);
   assert.equal(Number((await security.pg.query("select count(*) from sessions")).rows[0].count), count);

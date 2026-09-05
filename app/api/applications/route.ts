@@ -12,7 +12,7 @@ import { rateLimitResponse } from "../../../lib/security-rate-limit";
 import { turnstileFailure, verifyTurnstile } from "../../../lib/turnstile";
 
 const requiredDocuments = ["business_registration", "representative_identification", "proof_of_business_address", "bank_confirmation_letter"];
-const required = ["legalName", "tradingName", "registrationNumber", "businessType", "category", "mainOperatingArea", "description", "representativeName", "representativeRole", "email", "phone", "physicalAddress"];
+const required = ["legalName", "tradingName", "registrationNumber", "businessType", "category", "mainOperatingArea", "representativeName", "email", "phone"];
 const offeringTypes = new Set(["products", "services", "both"]);
 const locationTypes = new Set(["physical_store", "service_area", "both", "remote"]);
 
@@ -35,6 +35,9 @@ export async function POST(request: Request) {
     data.productSummary ??= "";
     data.estimatedProductCount ??= 1;
     data.returnsPolicy ??= "";
+    data.description ??= "";
+    data.representativeRole ??= "Owner or authorised representative";
+    data.physicalAddress ??= "";
     for (const field of required) if (!String(data[field] ?? "").trim()) return Response.json({ error: `${field} is required.` }, { status: 400 });
     if (!isMerchantCategory(data.category)) return Response.json({ error: "Select a valid main category." }, { status: 400 });
     if (String(data.category) === "Services" && data.offeringType === "products") data.offeringType = "services";
