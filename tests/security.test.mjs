@@ -113,10 +113,15 @@ test("upload tickets reject tampering, another user and expiry", () => {
   try { assert.throws(() => security.verifyUploadTicket(token, "1")); } finally { Date.now = now; }
 });
 
-test("file signature and scanner failures reject unsafe uploads", async () => {
+test("file signatures fail closed while scanner availability follows the configured policy", async () => {
   assert.throws(() => security.validateFileType(Buffer.from("<script>alert(1)</script>"), "image/png"));
   delete process.env.CLAMAV_HOST;
+  delete process.env.UPLOAD_MALWARE_SCAN_MODE;
   await assert.rejects(security.scanFile(Buffer.from("test")), /unavailable/);
+  assert.equal(await security.scanFile(Buffer.from("test"), true), "sanitization-only");
+  process.env.UPLOAD_MALWARE_SCAN_MODE = "required";
+  await assert.rejects(security.scanFile(Buffer.from("test")), /unavailable/);
+  delete process.env.UPLOAD_MALWARE_SCAN_MODE;
 });
 
 test("scanner protocol, image decode, signed storage headers and immutable writes", async () => {
@@ -162,10 +167,42 @@ test("scanner protocol, image decode, signed storage headers and immutable write
   } finally { globalThis.fetch = originalFetch; await new Promise(resolve => scanner.close(resolve)); }
 });
 
+test("decoded raster images upload when the optional scanner is unavailable", async () => {
+  delete process.env.CLAMAV_HOST;
+  delete process.env.UPLOAD_MALWARE_SCAN_MODE;
+  process.env.R2_ENDPOINT = "https://storage.example";
+  process.env.R2_BUCKET = "private";
+  process.env.R2_ACCESS_KEY_ID = "test-key";
+  process.env.R2_SECRET_ACCESS_KEY = "test-only-storage-key";
+  const previous = globalThis.fetch;
+  let stored;
+  globalThis.fetch = async (_url, init) => { stored = init; return new Response(null, { status: 200 }); };
+  try {
+    const bytes = await sharp({ create: { width: 2, height: 2, channels: 3, background: "blue" } }).png().toBuffer();
+    await security.storeScannedUpload({ key: "merchants/1/logo/safe.png", size: bytes.length, mimeType: "image/png" }, bytes);
+    assert.equal(stored.headers["x-amz-meta-security-scan"], "sanitized-v1");
+    assert.equal((await sharp(stored.body).metadata()).format, "png");
+  } finally { globalThis.fetch = previous; }
+});
+
 test("unscanned legacy objects are rejected before download", async () => {
   const previous = globalThis.fetch;
   globalThis.fetch = async () => new Response(null, { headers: { "content-length": "100" } });
   try { await assert.rejects(security.verifiedObject("applications/1/legacy.pdf")); }
+  finally { globalThis.fetch = previous; }
+});
+
+test("sanitised objects remain available when the optional scanner is not configured", async () => {
+  const previous = globalThis.fetch;
+  globalThis.fetch = async () => new Response(null, { headers: { "content-length": "100", "content-type": "image/png", "x-amz-meta-security-scan": "sanitized-v1" } });
+  try { assert.equal((await security.verifiedObject("applications/1/sanitized.pdf")).ok, true); }
+  finally { globalThis.fetch = previous; }
+});
+
+test("sanitisation-only metadata cannot make a document downloadable", async () => {
+  const previous = globalThis.fetch;
+  globalThis.fetch = async () => new Response(null, { headers: { "content-length": "100", "content-type": "application/pdf", "x-amz-meta-security-scan": "sanitized-v1" } });
+  try { await assert.rejects(security.verifiedObject("applications/1/document.pdf")); }
   finally { globalThis.fetch = previous; }
 });
 

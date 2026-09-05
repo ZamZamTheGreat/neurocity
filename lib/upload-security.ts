@@ -47,10 +47,14 @@ export function validateFileType(bytes: Uint8Array, mime: string) {
 
 // Private clamd INSTREAM protocol. No file paths or user-selected hosts are sent.
 // Missing scanner, timeout, size-limit responses and scan errors fail closed.
-export async function scanFile(bytes: Uint8Array) {
+export async function scanFile(bytes: Uint8Array, allowSanitizationOnly = false) {
   const host = process.env.CLAMAV_HOST;
   const port = Number(process.env.CLAMAV_PORT ?? 3310);
-  if (!host || !Number.isInteger(port) || port < 1 || port > 65535) throw new Error("File scanning is temporarily unavailable.");
+  if (!host) {
+    if (!allowSanitizationOnly || process.env.UPLOAD_MALWARE_SCAN_MODE === "required") throw new Error("File scanning is temporarily unavailable.");
+    return "sanitization-only" as const;
+  }
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("File scanning is temporarily unavailable.");
   await new Promise<void>((resolve, reject) => {
     const socket = connect({ host, port });
     let response = "";
@@ -73,12 +77,13 @@ export async function scanFile(bytes: Uint8Array) {
     });
     socket.on("end", () => { if (!response.includes("\0")) fail(); });
   });
+  return "clamav-v1" as const;
 }
 
 export async function storeScannedUpload(ticket: Ticket, bytes: Uint8Array) {
   if (bytes.length !== ticket.size) throw new Error("File size does not match the upload request.");
   validateFileType(bytes, ticket.mimeType);
-  await scanFile(bytes);
+  const scanResult = await scanFile(bytes, ticket.mimeType.startsWith("image/"));
   // Full decode rejects malformed images and decompression bombs. Re-encoding
   // strips metadata and trailing/polyglot payloads before anything is published.
   let stored: Buffer<ArrayBufferLike> = Buffer.from(bytes);
@@ -98,7 +103,7 @@ export async function storeScannedUpload(ticket: Ticket, bytes: Uint8Array) {
     stored = Buffer.from(await clean.save());
     if (stored.length > maxDocumentBytes) throw new Error("Processed PDF is too large.");
   }
-  const headers = { "content-type": ticket.mimeType, "if-none-match": "*", "x-amz-meta-security-scan": "clamav-v1", "x-amz-meta-sha256": createHash("sha256").update(stored).digest("hex") };
+  const headers = { "content-type": ticket.mimeType, "if-none-match": "*", "x-amz-meta-security-scan": scanResult === "clamav-v1" ? "clamav-v1" : "sanitized-v1", "x-amz-meta-sha256": createHash("sha256").update(stored).digest("hex") };
   const response = await fetch(createPresignedR2Url("PUT", ticket.key, 60, undefined, headers), {
     method: "PUT", body: new Uint8Array(stored).buffer, signal: AbortSignal.timeout(20_000),
     headers,
@@ -109,6 +114,8 @@ export async function storeScannedUpload(ticket: Ticket, bytes: Uint8Array) {
 export async function verifiedObject(key: string) {
   const response = await fetch(createPresignedR2Url("HEAD", key, 60), { method: "HEAD", signal: AbortSignal.timeout(10_000) });
   const size = Number(response.headers.get("content-length"));
-  if (!response.ok || response.headers.get("x-amz-meta-security-scan") !== "clamav-v1" || !Number.isInteger(size) || size < 1 || size > maxDocumentBytes) throw new Error("Upload requires validation. Please upload the file again.");
+  const securityStatus = response.headers.get("x-amz-meta-security-scan");
+  const sanitizedRaster = securityStatus === "sanitized-v1" && response.headers.get("content-type")?.startsWith("image/");
+  if (!response.ok || !(securityStatus === "clamav-v1" || sanitizedRaster) || !Number.isInteger(size) || size < 1 || size > maxDocumentBytes) throw new Error("Upload requires validation. Please upload the file again.");
   return response;
 }
