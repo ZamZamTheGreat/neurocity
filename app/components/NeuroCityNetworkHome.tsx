@@ -140,20 +140,25 @@ export default function NeuroCityNetworkHome({
         <header>
           <div>
             <p className="eyebrow">
-              <span /> DIGITAL DESTINATIONS
+              <span /> SHOP BY MALL
             </p>
             <h2>
               {directoryOnly
-                ? "Explore Namibia’s digital malls."
-                : "The mall experience, extended online."}
+                ? "Visit your favourite malls online."
+                : "Your local mall, open online."}
             </h2>
           </div>
           <p>
             {directoryOnly
-              ? "Enter a participating mall to browse its stores, products and services through a dedicated digital experience."
-              : "Every mall keeps its own identity while connecting customers to the wider NeuroCity network."}
+              ? "Choose a mall to browse its participating stores, products and services in one place."
+              : "Choose a mall below to shop its participating stores. You can still use the main marketplace to browse everything across NeuroCity."}
           </p>
         </header>
+        <div className="mall-explainer" aria-label="How online malls work">
+          <div><b>1</b><span><strong>Choose a mall</strong><small>Enter the online space for a mall you know.</small></span></div>
+          <div><b>2</b><span><strong>Browse its stores</strong><small>See products and services from participating tenants.</small></span></div>
+          <div><b>3</b><span><strong>Shop through NeuroCity</strong><small>Use the same account, bag and checkout across the network.</small></span></div>
+        </div>
         {loading ? (
           <div className="mall-directory-empty">Loading digital malls…</div>
         ) : malls.length ? (
@@ -183,7 +188,7 @@ export default function NeuroCityNetworkHome({
                   <small>{mall.city ?? mall.country}</small>
                 </div>
                 <div>
-                  <span>NEUROCITY DIGITAL MALL</span>
+                  <span>ONLINE MALL</span>
                   <h3>{mall.name}</h3>
                   <p>{mall.tagline ?? `Discover ${mall.name} online.`}</p>
                   <ul>
@@ -193,12 +198,12 @@ export default function NeuroCityNetworkHome({
                     </li>
                     <li>
                       {mall.domain
-                        ? "Custom domain connected"
-                        : "NeuroCity preview"}
+                        ? "Official mall website"
+                        : "Hosted on NeuroCity"}
                     </li>
                   </ul>
                   <a href={`/malls/${mall.slug}`}>
-                    Enter digital mall <b>→</b>
+                    Shop this mall <b>→</b>
                   </a>
                 </div>
               </article>
@@ -206,13 +211,13 @@ export default function NeuroCityNetworkHome({
           </div>
         ) : (
           <div className="mall-directory-empty">
-            <b>Digital malls are being prepared.</b>
-            <ul className="info-list centered"><li>New destinations will appear here as partnerships launch.</li></ul>
+            <b>Online mall shopping is coming soon.</b>
+            <ul className="info-list centered"><li>Participating malls will appear here as their stores come online.</li></ul>
           </div>
         )}
         {!directoryOnly && (
           <a className="all-malls-link" href="/malls">
-            View all digital malls →
+            View all malls →
           </a>
         )}
       </section>
