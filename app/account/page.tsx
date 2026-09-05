@@ -83,6 +83,7 @@ type Account = {
     price: number;
     salePrice: number | null;
     productName: string;
+    availability?: string;
     imageUrl: string | null;
     merchantId: number;
     storeName: string;
@@ -977,7 +978,7 @@ function CheckoutBag({
                 <header><span>{merchant.name}</span><small>{checkoutItems.filter((item) => item.merchantId === merchant.id).length} lines</small></header>
                 {checkoutItems.filter((item) => item.merchantId === merchant.id).map((item) => (
                   <article key={item.id}>
-                    <div><b>{item.productName}</b><small>{[item.size, item.color].filter(Boolean).join(" / ") || item.title} · Qty {item.quantity}</small></div>
+                    <div><b>{item.productName}</b>{item.availability === "preorder" && <small>Preorder only · Merchant confirms fulfilment date</small>}<small>{[item.size, item.color].filter(Boolean).join(" / ") || item.title} · Qty {item.quantity}</small></div>
                     <strong>N${(Number(item.salePrice ?? item.price) * item.quantity).toFixed(2)}</strong>
                   </article>
                 ))}
@@ -1048,6 +1049,7 @@ function CheckoutBag({
                 {item.imageUrl && <img src={item.imageUrl} alt="" />}
                 <div>
                   <strong>{item.productName}</strong>
+                  {item.availability === "preorder" && <small>Preorder only · Merchant confirms fulfilment date</small>}
                   <span>
                     {[item.size, item.color].filter(Boolean).join(" / ") ||
                       item.title}{" "}

@@ -30,6 +30,7 @@ type Product = {
   durationMinutes: number | null;
   serviceMode: string | null;
   bookingRequired: boolean;
+  availability: string;
   variants: Variant[];
 };
 type StoreData = {
@@ -422,6 +423,8 @@ function StoreProduct({
       0,
   );
   const variant = product.variants.find((item) => item.id === variantId);
+  const preorder = product.availability === "preorder";
+  const purchasable = preorder || product.availability === "available";
   const price = variant?.salePrice ?? variant?.price;
   const [adding, setAdding] = useState(false);
   async function ask() {
@@ -573,10 +576,10 @@ function StoreProduct({
                 onChange={(event) => setVariantId(Number(event.target.value))}
               >
                 {product.variants.map((item) => (
-                  <option key={item.id} value={item.id} disabled={item.available !== null && item.available < 1}>
+                  <option key={item.id} value={item.id} disabled={!purchasable || (!preorder && item.available !== null && item.available < 1)}>
                     {[item.size, item.color].filter(Boolean).join(" / ") ||
                       item.title}
-                    {item.available !== null && item.available < 1
+                    {!preorder && item.available !== null && item.available < 1
                       ? " — sold out"
                       : ""}
                   </option>
@@ -592,7 +595,7 @@ function StoreProduct({
                     : "out-stock"
                 }
               >
-                {variant?.available === null
+                {preorder ? "Preorder only — made or sourced after ordering" : !purchasable ? "Currently unavailable" : variant?.available === null
                   ? "Available — store confirms stock"
                   : variant && variant.available > 0
                     ? `${variant.available} in stock`
@@ -600,6 +603,7 @@ function StoreProduct({
               </span>
               <small>SKU {variant?.sku}</small>
             </div>
+            {preorder && <p className="variant-pending">You can add this item to your bag and place an order. It is not ready for immediate collection or delivery. The merchant will confirm the expected fulfilment date.</p>}
             <div className="store-product-buy">
               <div>
                 {variant?.salePrice !== null &&
@@ -616,7 +620,8 @@ function StoreProduct({
                 disabled={
                   adding ||
                   !variant ||
-                  (variant.available !== null && variant.available < 1)
+                  !purchasable ||
+                  (!preorder && variant.available !== null && variant.available < 1)
                 }
                 onClick={async () => {
                   if (!variant) return;
@@ -625,7 +630,7 @@ function StoreProduct({
                   setAdding(false);
                 }}
               >
-                {adding ? "Adding…" : "Add to bag"}
+                {adding ? "Adding…" : preorder ? "Preorder · Add to bag" : "Add to bag"}
               </button>
             </div>
           </>

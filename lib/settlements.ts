@@ -1,3 +1,4 @@
+import { isPreorderLine } from "./preorders";
 import { eq, inArray, sql } from "drizzle-orm";
 import { customerCartItems, merchantPaymentAllocations, orderItems, orders, variantInventory } from "../db/schema";
 
@@ -23,7 +24,7 @@ export async function cancelCheckoutAllocationsAndReleaseStock(tx: any, checkout
   const ids = checkoutOrders.map((item: { id: number }) => item.id);
   const items = ids.length ? await tx.select().from(orderItems).where(inArray(orderItems.orderId, ids)) : [];
   for (const item of items) {
-    if (item.variantId) {
+    if (item.variantId && !isPreorderLine(item)) {
       const stockRows = await tx.select().from(variantInventory).where(eq(variantInventory.variantId, item.variantId));
       let remaining = item.quantity;
       for (const stock of stockRows) {

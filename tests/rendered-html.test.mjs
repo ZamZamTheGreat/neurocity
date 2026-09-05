@@ -343,7 +343,7 @@ test("keeps the customer journey connected from storefront to multi-store checko
   const account = await readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8");
   const mobileDock = await readFile(new URL("../app/components/MobileDock.tsx", import.meta.url), "utf8");
   assert.match(storefront, /account\?tab=Bag/);
-  assert.match(storefront, /disabled=\{item\.available !== null && item\.available < 1\}/);
+  assert.match(storefront, /!preorder && item\.available !== null && item\.available < 1/);
   assert.match(storefront, /Added to your bag/);
   assert.match(account, /checkout-merchant-group/);
   assert.match(account, /ONE PAYMENT/);

@@ -1,4 +1,5 @@
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { isPreorderLine } from "../../../../lib/preorders";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { auditEvents, merchantPaymentAllocations, merchants, orderItems, orders, orderStatusEvents, paymentProofs, variantInventory } from "../../../../db/schema";
 import { requirePilotMerchant } from "../auth";
@@ -43,13 +44,13 @@ export async function PATCH(request: Request) {
       await tx.update(orders).set({ status: payload.status!, updatedAt: new Date() }).where(eq(orders.id, current.id));
       if (["rejected", "cancelled"].includes(payload.status!)) {
         await tx.update(merchantPaymentAllocations).set({ settlementStatus: current.paymentStatus === "paid" ? "refund_required" : "cancelled", updatedAt: new Date() }).where(eq(merchantPaymentAllocations.orderId, current.id));
-        for (const item of items.filter((row) => row.variantId)) {
+        for (const item of items.filter((row) => row.variantId && !isPreorderLine(row))) {
           const inventory = await tx.select().from(variantInventory).where(eq(variantInventory.variantId, item.variantId!)); let remaining = item.quantity;
           for (const row of inventory) { const released = Math.min(remaining, row.reserved); if (released > 0) await tx.update(variantInventory).set({ reserved: sql`greatest(0, ${variantInventory.reserved} - ${released})`, updatedAt: new Date() }).where(eq(variantInventory.id, row.id)); remaining -= released; if (!remaining) break; }
         }
       }
       if (payload.status === "completed") {
-        for (const item of items.filter((row) => row.variantId)) {
+        for (const item of items.filter((row) => row.variantId && !isPreorderLine(row))) {
           const inventory = await tx.select().from(variantInventory).where(eq(variantInventory.variantId, item.variantId!)); let remaining = item.quantity;
           for (const row of inventory) { const fulfilled = Math.min(remaining, row.reserved); if (fulfilled > 0) await tx.update(variantInventory).set({ reserved: sql`greatest(0, ${variantInventory.reserved} - ${fulfilled})`, onHand: sql`greatest(0, ${variantInventory.onHand} - ${fulfilled})`, updatedAt: new Date() }).where(eq(variantInventory.id, row.id)); remaining -= fulfilled; if (!remaining) break; }
         }
