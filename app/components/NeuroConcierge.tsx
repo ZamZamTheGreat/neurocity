@@ -60,10 +60,13 @@ export function NeuroConcierge({
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState("Selma");
   const [profileError, setProfileError] = useState("");
+  const [photoMenu, setPhotoMenu] = useState(false);
+  const [cameraConsent, setCameraConsent] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const submittedPromptKey = useRef(0);
 
   useEffect(() => {
@@ -298,6 +301,9 @@ export function NeuroConcierge({
     } finally {
       setBusy(false);
       if (imageInputRef.current) imageInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
+      setPhotoMenu(false);
+      setCameraConsent(false);
     }
   }
   function submit(event: FormEvent) {
@@ -476,9 +482,30 @@ export function NeuroConcierge({
                 ))}
               </div>
             )}
+            {photoMenu && (
+              <div className="selma-photo-menu" role="dialog" aria-label="Add a photo">
+                <div>
+                  <strong>{cameraConsent ? "Allow camera access" : "Add a photo"}</strong>
+                  <small>{cameraConsent ? "Your device may ask for permission to use the camera. The photo is used only for this search." : "Choose an existing image or take a new photo."}</small>
+                </div>
+                {cameraConsent ? (
+                  <div className="selma-photo-actions">
+                    <button type="button" onClick={() => setCameraConsent(false)}>Back</button>
+                    <button type="button" onClick={() => cameraInputRef.current?.click()}>Continue to camera</button>
+                  </div>
+                ) : (
+                  <div className="selma-photo-actions">
+                    <button type="button" onClick={() => imageInputRef.current?.click()}>Upload from device</button>
+                    <button type="button" onClick={() => setCameraConsent(true)}>Take a photo</button>
+                  </div>
+                )}
+                <button className="selma-photo-close" type="button" onClick={() => { setPhotoMenu(false); setCameraConsent(false); }} aria-label="Close photo options">×</button>
+              </div>
+            )}
             <form className="neuro-composer" onSubmit={submit}>
               <input ref={imageInputRef} className="visual-search-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void findFromImage(event.target.files?.[0])} />
-              <button className="visual-search-button" type="button" disabled={busy} onClick={() => imageInputRef.current?.click()} aria-label="Upload a screenshot or take a photo to search">
+              <input ref={cameraInputRef} className="visual-search-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => void findFromImage(event.target.files?.[0])} />
+              <button className="visual-search-button" type="button" disabled={busy} onClick={() => { setPhotoMenu(!photoMenu); setCameraConsent(false); }} aria-label="Upload an image or take a photo to search" aria-expanded={photoMenu}>
                 <span aria-hidden="true">▧</span>
                 <b>Add photo</b>
               </button>
