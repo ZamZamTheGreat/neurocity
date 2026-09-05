@@ -24,6 +24,7 @@ import "./workspace-drawers.css";
 import "./admin-dashboard-v2.css";
 import "./platform-polish-v2.css";
 import "./shopping-journey-v2.css";
+import { siteUrl } from "../lib/site-url";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -33,6 +34,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   applicationName: "NeuroCity",
   title: "NeuroCity | Namibia's connected shopping network",
   description:
@@ -78,6 +80,7 @@ export const metadata: Metadata = {
     description: "Namibia's connected shopping network.",
     images: ["/branding/neurocity-social.png"],
   },
+  verification: process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : undefined,
 };
 
 export default function RootLayout({
