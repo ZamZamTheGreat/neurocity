@@ -110,6 +110,20 @@ test("keeps account selection available before sign in", async () => {
   assert.match(source, /href="\/join"/);
 });
 
+test("offers protected Google account access when configured", async () => {
+  const login = await readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8");
+  const start = await readFile(new URL("../app/api/auth/google/route.ts", import.meta.url), "utf8");
+  const callback = await readFile(new URL("../app/api/auth/google/callback/route.ts", import.meta.url), "utf8");
+  const auth = await readFile(new URL("../lib/google-auth.ts", import.meta.url), "utf8");
+  assert.match(login, /Continue with Google/);
+  assert.match(login, /Create account with Google/);
+  assert.match(start, /code_challenge_method: "S256"/);
+  assert.match(start, /scope: "openid email profile"/);
+  assert.match(callback, /profile\.email_verified !== true/);
+  assert.match(callback, /createSession\(user\.id\)/);
+  assert.match(auth, /!value\.startsWith\("\/\/"\)/);
+});
+
 test("keeps Account Centre navigation independent of Vinext client links", async () => {
   const access = await readFile(new URL("../app/access/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(access, /from "next\/link"/);

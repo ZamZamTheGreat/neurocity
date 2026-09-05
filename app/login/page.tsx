@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import TurnstileChallenge from "../components/TurnstileChallenge";
@@ -27,6 +27,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [googleAvailable, setGoogleAvailable] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
   const acceptTurnstile = useCallback((token: string | null) => setTurnstileToken(token), []);
@@ -38,6 +39,13 @@ export default function LoginPage() {
     ],
     [form.password],
   );
+  useEffect(() => {
+    fetch("/api/auth/providers").then((response) => response.json()).then((providers) => setGoogleAvailable(providers.google === true)).catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    const oauthError = searchParams.get("oauth_error");
+    if (oauthError) setMessage(oauthError === "account_not_found" ? "No NeuroCity account uses that Google email. Create an account with Google first." : "Google sign-in could not be completed. Please try again.");
+  }, [searchParams]);
 
   function changeMode(next: "login" | "register") {
     setMode(next);
@@ -171,6 +179,15 @@ export default function LoginPage() {
               {mode === "register" ? <li>You’ll be signed in automatically.</li> : null}
             </ul>
           </header>
+          {googleAvailable && (
+            <div className="google-auth-option">
+              <a href={`/api/auth/google?return_to=${encodeURIComponent(returnTo)}${mode === "register" ? "&create=1" : ""}`}>
+                <span aria-hidden="true">G</span>{mode === "register" ? "Create account with Google" : "Continue with Google"}
+              </a>
+              {mode === "register" && <small>By continuing, you accept the <Link href="/privacy" target="_blank">Privacy Notice</Link> and <Link href="/terms" target="_blank">Terms &amp; Conditions</Link>.</small>}
+              <div><span>or continue with email</span></div>
+            </div>
+          )}
           <form onSubmit={submit}>
             {mode === "register" && (
               <label>
