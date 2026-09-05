@@ -286,12 +286,12 @@ export default function AccountPage() {
   );
   function tabCount(item: Tab) {
     if (item === "Messages") return openConversations;
-    if (item === "Orders") return data.orders.length;
+    if (item === "Orders") return data?.orders.length ?? 0;
     if (item === "Bookings") return activeBookings.length;
     if (item === "Bag") return bagCount;
-    if (item === "Wishlist") return data.wishlist.length;
-    if (item === "Stores") return data.savedStores.length;
-    if (item === "Addresses") return data.addresses.length;
+    if (item === "Wishlist") return data?.wishlist.length ?? 0;
+    if (item === "Stores") return data?.savedStores.length ?? 0;
+    if (item === "Addresses") return data?.addresses.length ?? 0;
     return 0;
   }
   return (

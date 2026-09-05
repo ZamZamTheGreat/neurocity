@@ -21,6 +21,7 @@ type Message = {
   role: "user" | "companion";
   text: string;
   matches?: Match[];
+  suggestions?: string[];
   imagePreview?: string;
 };
 type Profile = { id?: number; companionName: string; customerName: string; memoryEnabled: boolean };
@@ -184,6 +185,7 @@ export function NeuroConcierge({
           role: "companion",
           text: response.ok ? result.reply : result.error,
           matches: response.ok ? result.matches : [],
+          suggestions: response.ok ? result.suggestions : [],
         },
       ]);
     } catch {
@@ -437,10 +439,10 @@ export function NeuroConcierge({
               )}
               <div ref={endRef} />
             </div>
-            {messages.length === 1 && (
+            {(messages.length === 1 || messages.at(-1)?.suggestions?.length) && (
               <div className="suggestions neuro-prompts">
-                {prompts.map((prompt) => (
-                  <button key={prompt} onClick={() => void ask(prompt)}>
+                {(messages.length === 1 ? prompts : messages.at(-1)?.suggestions ?? []).map((prompt) => (
+                  <button key={prompt} disabled={busy} onClick={() => void ask(prompt)}>
                     {prompt}
                   </button>
                 ))}

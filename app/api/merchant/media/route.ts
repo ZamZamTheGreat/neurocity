@@ -1,4 +1,4 @@
-import { createUploadUrl } from "../../../../lib/upload-security";
+import { createUploadUrl, verifiedObject } from "../../../../lib/upload-security";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
@@ -20,6 +20,7 @@ export async function GET(request: Request) {
   if (!value.startsWith("r2://")) return Response.redirect(new URL(value, request.url), 302);
   const key = value.slice(5);
   if (!key.startsWith(`merchants/${access.merchantId}/`)) return Response.json({ error: "Image unavailable." }, { status: 403 });
+  if (!await verifiedObject(key).catch(() => null)) return Response.json({ error: "Image requires a verified upload." }, { status: 409 });
   return Response.redirect(createPresignedR2Url("GET", key, 300), 302);
 }
 

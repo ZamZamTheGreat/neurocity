@@ -11,6 +11,7 @@
     "start": "vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "test:integration": "node scripts/run-integration-tests.mjs",
+    "test:security": "node scripts/run-security-tests.mjs",
     "test:identity": "tsc --target ES2017 --module esnext --moduleResolution bundler --skipLibCheck --strict --outDir .identity-test-dist --rootDir lib/neuroedge lib/neuroedge/uuid-v7.ts lib/neuroedge/current-actor.ts && node --test tests/neuroedge-identity.test.mjs",
     "test:all": "npm test && npm run test:integration",
     "test:load": "node scripts/load-test.mjs",
@@ -19,21 +20,21 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.888.0",
-    "@aws-sdk/s3-request-presigner": "^3.888.0",
     "@types/nodemailer": "^7.0.9",
     "@types/pg": "^8.15.5",
     "bcryptjs": "^3.0.2",
     "drizzle-orm": "0.45.2",
     "jose": "^6.1.3",
-    "nodemailer": "^7.0.10",
+    "nodemailer": "^10.0.0",
+    "pdf-lib": "^1.17.1",
     "pg": "^8.16.3",
-    "react": "19.2.6",
-    "react-dom": "19.2.6",
-    "sharp": "https://registry.npmjs.org/sharp/-/sharp-0.34.5.tgz"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.37.1",
+    "@cloudflare/vite-plugin": "^1.54.4",
+    "@electric-sql/pglite": "^0.5.8",
     "@eslint/js": "9.39.4",
     "@next/eslint-plugin-next": "16.2.6",
     "@tailwindcss/postcss": "4.2.1",
@@ -41,20 +42,21 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
-    "@vitejs/plugin-rsc": "0.5.26",
+    "@vitejs/plugin-rsc": "^0.5.34",
     "drizzle-kit": "0.31.10",
+    "esbuild": "^0.28.2",
     "eslint": "9.39.4",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "16.4.0",
-    "react-server-dom-webpack": "19.2.6",
+    "react-server-dom-webpack": "^19.2.8",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.59.3",
-    "vinext": "1.0.0-beta.2",
-    "vite": "8.0.13",
-    "wrangler": "4.92.0"
+    "vinext": "^1.0.0-beta.9",
+    "vite": "^8.2.2",
+    "wrangler": "^4.129.0"
   },
   "type": "module"
 }

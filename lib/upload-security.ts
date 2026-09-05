@@ -1,9 +1,18 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { connect } from "node:net";
-import sharp from "sharp";
+import sharpModule from "sharp";
+import { PDFDocument } from "pdf-lib";
 import { createPresignedR2Url, maxDocumentBytes } from "./r2";
 
 type Ticket = { key: string; userId: string; mimeType: string; size: number; expires: number };
+type ImagePipeline = {
+  rotate(): ImagePipeline;
+  png(): ImagePipeline;
+  jpeg(): ImagePipeline;
+  webp(): ImagePipeline;
+  toBuffer(): Promise<Buffer>;
+};
+const sharp = sharpModule as unknown as (input: Buffer, options: { limitInputPixels: number; failOn: "warning"; animated: boolean }) => ImagePipeline;
 function signingKey() {
   const key = process.env.R2_SECRET_ACCESS_KEY;
   if (!key) throw new Error("Private storage is unavailable.");
@@ -72,15 +81,26 @@ export async function storeScannedUpload(ticket: Ticket, bytes: Uint8Array) {
   await scanFile(bytes);
   // Full decode rejects malformed images and decompression bombs. Re-encoding
   // strips metadata and trailing/polyglot payloads before anything is published.
-  let stored = Buffer.from(bytes);
+  let stored: Buffer<ArrayBufferLike> = Buffer.from(bytes);
   if (ticket.mimeType.startsWith("image/")) {
     const decoder = sharp(stored, { limitInputPixels: 20_000_000, failOn: "warning", animated: false }).rotate();
     stored = await (ticket.mimeType === "image/png" ? decoder.png() : ticket.mimeType === "image/webp" ? decoder.webp() : decoder.jpeg()).toBuffer();
     if (stored.length > maxDocumentBytes) throw new Error("Processed image is too large.");
+  } else if (ticket.mimeType === "application/pdf") {
+    // Rebuild only the page graphics. Document actions, annotations, forms,
+    // JavaScript and embedded attachments are not imported into the new file.
+    const source = await PDFDocument.load(stored, { updateMetadata: false });
+    if (source.isEncrypted || source.getPageCount() < 1 || source.getPageCount() > 100) throw new Error("Unsupported PDF.");
+    const clean = await PDFDocument.create();
+    for (const page of await clean.embedPages(source.getPages())) {
+      clean.addPage([page.width, page.height]).drawPage(page);
+    }
+    stored = Buffer.from(await clean.save());
+    if (stored.length > maxDocumentBytes) throw new Error("Processed PDF is too large.");
   }
   const headers = { "content-type": ticket.mimeType, "if-none-match": "*", "x-amz-meta-security-scan": "clamav-v1", "x-amz-meta-sha256": createHash("sha256").update(stored).digest("hex") };
   const response = await fetch(createPresignedR2Url("PUT", ticket.key, 60, undefined, headers), {
-    method: "PUT", body: stored, signal: AbortSignal.timeout(20_000),
+    method: "PUT", body: new Uint8Array(stored).buffer, signal: AbortSignal.timeout(20_000),
     headers,
   });
   if (!response.ok) throw new Error("File could not be stored. Request a new upload and retry.");

@@ -10,7 +10,7 @@ export async function sendMail(message: Mail) {
     return { delivered: false, reason: "not_configured" } as const;
   }
   const port = Number(process.env.SMTP_PORT ?? 465);
-  const transport = nodemailer.createTransport({ host: process.env.SMTP_HOST ?? "smtp.gmail.com", port, secure: port === 465, auth: { user, pass } });
+  const transport = nodemailer.createTransport({ host: process.env.SMTP_HOST ?? "smtp.gmail.com", port, secure: port === 465, requireTLS: true, disableFileAccess: true, disableUrlAccess: true, auth: { user, pass } });
   await transport.sendMail({ from: process.env.MAIL_FROM ?? `NeuroCity <${user}>`, ...message });
   return { delivered: true } as const;
 }

@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "../../../../../db";
 import { applicationDocuments, merchantApplications } from "../../../../../db/schema";
 import { getChatGPTUser } from "../../../../chatgpt-auth";
-import { allowedDocumentMimeTypes, createPresignedR2Url, documentTypes, maxDocumentBytes } from "../../../../../lib/r2";
+import { allowedDocumentMimeTypes, documentTypes, maxDocumentBytes } from "../../../../../lib/r2";
 
 export async function POST(request: Request) {
   const user = await getChatGPTUser(); if (!user) return Response.json({ error: "Sign in with the application email before uploading documents." }, { status: 401 });

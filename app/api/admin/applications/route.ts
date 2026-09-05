@@ -3,6 +3,7 @@ import { getDb } from "../../../../db";
 import { applicationDocuments, auditEvents, merchantApplications, merchantMemberships, merchants, platformTenantMerchants, platformTenants, users } from "../../../../db/schema";
 import { sendMail } from "../../../../lib/mail";
 import { createPresignedR2Url } from "../../../../lib/r2";
+
 import { getChatGPTUser } from "../../../chatgpt-auth";
 
 const allowed = new Set(["under_review", "more_information_required", "approved", "rejected"]);
@@ -18,9 +19,9 @@ const slugify = (value: string, applicationId: number) => {
   const stem = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "merchant";
   return `${stem.slice(0, 200 - suffix.length)}${suffix}`;
 };
-const documentViewUrl = (storageKey: string, originalName: string | null) => { try { return createPresignedR2Url("GET", storageKey, 300, `inline; filename="${(originalName ?? "document").replace(/["\\]/g, "-")}"`); } catch { return null; } };
+const documentViewUrl = (id: number) => `/api/applications/documents/download?id=${id}`;
 
-export async function GET() { const user = await getChatGPTUser(); if (user?.platformRole !== "administrator") return Response.json({ error: "Administrator access required." }, { status: 403 }); const db = getDb(); const applications = await db.select().from(merchantApplications).orderBy(desc(merchantApplications.submittedAt)); const merchantList = await db.select().from(merchants).orderBy(desc(merchants.createdAt)); const tenants = await db.select({ id: platformTenants.id, name: platformTenants.name }).from(platformTenants); const documents = applications.length ? await db.select().from(applicationDocuments).where(inArray(applicationDocuments.applicationId, applications.map((item) => item.id))) : []; const withDocuments = applications.map((application) => ({ ...application, targetPlatformName: application.platformTenantId ? tenants.find((tenant) => tenant.id === application.platformTenantId)?.name ?? "Digital mall" : "NeuroCity Marketplace", documents: documents.filter((document) => document.applicationId === application.id).map((document) => ({ ...document, viewUrl: document.status === "uploaded" && document.storageKey ? documentViewUrl(document.storageKey, document.originalName) : null })) })); return Response.json({ applications: withDocuments, merchants: merchantList }); }
+export async function GET() { const user = await getChatGPTUser(); if (user?.platformRole !== "administrator") return Response.json({ error: "Administrator access required." }, { status: 403 }); const db = getDb(); const applications = await db.select().from(merchantApplications).orderBy(desc(merchantApplications.submittedAt)); const merchantList = await db.select().from(merchants).orderBy(desc(merchants.createdAt)); const tenants = await db.select({ id: platformTenants.id, name: platformTenants.name }).from(platformTenants); const documents = applications.length ? await db.select().from(applicationDocuments).where(inArray(applicationDocuments.applicationId, applications.map((item) => item.id))) : []; const withDocuments = applications.map((application) => ({ ...application, targetPlatformName: application.platformTenantId ? tenants.find((tenant) => tenant.id === application.platformTenantId)?.name ?? "Digital mall" : "NeuroCity Marketplace", documents: documents.filter((document) => document.applicationId === application.id).map((document) => ({ ...document, viewUrl: document.status === "uploaded" && document.storageKey ? documentViewUrl(document.id) : null })) })); return Response.json({ applications: withDocuments, merchants: merchantList }); }
 
 export async function PATCH(request: Request) {
   const user = await getChatGPTUser();

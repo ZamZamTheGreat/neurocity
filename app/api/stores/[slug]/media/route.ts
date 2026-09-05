@@ -1,3 +1,4 @@
+import { verifiedObject } from "../../../../../lib/upload-security";
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../../db";
 import { merchants, products } from "../../../../../db/schema";
@@ -18,5 +19,6 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   if (!value.startsWith("r2://")) return Response.redirect(new URL(value, request.url), 302);
   const key = value.slice(5);
   if (!key.startsWith(`merchants/${store.id}/`)) return Response.json({ error: "Image unavailable." }, { status: 403 });
+  if (!await verifiedObject(key).catch(() => null)) return Response.json({ error: "Image requires a verified upload." }, { status: 409 });
   return Response.redirect(createPresignedR2Url("GET", key, 300), 302);
 }
