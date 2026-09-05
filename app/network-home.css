@@ -2,3 +2,23 @@
 @media(max-width:1000px){.network-header>nav{display:none}.network-hero{grid-template-columns:1fr;min-height:auto}.network-hero>aside{display:none}.network-paths{grid-template-columns:1fr}.network-paths p{min-height:auto}.network-mall-grid{grid-template-columns:1fr}.network-james{grid-template-columns:90px 1fr}.network-james aside{grid-column:1/-1}.network-footer{grid-template-columns:1fr}.network-footer nav{flex-wrap:wrap}}
 @media(max-width:650px){.network-header{min-height:68px;padding:0 12px}.network-brand small{display:none}.network-header>div a{display:none}.network-header>div button{width:42px;height:42px;padding:0;font-size:0}.network-header>div button:first-letter{font-size:17px}.network-hero{padding:64px 20px}.network-hero h1{font-size:52px;letter-spacing:-2.7px}.network-hero>div>div{display:grid}.network-hero>div>div a{text-align:center}.network-paths{padding:0}.network-paths article{padding:28px 20px}.network-malls,.network-malls.directory-page{padding:60px 16px}.network-malls>header{align-items:flex-start;flex-direction:column}.network-malls h2{font-size:39px}.network-mall-grid>article{grid-template-columns:1fr}.mall-cover{min-height:180px}.network-james{grid-template-columns:1fr;padding:60px 20px}.network-james>div{width:74px;height:74px;border-radius:21px}.network-james>div>span{font-size:34px}.network-footer{padding:38px 20px}.network-footer nav{display:grid;grid-template-columns:1fr 1fr}}
 .network-james aside>button{display:flex;align-items:center;justify-content:space-between;gap:15px;margin:0;padding:15px;border:1px solid #ffffff12;border-radius:12px;background:#ffffff07;color:#b9c6c2;text-align:left;font-size:11px;transition:.18s}.network-james aside>button span{flex:none;color:#42dda9;font-size:9px;font-weight:850}.network-james aside>button:hover,.network-james aside>button:focus-visible{border-color:#18c98e66;background:#18c98e12;color:#fff;transform:translateX(3px)}
+
+/* Shopping-first network gateway */
+.network-hero{grid-template-columns:minmax(0,1.12fr) minmax(340px,.7fr);min-height:620px;padding-top:72px;padding-bottom:72px;background:linear-gradient(122deg,#07111f 0%,#0a1b24 68%,#0d2b29 100%)}
+.network-hero h1{max-width:900px;font-size:clamp(3.25rem,6.4vw,6.4rem);line-height:.96;letter-spacing:-.055em}
+.network-lede{max-width:650px;margin:28px 0;color:#c1cfca;font-size:1.08rem;line-height:1.65}
+.network-hero>div>div a,.network-hero>div>div button{min-height:48px;padding:0 20px;border:1px solid #ffffff2b;border-radius:10px;background:transparent;color:#fff;font-size:.82rem;font-weight:780}
+.network-hero>div>div a.primary{display:flex;align-items:center;justify-content:space-between;min-width:230px;border-color:#18c98e;background:#18c98e;color:#052318}
+.network-selma-link{cursor:pointer}
+.network-hero ul{margin-top:31px;color:#a9bbb5;font-size:.82rem}
+.network-shopping-card{width:min(100%,430px);padding:30px;border:1px solid #ffffff1f;border-radius:18px;background:#ffffff0b;box-shadow:0 28px 70px #00000040;backdrop-filter:blur(16px)}
+.network-shopping-card>p{margin:0 0 9px;color:#4be2b0;font-size:.72rem;font-weight:850;letter-spacing:.14em}
+.network-shopping-card h2{margin:0 0 26px;font-size:clamp(1.65rem,3vw,2.35rem);line-height:1.08;letter-spacing:-.035em}
+.network-shopping-card button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:20px;padding:17px 2px;border:0;border-top:1px solid #ffffff1c;background:transparent;color:#e9f2ef;text-align:left;font-size:.96rem;cursor:pointer}
+.network-shopping-card button b{color:#43dfab}
+.network-shopping-card button:hover span,.network-shopping-card button:focus-visible span{color:#43dfab}
+.network-shopping-card>small{display:block;margin-top:18px;color:#82958f;font-size:.78rem;line-height:1.5}
+.network-paths article{padding:38px 30px}
+.network-paths p,.network-paths .info-list{font-size:.9rem;line-height:1.55}
+@media(max-width:1000px){.network-hero{grid-template-columns:1fr}.network-hero>aside{display:grid;margin-top:42px;place-items:start}.network-shopping-card{width:100%}}
+@media(max-width:650px){.network-hero{padding-top:48px;padding-bottom:48px}.network-hero h1{font-size:clamp(2.75rem,13vw,4.2rem)}.network-lede{font-size:1rem}.network-hero>div>div button{width:100%}.network-shopping-card{padding:23px}.network-shopping-card button{font-size:.9rem}}

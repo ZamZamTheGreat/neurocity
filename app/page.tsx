@@ -42,7 +42,6 @@ type PlatformIdentity = {
 const categories = merchantCategories.map((category) => ({
   ...category,
   detail: category.includes,
-  count: category.name === "Fashion & Clothing" ? "Pilot open" : "Recruiting",
 }));
 
 function money(value: number | null) {
@@ -357,7 +356,7 @@ export function MarketplaceExperience({
                 <span />{" "}
                 {platform.kind === "mall"
                   ? `${platform.city ?? "Your"} shopping, digitally connected`
-                  : "NEUROCITY MARKETPLACE · SHOP LOCAL ONLINE"}
+                  : "LOCAL STORES · ONE MARKETPLACE"}
               </p>
               <h1>
                 {platform.kind === "mall" ? (
@@ -370,18 +369,16 @@ export function MarketplaceExperience({
                   </>
                 ) : (
                   <>
-                    Namibian stores.
+                    Shop local Namibian
                     <br />
-                    Real catalogues.
-                    <br />
-                    <em>Ready to shop.</em>
+                    businesses in <em>one place.</em>
                   </>
                 )}
               </h1>
               <p className="hero-lede">
                 {platform.kind === "mall"
                   ? `${platform.tagline} Browse participating stores, discover what is available and shop before you arrive.`
-                  : "Discover and shop trusted Namibian businesses from one convenient national marketplace. Starting in Windhoek, built for every town."}
+                  : "Browse products and services from approved local merchants. Check prices, pickup and delivery options before you order."}
               </p>
               <div className="hero-actions">
                 {storeAvailable && (
@@ -401,26 +398,24 @@ export function MarketplaceExperience({
                     setQuery(e.target.value);
                     setSelectedCategory("");
                   }}
-                  placeholder="Search approved stores, categories and products"
+                  placeholder="What are you looking for?"
                   aria-label="Search NeuroCity"
                 />
                 <button onClick={() => showStores()}>Search</button>
               </div>
               <div className="trust-row">
-                <span>Curated stores</span>
-                <span>Local pickup</span>
-                <span>Merchant delivery</span>
+                <span>Approved storefronts</span>
+                <span>Prices in Namibian dollars</span>
+                <span>Pickup and local delivery</span>
               </div>
             </div>
             <div
               className="hero-city"
               aria-label={`${platform.name} marketplace summary`}
             >
-              <div className="city-orbit orbit-one" />
-              <div className="city-orbit orbit-two" />
               {stores[0] ? (
                 <div className="city-card main-card">
-                  <span>APPROVED LOCAL STORE</span>
+                  <span>FEATURED LOCAL STORE</span>
                   <img
                     src={stores[0].logoUrl ?? "/lightwork-logo.png"}
                     alt={stores[0].name}
@@ -443,12 +438,12 @@ export function MarketplaceExperience({
               )}
               <div className="float-card top-float">
                 <b>{stores.length}</b>
-                <span>stores open now</span>
+                <span>stores live</span>
               </div>
               <div className="float-card bottom-float">
                 <i />{" "}
                 <span>
-                  Merchant delivery
+                  Pickup and delivery
                   <br />
                   <b>{platform.city ?? "Namibia"}</b>
                 </span>
@@ -460,33 +455,25 @@ export function MarketplaceExperience({
             <div className="section-heading">
               <div>
                 <p className="eyebrow">
-                  Explore {platform.kind === "mall" ? "the mall" : "the city"}
+                  Shop by category
                 </p>
-                <h2>One mall. Distinct local stores.</h2>
+                <h2>Browse what is available now.</h2>
               </div>
-              <ul className="info-list"><li>{platform.name} gives every merchant a real storefront—not just a listing.</li></ul>
+              <ul className="info-list"><li>Only categories with active stores are shown.</li></ul>
             </div>
             <div className="category-grid">
-              {categories.map((category) => {
+              {categories.filter((category) => (categoryCounts[category.name] ?? 0) > 0).map((category) => {
                 const count = categoryCounts[category.name] ?? 0;
                 return (
                   <button
                     className="category-card"
                     key={category.name}
-                    onClick={() =>
-                      count
-                        ? showStores(category.name)
-                        : setNotice(
-                            `${category.name} merchants are being recruited.`,
-                          )
-                    }
+                    onClick={() => showStores(category.name)}
                   >
                     <span className="category-icon">{category.icon}</span>
                     <div>
                       <small>
-                        {count
-                          ? `${count} ${count === 1 ? "store" : "stores"} open`
-                          : "Recruiting"}
+                        {count} {count === 1 ? "store" : "stores"}
                       </small>
                       <h3>{category.name}</h3>
                       <p>{category.detail}</p>
@@ -611,18 +598,18 @@ export function MarketplaceExperience({
 
           <section className="concierge">
             <div>
-              <p className="eyebrow light">Neuro concierge · Live</p>
-              <h2>
-                Tell us what you need.
+                <p className="eyebrow light">Selma · Local shopping assistant</p>
+                <h2>
+                Describe what you need.
                 <br />
-                We’ll find where it lives.
+                See verified local options.
               </h2>
               <ul className="info-list"><li>Describe the product, colour, size or budget.</li><li>Neuro searches live catalogues from approved local stores.</li></ul>
             </div>
             <button onClick={() => setAssistantOpen(true)}>
               <span>✦</span>
               <div>
-                <small>Ask NeuroCity</small>
+                <small>Ask Selma</small>
                 <b>“I need a local streetwear look under N$1,500.”</b>
               </div>
               <i>→</i>

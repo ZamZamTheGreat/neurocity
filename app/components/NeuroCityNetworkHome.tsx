@@ -70,46 +70,34 @@ export default function NeuroCityNetworkHome({
           <section className="network-hero">
             <div>
               <p className="eyebrow">
-                <span /> ONE NETWORK · MANY DESTINATIONS
+                <span /> SHOP LOCAL · ACROSS NAMIBIA
               </p>
               <h1>
-                Namibia&apos;s shopping world, <em>connected.</em>
+                Shop local Namibian businesses <em>in one place.</em>
               </h1>
-              <ul className="info-list"><li>Discover independent local stores.</li><li>Shop the NeuroCity Marketplace.</li><li>Enter digital versions of Namibia&apos;s malls.</li></ul>
+              <p className="network-lede">Browse real products and services, compare local options and buy from approved merchants through one account.</p>
               <div>
                 <a className="primary" href="/marketplace">
-                  Shop the marketplace <span>→</span>
+                  Browse products and stores <span>→</span>
                 </a>
-                <a href="/malls">Explore digital malls</a>
+                <button className="network-selma-link" onClick={() => askSelma()}>Ask Selma</button>
               </div>
               <ul>
-                <li>One customer account</li>
-                <li>Live local catalogues</li>
-                <li>Selma across the network</li>
+                <li>Approved local stores</li>
+                <li>Live catalogue information</li>
+                <li>Pickup and delivery choices</li>
               </ul>
             </div>
             <aside>
-              <div className="network-map">
-                <i className="pulse p1" />
-                <i className="pulse p2" />
-                <i className="pulse p3" />
-                <span className="network-node main">
-                  <img src="/branding/neurocity-malls-mark.png" alt="" />
-                  <b>NeuroCity</b>
-                  <small>Commerce network</small>
-                </span>
-                <span className="network-node market">
-                  <b>Marketplace</b>
-                  <small>Namibian stores</small>
-                </span>
-                <span className="network-node malls">
-                  <b>Digital malls</b>
-                  <small>{malls.length || "New"} destinations</small>
-                </span>
-                <span className="network-node james">
-                  <b>Selma</b>
-                  <small>Local discovery</small>
-                </span>
+              <div className="network-shopping-card">
+                <p>ASK SELMA</p>
+                <h2>What can we help you find?</h2>
+                {["A birthday gift under N$500", "Black formal shoes in size 9", "Something I can collect today"].map((prompt) => (
+                  <button key={prompt} onClick={() => askSelma(prompt)}>
+                    <span>{prompt}</span><b>→</b>
+                  </button>
+                ))}
+                <small>Results come from participating merchants&apos; live catalogues.</small>
               </div>
             </aside>
           </section>
@@ -117,27 +105,27 @@ export default function NeuroCityNetworkHome({
             <article>
               <span>01</span>
               <div>
-                <small>SHOP ACROSS NAMIBIA</small>
-                <h2>NeuroCity Marketplace</h2>
-                <ul className="info-list"><li>Browse products.</li><li>Discover independent merchants in one national marketplace.</li></ul>
+                <small>START SHOPPING</small>
+                <h2>Browse the marketplace</h2>
+                <ul className="info-list"><li>Search products, services and approved local storefronts.</li></ul>
                 <a href="/marketplace">Enter marketplace →</a>
               </div>
             </article>
             <article>
               <span>02</span>
               <div>
-                <small>ENTER A DESTINATION</small>
-                <h2>Digital malls</h2>
-                <ul className="info-list"><li>Visit participating shopping centres online.</li><li>Explore each centre’s identity and stores.</li></ul>
+                <small>SHOP BY PLACE</small>
+                <h2>Visit a digital mall</h2>
+                <ul className="info-list"><li>Browse participating shopping centres and their stores.</li></ul>
                 <a href="/malls">Browse digital malls →</a>
               </div>
             </article>
             <article>
               <span>03</span>
               <div>
-                <small>ASK NATURALLY</small>
-                <h2>Selma</h2>
-                <ul className="info-list"><li>Search live Namibian catalogues across the network.</li><li>Shop naturally by product, N$ budget, colour, size or occasion.</li></ul>
+                <small>NEED A HAND?</small>
+                <h2>Ask Selma</h2>
+                <ul className="info-list"><li>Describe your budget, size, colour, location or occasion.</li></ul>
                 <button onClick={() => setSelmaOpen(true)}>
                   Start a conversation →
                 </button>
