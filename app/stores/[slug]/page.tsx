@@ -203,6 +203,11 @@ export default function StorefrontPage() {
           <h1>{store.name}</h1>
           {store.tagline && <h2>{store.tagline}</h2>}
           <p className="store-description">{store.description}</p>
+          <div className="store-hero-facts" aria-label="Store summary">
+            <span>{data.products.length} {data.products.length === 1 ? "item" : "items"}</span>
+            <span>{store.category}</span>
+            {data.branches[0]?.city && <span>{data.branches[0].city}</span>}
+          </div>
           <div className="store-hero-actions">
             <a href="#shop">Shop catalogue</a>
             <button
@@ -240,17 +245,17 @@ export default function StorefrontPage() {
           </article>
         ))}
         <article>
-          <span>✓</span>
+          <span aria-hidden="true">✓</span>
           <div>
             <b>Verified merchant</b>
             <small>Approved by NeuroCity</small>
           </div>
         </article>
         <article>
-          <span>◎</span>
+          <span aria-hidden="true">↗</span>
           <div>
-            <b>Ask before ordering</b>
-            <small>Message the store directly</small>
+            <b>Direct merchant support</b>
+            <small>Ask about any product</small>
           </div>
         </article>
       </section>
@@ -321,6 +326,7 @@ export default function StorefrontPage() {
               <StoreProduct
                 key={product.id}
                 product={product}
+                fulfillmentMethods={store.fulfillmentMethods}
                 accountAction={accountAction}
               />
             ))}
@@ -410,9 +416,11 @@ export default function StorefrontPage() {
 
 function StoreProduct({
   product,
+  fulfillmentMethods,
   accountAction,
 }: {
   product: Product;
+  fulfillmentMethods: string[];
   accountAction: (body: { action?: string; [key: string]: unknown }) => Promise<boolean | undefined>;
 }) {
   const { slug } = useParams<{ slug: string }>();
@@ -495,7 +503,7 @@ function StoreProduct({
   if (product.itemType === "service") {
     const servicePrice = product.salePrice ?? product.price;
     return (
-      <article className="store-product-v2 service-card">
+      <article className="store-product-v2 service-card" aria-labelledby={`product-${product.id}`}>
         <div className="store-product-image">
           {activeImage ? (
             <img src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
@@ -518,7 +526,7 @@ function StoreProduct({
             {product.brand ?? "Local service"}
             {product.collection ? ` · ${product.collection}` : ""}
           </small>
-          <h3>{product.name}</h3>
+          <h3 id={`product-${product.id}`}>{product.name}</h3>
           <p>{product.description}</p>
           <div className="store-stock-line">
             <span className="in-stock">
@@ -548,7 +556,7 @@ function StoreProduct({
     );
   }
   return (
-    <article className="store-product-v2">
+    <article className="store-product-v2" aria-labelledby={`product-${product.id}`}>
       <div className="store-product-image">
         {activeImage ? (
           <img src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
@@ -571,8 +579,13 @@ function StoreProduct({
           {product.brand ?? "Local brand"}
           {product.collection ? ` · ${product.collection}` : ""}
         </small>
-        <h3>{product.name}</h3>
+        <h3 id={`product-${product.id}`}>{product.name}</h3>
         <p>{product.description}</p>
+        <div className="store-product-fulfillment" aria-label="Fulfilment options">
+          {fulfillmentMethods.map((method) => (
+            <span key={method}>{method.includes("pickup") ? "Pickup" : "Local delivery"}</span>
+          ))}
+        </div>
         {product.variants.length > 0 ? (
           <>
             <label>
