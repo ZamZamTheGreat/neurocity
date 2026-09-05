@@ -1,13 +1,17 @@
 # Security hardening deployment
 
-These changes require a coordinated deployment. Run `npm run db:migrate` to apply migration `0022_security_rate_limits` before starting the new application. The application fails closed when its rate-limit database or upload scanner is unavailable.
+These changes require a coordinated deployment. From a trusted operator machine or CI job that is separate from the Render web service, run `npm run db:migrate` to apply migration `0022_security_rate_limits` before deploying the application. The application fails closed when its rate-limit database or upload scanner is unavailable.
 
 ## Required configuration
 
+- `DATABASE_URL`: restricted runtime credential. It needs connect, schema usage, application-table CRUD and sequence usage, but must not have schema creation or ownership privileges.
+- `DATABASE_MIGRATION_URL`: database owner/migration credential. Set this only in a separate trusted operator or CI environment. Never add it to the Render web service: its build and runtime share service configuration. `npm run db:migrate` prefers this value and warns if production falls back to `DATABASE_URL`.
 - `PUBLIC_SITE_URL`: exact HTTPS origin of the primary site.
 - `SECURITY_ALLOWED_ORIGINS`: comma-separated HTTPS origins of any additional public mall domains. Direct and forwarded hosts can only select origins already present in this allowlist; they cannot add trusted origins.
 - `TRUSTED_CLIENT_IP_HEADER`: leave unset until the ingress is confirmed to overwrite it. Unset means requests share a conservative rate-limit bucket. For a proxy that appends to `X-Forwarded-For`, only the last address is used. Do not enable a client-controlled header. Direct ingress must be restricted accordingly.
 - `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`: create a Cloudflare Turnstile Managed widget restricted to every production hostname. The site key is returned to browsers; the secret must exist only in the deployment secret store. Production registration, login, merchant applications and invitation claims fail closed if the secret is missing or Siteverify is unavailable. Tokens are verified server-side and bound to their expected action and request hostname.
+- `SECURITY_ALERT_EMAIL`: recipient for sanitized application security alerts; defaults to `ADMIN_EMAIL`. Requires the SMTP variables below. Alerts have ten-minute in-process cooldowns to reduce flooding.
+- `SECURITY_ALERT_WEBHOOK_URL`: optional HTTPS incident receiver for the same sanitized alerts. Render email or Slack notifications remain the infrastructure-level fallback.
 - `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`: private HTTPS object storage. Disable public bucket access. Browser PUT permissions are no longer required. Revoke previously issued write capabilities during rollout by rotating the storage access key using the normal secret-management process.
 - `CLAMAV_HOST`, `CLAMAV_PORT` (default 3310): a private, reachable clamd service with current signature definitions and INSTREAM enabled. Never expose its unauthenticated TCP port to the public internet. Set stream/scan limits above the application's 10 MB limit. Set `AlertExceedsMax`, `AlertEncrypted`, and `AlertBroken` to `yes` so unscannable inputs are rejected. Monitor scanner readiness and signature freshness. A scanner outage blocks uploads.
 
@@ -32,3 +36,15 @@ Cloudflare Turnstile complements these limits on login, registration, merchant a
 `npm run test:security` applies the real migration chain to a disposable embedded PostgreSQL database and tests actual registration/login/session code, concurrent limits, origin enforcement, bounded bodies, upload tickets, and scanner protocol behavior. It cannot establish production ingress configuration, actual R2 permissions, scanner freshness, or current administrator ownership. `npm run build` checks the deployable bundle. Run the built security HTTP tests after each framework update.
 
 Before rollout, confirm scanner connectivity, private storage permissions and trusted public origins in staging; verify customer, merchant and administrator access using dedicated test accounts. No production migration, role change, secret rotation or deployment was performed by the local test harness.
+
+## Runtime database separation
+
+1. Create a second PostgreSQL credential for the application runtime and keep the existing owner credential as the migration credential.
+2. In a controlled administrative environment, set `DATABASE_MIGRATION_URL` to the owner URL and `DATABASE_URL` to the new runtime URL.
+3. Run `npm run db:migrate`, `npm run db:grant-runtime`, and then `npm run db:verify-runtime`.
+4. Configure the Render web service with only the restricted `DATABASE_URL`. Delete `DATABASE_MIGRATION_URL` from that service if it was ever added. Production startup deliberately fails if an owner URL is present.
+5. Redeploy and verify `/api/health`, login, checkout and merchant operations before revoking any superseded runtime credential.
+
+Render-managed rotation credentials can be provider-configured to assume the original database-owner role. If `db:verify-runtime` reports different session and effective users, the application credential is not least privilege even if its explicit table grants are narrow. Do not attempt unsupported role changes or delete the owner. Ask Render support to remove the owner-role inheritance, or defer this defense-in-depth control and record the residual risk.
+
+See `docs/INCIDENT_RESPONSE_AND_RECOVERY.md` for monitoring, backup retention and the monthly restore drill.

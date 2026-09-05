@@ -3,6 +3,7 @@ export * from "../lib/request-security";
 export * from "../lib/security-rate-limit";
 export * from "../lib/upload-security";
 export * from "../lib/turnstile";
+export * from "../lib/security-monitoring";
 export * from "../lib/r2";
 export * from "../lib/admin-mfa";
 export * as registration from "../app/api/auth/register/route";

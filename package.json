@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "vinext dev",
     "build": "vinext build",
-    "start": "vinext start",
+    "start": "node scripts/check-runtime-security.mjs && vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "test:integration": "node scripts/run-integration-tests.mjs",
     "test:security": "node scripts/run-security-tests.mjs",
@@ -16,7 +16,10 @@
     "test:all": "npm test && npm run test:integration",
     "test:load": "node scripts/load-test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:migrate": "node scripts/migrate.mjs"
+    "db:migrate": "node scripts/migrate.mjs",
+    "db:grant-runtime": "node scripts/grant-runtime-db-role.mjs",
+    "db:verify-runtime": "node scripts/verify-runtime-db-role.mjs",
+    "db:verify-restore": "node scripts/verify-restored-database.mjs"
   },
   "dependencies": {
     "@types/nodemailer": "^7.0.9",

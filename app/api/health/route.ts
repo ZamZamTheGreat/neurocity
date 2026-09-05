@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDatabasePoolStats, getDb } from "../../../db";
+import { securityAlert } from "../../../lib/security-monitoring";
 
 export async function GET() {
   try {
@@ -9,6 +10,7 @@ export async function GET() {
   } catch (error) {
     const incident = crypto.randomUUID();
     console.error("database health check failed", { incident, error });
+    await securityAlert("database_health_check_failed", "critical", { incident });
     return Response.json({ status: "error", database: "unavailable", incident }, { status: 503 });
   }
 }

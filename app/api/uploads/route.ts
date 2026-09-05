@@ -2,6 +2,7 @@ import { getChatGPTUser } from "../../chatgpt-auth";
 import { readBoundedBody } from "../../../lib/request-security";
 import { verifyUploadTicket, storeScannedUpload } from "../../../lib/upload-security";
 import { rateLimitResponse } from "../../../lib/security-rate-limit";
+import { securityAlert, securityFingerprint } from "../../../lib/security-monitoring";
 
 export async function PUT(request: Request) {
   const user = await getChatGPTUser();
@@ -15,6 +16,7 @@ export async function PUT(request: Request) {
     return Response.json({ ok: true });
   } catch (error) {
     console.error("verified upload failed", error instanceof Error ? error.message : error);
+    await securityAlert("upload_rejected", "warning", { userHash: securityFingerprint(user.userId) }, securityFingerprint(user.userId));
     return Response.json({ error: "File could not be verified. Check its type and size, then retry. If this continues, contact support." }, { status: 422 });
   }
 }

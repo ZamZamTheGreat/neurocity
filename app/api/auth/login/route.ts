@@ -7,6 +7,7 @@ import { createSession, sessionCookieOptions, SESSION_COOKIE } from "../../../ch
 import { rateLimitResponse } from "../../../../lib/security-rate-limit";
 import { turnstileFailure, verifyTurnstile } from "../../../../lib/turnstile";
 import { adminMfaConfigured, verifyAdminMfa } from "../../../../lib/admin-mfa";
+import { securityAlert, securityFingerprint } from "../../../../lib/security-monitoring";
 
 const DUMMY_HASH = "$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW";
 export async function POST(request: Request) {
@@ -25,7 +26,10 @@ export async function POST(request: Request) {
       if (!adminMfaConfigured()) return Response.json({ error: "Administrator MFA is not configured. Set ADMIN_MFA_SECRET before signing in." }, { status: 503 });
       const mfaLimited = await rateLimitResponse("admin-mfa", normalized, 8);
       if (mfaLimited) return mfaLimited;
-      if (!verifyAdminMfa(mfaCode)) return Response.json({ error: "Enter the current six-digit code from your authenticator app." }, { status: 401 });
+      if (!verifyAdminMfa(mfaCode)) {
+        await securityAlert("administrator_mfa_failed", "critical", { accountHash: securityFingerprint(normalized) }, securityFingerprint(normalized));
+        return Response.json({ error: "Enter the current six-digit code from your authenticator app." }, { status: 401 });
+      }
     }
     const session = await createSession(user.id);
     (await cookies()).set(SESSION_COOKIE, session.token, sessionCookieOptions(session.expiresAt));

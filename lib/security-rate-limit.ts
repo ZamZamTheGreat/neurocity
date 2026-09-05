@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { getDb } from "../db";
+import { securityAlert, securityFingerprint } from "./security-monitoring";
 
 export function clientAddress(request: Request) {
   // Enable only a header overwritten by the ingress. Unset safely shares a bucket.
@@ -27,9 +28,13 @@ export async function consumeRateLimit(scope: string, identity: string, limit: n
 export async function rateLimitResponse(scope: string, identity: string, limit: number) {
   try {
     const result = await consumeRateLimit(scope, identity, limit);
-    if (!result.allowed) return Response.json({ error: "Too many requests. Please try again later." }, { status: 429, headers: { "retry-after": String(result.retryAfter), "cache-control": "no-store" } });
+    if (!result.allowed) {
+      await securityAlert("rate_limit_exceeded", "warning", { scope, identityHash: securityFingerprint(identity), retryAfter: result.retryAfter }, `${scope}:${securityFingerprint(identity)}`);
+      return Response.json({ error: "Too many requests. Please try again later." }, { status: 429, headers: { "retry-after": String(result.retryAfter), "cache-control": "no-store" } });
+    }
     return null;
   } catch {
+    await securityAlert("rate_limiter_unavailable", "critical", { scope });
     return Response.json({ error: "This service is temporarily unavailable." }, { status: 503, headers: { "cache-control": "no-store" } });
   }
 }

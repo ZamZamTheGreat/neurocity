@@ -100,6 +100,25 @@ test("Turnstile validation is server-side, action-bound and hostname-bound", asy
   }
 });
 
+test("security alerts redact sensitive fields and suppress duplicates", async () => {
+  const previousFetch = globalThis.fetch;
+  process.env.SECURITY_ALERT_WEBHOOK_URL = "https://alerts.security.example/hook";
+  const deliveries = [];
+  globalThis.fetch = async (_url, init) => { deliveries.push(JSON.parse(init.body)); return new Response(null, { status: 204 }); };
+  try {
+    const event = `test_alert_${crypto.randomUUID()}`;
+    await security.securityAlert(event, "warning", { incident: "safe-reference", accessToken: "must-not-leak", email: "private@example.com" }, "same");
+    await security.securityAlert(event, "warning", { incident: "duplicate" }, "same");
+    assert.equal(deliveries.length, 1);
+    assert.equal(deliveries[0].details.incident, "safe-reference");
+    assert.equal(deliveries[0].details.accessToken, "[redacted]");
+    assert.equal(deliveries[0].details.email, "[redacted]");
+  } finally {
+    globalThis.fetch = previousFetch;
+    delete process.env.SECURITY_ALERT_WEBHOOK_URL;
+  }
+});
+
 test("body limit checks actual streamed bytes even without content-length", async () => {
   await assert.rejects(security.readBoundedBody(new Request("http://localhost", { method: "POST", body: "123456" }), 5));
   assert.equal((await security.readBoundedBody(new Request("http://localhost", { method: "POST", body: "12345" }), 5)).length, 5);
