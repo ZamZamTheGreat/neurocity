@@ -22,3 +22,12 @@
 .store-product-buy>button,.store-ask-button{font-size:.78rem}
 .variant-pending{font-size:.82rem;line-height:1.5}
 @media(max-width:680px){.store-hero-v2{display:block;min-height:auto}.store-hero-copy{padding:34px 18px 30px}.store-breadcrumb{margin-bottom:16px}.store-logo-v2{width:64px;height:56px;margin-bottom:18px}.store-hero-v2 h1{font-size:clamp(2.5rem,12vw,3.7rem);line-height:.96}.store-hero-v2 h2{margin-top:16px}.store-description{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:3;font-size:.95rem;line-height:1.55}.store-hero-facts{margin-top:17px}.store-hero-actions{margin-top:20px}.store-hero-art{height:230px}.store-service-strip article{min-width:68vw}.store-shop{padding-top:42px}.store-shop-heading{gap:20px}.store-product-grid-v2{grid-template-columns:1fr;gap:16px}.store-product-image{height:min(95vw,420px)}.store-product-copy{padding:18px}.store-product-copy h3{font-size:1.3rem}.store-product-copy>p{-webkit-line-clamp:4;font-size:.95rem}.store-product-buy{align-items:center;flex-direction:row}.store-product-buy>button{min-width:140px}}
+
+.storefront-v2 .store-hero-v2{grid-template-columns:minmax(0,.9fr) minmax(420px,1.1fr);min-height:500px}
+.storefront-v2 .store-hero-copy{padding:55px clamp(24px,6vw,86px)}
+.storefront-v2 .store-hero-v2 h1{font-size:clamp(3.1rem,5.7vw,5.1rem);line-height:.96}
+.storefront-v2 .store-description{font-size:1rem;line-height:1.62}
+.storefront-v2 .store-hero-art{min-height:500px}
+.storefront-v2 .store-shop{padding-top:58px}
+.storefront-v2 .store-shop-heading h2{font-size:clamp(2.25rem,4vw,3.5rem)}
+@media(max-width:680px){.storefront-v2 .store-hero-v2{display:block;min-height:0}.storefront-v2 .store-hero-copy{padding:28px 18px 26px}.storefront-v2 .store-breadcrumb{margin-bottom:14px}.storefront-v2 .store-logo-v2{width:58px;height:52px;margin-bottom:14px;border-radius:9px}.storefront-v2 .store-hero-v2 h1{font-size:clamp(2.35rem,11vw,3.35rem);letter-spacing:-.045em}.storefront-v2 .store-hero-v2 h2{margin:12px 0 6px;font-size:1rem}.storefront-v2 .store-description{-webkit-line-clamp:2;margin-top:6px}.storefront-v2 .store-hero-facts{margin-top:14px}.storefront-v2 .store-hero-facts span{padding:6px 8px;font-size:.7rem}.storefront-v2 .store-hero-actions{margin-top:16px}.storefront-v2 .store-hero-art{display:none}.storefront-v2 .store-service-strip{padding:0 10px}.storefront-v2 .store-service-strip article{min-width:62vw;padding:16px 12px}.storefront-v2 .store-shop{padding-top:34px}.storefront-v2 .store-shop-heading h2{font-size:2rem}}

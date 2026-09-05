@@ -24,3 +24,32 @@
 .marketplace-shell .public-store-card{border-radius:16px;box-shadow:none;transition:transform .18s,box-shadow .18s}
 .marketplace-shell .public-store-card:hover{transform:translateY(-3px);box-shadow:0 18px 42px #18130d12}
 @media(max-width:760px){.marketplace-shell .hero{min-height:auto;background:#f7f3eb}.marketplace-shell .hero-copy h1{font-size:clamp(2.85rem,13vw,4.5rem)}.marketplace-shell .hero-city{min-height:360px}.marketplace-shell .trust-row{font-size:.78rem}}
+
+/* Compact retail layout */
+.neurocity-marketplace.marketplace-shell{background:#f6f7f5}
+.neurocity-marketplace.marketplace-shell .marketplace-context-bar{background:#fff;border-bottom:1px solid #e6e8e4}
+.neurocity-marketplace.marketplace-shell .hero{grid-template-columns:minmax(0,1fr) 360px;min-height:0;padding:58px clamp(26px,7vw,110px) 52px;background:#f0f2ee;color:#141714}
+.neurocity-marketplace.marketplace-shell .hero-copy{max-width:760px}
+.neurocity-marketplace.marketplace-shell .hero-copy h1{max-width:720px;font-size:clamp(3.2rem,5.5vw,5rem);line-height:.98;letter-spacing:-.055em}
+.neurocity-marketplace.marketplace-shell .hero-copy h1 em{color:#087554}
+.neurocity-marketplace.marketplace-shell .hero-lede{max-width:590px;margin:22px 0;color:#555b56;font-size:1rem}
+.neurocity-marketplace.marketplace-shell .hero-actions{margin-bottom:18px}
+.neurocity-marketplace.marketplace-shell .hero-actions button{border-color:#151a17;border-radius:8px;background:#151a17;color:#fff}
+.neurocity-marketplace.marketplace-shell .hero-actions a{border-color:#cbd0cb;border-radius:8px;background:#fff;color:#202521}
+.neurocity-marketplace.marketplace-shell .search-shell{max-width:680px;border:1px solid #d6dbd6;border-radius:10px;box-shadow:none}
+.neurocity-marketplace.marketplace-shell .search-shell button{background:#087554}
+.neurocity-marketplace.marketplace-shell .trust-row{margin-top:17px;color:#59605a}
+.neurocity-marketplace.marketplace-shell .hero-city{min-height:330px}
+.neurocity-marketplace.marketplace-shell .main-card{width:270px;min-height:300px;border-radius:14px;box-shadow:0 18px 45px #15201922;transform:none}
+.neurocity-marketplace.marketplace-shell .main-card img{width:92px;height:92px;margin:20px}
+.neurocity-marketplace.marketplace-shell .main-card button{border-radius:7px}
+.neurocity-marketplace.marketplace-shell .float-card{padding:12px 15px;border-radius:9px;box-shadow:0 10px 25px #1520191c}
+.neurocity-marketplace.marketplace-shell .section{padding-top:58px;padding-bottom:58px}
+.neurocity-marketplace.marketplace-shell .section-heading{margin-bottom:26px}
+.neurocity-marketplace.marketplace-shell .section-heading h2{font-size:clamp(2rem,4vw,3.2rem)}
+.neurocity-marketplace.marketplace-shell .category-card{min-height:140px;padding:22px}
+.neurocity-marketplace.marketplace-shell .public-store-card{border-color:#dfe3de;border-radius:12px}
+.neurocity-marketplace.marketplace-shell .public-store-art{height:175px}
+.neurocity-marketplace.marketplace-shell .public-store-copy{padding:22px 19px 18px}
+.neurocity-marketplace.marketplace-shell .public-store-copy>button{border-radius:7px;background:#151a17}
+@media(max-width:760px){.neurocity-marketplace.marketplace-shell .hero{display:block;padding:34px 18px 30px}.neurocity-marketplace.marketplace-shell .hero-copy h1{font-size:clamp(2.55rem,12vw,3.8rem);line-height:.98}.neurocity-marketplace.marketplace-shell .hero-lede{margin:18px 0;font-size:.95rem}.neurocity-marketplace.marketplace-shell .hero-actions{display:flex}.neurocity-marketplace.marketplace-shell .hero-city{display:none}.neurocity-marketplace.marketplace-shell .search-shell{margin-top:4px}.neurocity-marketplace.marketplace-shell .trust-row{gap:8px 16px;flex-wrap:wrap;margin-top:15px}.neurocity-marketplace.marketplace-shell .section{padding:42px 16px}.neurocity-marketplace.marketplace-shell .section-heading{gap:14px;margin-bottom:22px}.neurocity-marketplace.marketplace-shell .section-heading h2{font-size:2.1rem}.neurocity-marketplace.marketplace-shell .public-store-art{height:190px}}
