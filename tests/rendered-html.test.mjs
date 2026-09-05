@@ -275,6 +275,7 @@ test("protects administration APIs from anonymous access", async (t) => {
     ["/api/admin/orders", "GET"],
     ["/api/admin/transactions", "GET"],
     ["/api/admin/platforms", "GET"],
+    ["/api/admin/operations", "GET"],
   ];
   for (const [path, method] of routes) {
     await t.test(`${method} ${path}`, async () => {
@@ -320,6 +321,20 @@ test("adds guarded bulk catalogue import and WhatsApp order updates", async () =
   assert.match(webhook, /hub\.verify_token/);
   assert.match(webhook, /x-hub-signature-256/);
   assert.match(webhook, /whatsapp\.message_received/);
+});
+
+test("gives administrators a live operations overview", async () => {
+  const page = await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8");
+  const overview = await readFile(new URL("../app/components/AdminOperationsOverview.tsx", import.meta.url), "utf8");
+  const route = await readFile(new URL("../app/api/admin/operations/route.ts", import.meta.url), "utf8");
+  assert.match(page, /Operations overview/);
+  assert.match(page, /\/api\/admin\/operations/);
+  assert.match(overview, /What needs attention/);
+  assert.match(overview, /Connected services/);
+  assert.match(overview, /Recent platform activity/);
+  assert.match(route, /auditEvents/);
+  assert.match(route, /WHATSAPP_VERIFY_TOKEN/);
+  assert.match(route, /Administrator access required/);
 });
 
 test("preserves tenant and ownership predicates in sensitive routes", async () => {

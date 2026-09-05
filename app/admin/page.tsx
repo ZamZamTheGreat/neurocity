@@ -9,6 +9,7 @@ import MallPlatformManager, {
   type MallPlatform,
 } from "../components/MallPlatformManager";
 import AdminTransactionLedger, { type AdminTransaction, type TransactionSummary } from "../components/AdminTransactionLedger";
+import AdminOperationsOverview, { type OperationsData } from "../components/AdminOperationsOverview";
 
 type Document = {
   id: number;
@@ -46,7 +47,7 @@ type Merchant = {
   contactEmail: string | null;
   createdAt: string;
 };
-type View = "applications" | "merchants" | "orders" | "transactions" | "malls";
+type View = "operations" | "applications" | "merchants" | "orders" | "transactions" | "malls";
 
 export default function AdminPage() {
   const [items, setItems] = useState<Application[] | null>(null);
@@ -63,17 +64,19 @@ export default function AdminPage() {
   });
   const [platforms, setPlatforms] = useState<MallPlatform[]>([]);
   const [message, setMessage] = useState("");
-  const [view, setView] = useState<View>("applications");
+  const [view, setView] = useState<View>("operations");
+  const [operations, setOperations] = useState<OperationsData | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   async function load() {
-    const [response, orderResponse, transactionResponse, platformResponse] = await Promise.all([
+    const [response, orderResponse, transactionResponse, platformResponse, operationsResponse] = await Promise.all([
       fetch("/api/admin/applications"),
       fetch("/api/admin/orders"),
       fetch("/api/admin/transactions"),
       fetch("/api/admin/platforms"),
+      fetch("/api/admin/operations"),
     ]);
     if (response.status === 401 || response.status === 403) {
       window.location.replace("/login?account_type=administrator&return_to=%2Fadmin");
@@ -105,6 +108,7 @@ export default function AdminPage() {
       const platformData = await platformResponse.json();
       setPlatforms(platformData.platforms ?? []);
     }
+    if (operationsResponse.ok) setOperations(await operationsResponse.json());
   }
   useEffect(() => {
     load();
@@ -349,6 +353,7 @@ export default function AdminPage() {
       </section>
       <nav className={`admin-tabs${menuOpen ? " workspace-drawer-open" : ""}`} aria-label="Administration sections">
         <div className="admin-drawer-heading"><b>Administration</b><button onClick={() => setMenuOpen(false)} aria-label="Close administration menu">×</button></div>
+        <button className={view === "operations" ? "active" : ""} onClick={() => switchView("operations")}><span>Operations</span><b>{operations?.summary.attention ?? 0}</b></button>
         <button
           className={view === "applications" ? "active" : ""}
           onClick={() => switchView("applications")}
@@ -387,12 +392,14 @@ export default function AdminPage() {
       </nav>
       {menuOpen && <button className="workspace-drawer-backdrop admin-drawer-backdrop" onClick={() => setMenuOpen(false)} aria-label="Close administration menu" />}
       <section
-        className={`admin-content ${view === "malls" ? "mall-admin-content" : ""}`}
+        className={`admin-content ${view === "malls" ? "mall-admin-content" : ""} ${view === "operations" ? "operations-admin-content" : ""}`}
       >
         <div className="admin-content-head">
           <div>
             <h2>
-              {view === "applications"
+              {view === "operations"
+                ? "Operations overview"
+                : view === "applications"
                 ? "Merchant applications"
                 : view === "merchants"
                   ? "Approved merchants"
@@ -403,7 +410,9 @@ export default function AdminPage() {
                     : "Digital mall network"}
             </h2>
             <p>
-              {view === "applications"
+              {view === "operations"
+                ? "See live operational pressure, integration readiness and recent platform events in one place."
+                : view === "applications"
                 ? "Verify information, inspect documents and make an approval decision."
                 : view === "merchants"
                   ? "Control storefront and dashboard access after approval."
@@ -460,7 +469,9 @@ export default function AdminPage() {
             </div>
           )}
         </div>
-        {view === "applications" ? (
+        {view === "operations" ? (
+          <AdminOperationsOverview data={operations} onNavigate={switchView} />
+        ) : view === "applications" ? (
           <ApplicationList items={filteredApplications} review={review} deletingId={deletingId} />
         ) : view === "merchants" ? (
           <MerchantList
