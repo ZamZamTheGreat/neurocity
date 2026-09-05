@@ -173,6 +173,10 @@ test("requires a same-origin POST before signing out", async () => {
   assert.equal(response.headers.get("location"), null);
   assert.equal(response.headers.get("set-cookie"), null);
   assert.match(await response.text(), /method="post"/);
+  const page = await (await request("/api/auth/logout?return_to=%2Faccess")).text();
+  assert.match(page, /Sign out of NeuroCity\?/);
+  assert.match(page, /Stay signed in/);
+  assert.match(page, /return_to=%2Faccess/);
   assert.match(response.headers.get("cache-control") ?? "", /no-store/);
 });
 
