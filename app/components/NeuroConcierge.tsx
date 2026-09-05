@@ -24,6 +24,7 @@ type Message = {
   matches?: Match[];
   suggestions?: string[];
   imagePreview?: string;
+  error?: boolean;
 };
 type Profile = { id?: number; companionName: string; customerName: string; memoryEnabled: boolean };
 const prompts = [
@@ -60,6 +61,7 @@ export function NeuroConcierge({
   const [profileError, setProfileError] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const submittedPromptKey = useRef(0);
 
@@ -132,6 +134,18 @@ export function NeuroConcierge({
     if (open) endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [open, messages, busy]);
   useEffect(() => {
+    if (!open) return;
+    const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 180);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open, onClose]);
+  useEffect(() => {
     if (guest && messages.length)
       sessionStorage.setItem(GUEST_CHAT_KEY, JSON.stringify(messages.map(({ imagePreview: _imagePreview, ...message }) => message)));
   }, [guest, messages]);
@@ -187,6 +201,7 @@ export function NeuroConcierge({
           text: response.ok ? result.reply : result.error,
           matches: response.ok ? result.matches : [],
           suggestions: response.ok ? result.suggestions : [],
+          error: !response.ok,
         },
       ]);
     } catch {
@@ -196,6 +211,7 @@ export function NeuroConcierge({
           id: crypto.randomUUID(),
           role: "companion",
           text: "I couldn’t reach the live catalogue. Please try again in a moment.",
+          error: true,
         },
       ]);
     } finally {
@@ -304,25 +320,28 @@ export function NeuroConcierge({
     >
       <section
         className="assistant neuro-assistant"
-        aria-label="Shopping companion"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="selma-title"
       >
         <header>
           <div>
             <img src="/branding/neurocity-mark.png" alt="" />
             <div>
-              <b>{profile?.companionName ?? "Selma"}</b>
+              <span>SHOPPING ASSISTANT</span>
+              <b id="selma-title">{profile?.companionName ?? "Selma"}</b>
               <small>
                 <i />{" "}
                 {guest
-                  ? "Guest · live Namibian catalogues"
-                  : "Your local shopping companion"}
+                  ? "Guest session · ready to help"
+                  : "Online · searching live stores"}
               </small>
             </div>
           </div>
           <div className="companion-header-actions">
             {profile && !guest && (
               <>
-                <button onClick={() => void toggleMemory()} aria-pressed={profile.memoryEnabled}>{profile.memoryEnabled ? "Memory on" : "Memory off"}</button>
+                <button onClick={() => void toggleMemory()} aria-pressed={profile.memoryEnabled} title="Control whether this chat is remembered on this device">{profile.memoryEnabled ? "Memory on" : "Memory off"}</button>
                 {profile.memoryEnabled && <button onClick={clearRememberedChat}>Clear chat</button>}
                 <button onClick={() => setRenaming(!renaming)} aria-label="Rename your companion">Rename</button>
               </>
@@ -371,7 +390,7 @@ export function NeuroConcierge({
             <div className="assistant-body neuro-thread" aria-live="polite">
               {messages.map((message) => (
                 <article
-                  className={`neuro-message ${message.role}`}
+                  className={`neuro-message ${message.role}${message.error ? " error" : ""}`}
                   key={message.id}
                 >
                   <div>
@@ -383,6 +402,7 @@ export function NeuroConcierge({
                     <div className="neuro-message-content">
                       {message.imagePreview && <img src={message.imagePreview} alt="Customer shopping reference" />}
                       <p>{message.text}</p>
+                      {message.error && <button className="neuro-retry" onClick={() => void ask(messages.filter((item) => item.role === "user").at(-1)?.text ?? "")}>Try again</button>}
                     </div>
                   </div>
                   {message.matches?.length ? (
@@ -424,7 +444,7 @@ export function NeuroConcierge({
                               <small>Also in {match.venues.filter((venue) => venue.kind === "mall").map((venue) => venue.name).join(" · ")}</small>
                             )}
                           </div>
-                          <a href={`/stores/${match.store.slug}#shop`}>View</a>
+                          <a href={`/stores/${match.store.slug}#shop`}>View item</a>
                         </article>
                       ))}
                     </div>
@@ -445,6 +465,7 @@ export function NeuroConcierge({
             </div>
             {(messages.length === 1 || messages.at(-1)?.suggestions?.length) && (
               <div className="suggestions neuro-prompts">
+                <span>{messages.length === 1 ? "Try asking" : "Keep exploring"}</span>
                 {(messages.length === 1 ? prompts : messages.at(-1)?.suggestions ?? []).map((prompt) => (
                   <button key={prompt} disabled={busy} onClick={() => void ask(prompt)}>
                     {prompt}
@@ -452,27 +473,36 @@ export function NeuroConcierge({
                 ))}
               </div>
             )}
-            <form onSubmit={submit}>
+            <form className="neuro-composer" onSubmit={submit}>
               <input ref={imageInputRef} className="visual-search-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => void findFromImage(event.target.files?.[0])} />
               <button className="visual-search-button" type="button" disabled={busy} onClick={() => imageInputRef.current?.click()} aria-label="Upload a screenshot or take a photo to search">
                 <span aria-hidden="true">▧</span>
-                <b>Photo</b>
+                <b>Add photo</b>
               </button>
               <label>
                 <span className="sr-only">Describe what you need</span>
-                <input
+                <textarea
+                  ref={inputRef}
                   value={input}
                   maxLength={300}
+                  rows={1}
                   onChange={(event) => setInput(event.target.value)}
-                  placeholder={`Ask ${profile?.companionName ?? "Selma"} what you need`}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      if (input.trim().length >= 2) void ask(input);
+                    }
+                  }}
+                  placeholder="Describe the item, budget or occasion…"
                 />
+                <small>{input.length}/300</small>
               </label>
-              <button disabled={busy || input.trim().length < 2}>
+              <button className="neuro-send" disabled={busy || input.trim().length < 2} aria-label="Send message">
                 {busy ? "…" : "Send"}
               </button>
             </form>
             <footer>
-              <span className="visual-privacy">Photos are analysed by OpenAI for this search and are not saved to your NeuroCity account or chat history.</span>
+              <details className="visual-privacy"><summary>Privacy and memory</summary><span>Photos are analysed by OpenAI for this search and are not saved to your NeuroCity account or chat history.</span></details>
               {guest ? (
                 <>
                   <span>This chat is stored only in this browser session.</span>

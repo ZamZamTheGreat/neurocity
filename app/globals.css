@@ -5214,8 +5214,8 @@ main {
 
 /* Neuro Concierge */
 .neuro-assistant {
-  width: min(520px, 100%);
-  background: #f7faf9;
+  width: min(580px, 100%);
+  background: #f3f6f4;
 }
 .neuro-assistant header {
   padding: 18px 20px;
@@ -5240,6 +5240,7 @@ main {
   background: #18c98e;
   box-shadow: 0 0 0 4px #18c98e20;
 }
+.neuro-assistant header>div>div>span{margin-bottom:2px;color:#6ee0b9;font-size:7px;font-weight:900;letter-spacing:.14em}.neuro-assistant header b{font-size:18px;letter-spacing:-.3px}
 .neuro-thread {
   display: flex;
   flex-direction: column;
@@ -5274,6 +5275,7 @@ main {
   font-size: 13px;
   line-height: 1.55;
 }
+.neuro-message-content{max-width:88%}.neuro-message.user .neuro-message-content{display:grid;justify-items:end}.neuro-message.error p{border-color:#f0c8c2;background:#fff7f5;color:#7d342d}.neuro-retry{margin-top:7px;padding:7px 10px;border:1px solid #dba9a1;border-radius:8px;background:#fff;color:#873d35;font-size:9px;font-weight:850;cursor:pointer}
 .neuro-message.user > div:first-child {
   justify-content: flex-end;
 }
@@ -5299,6 +5301,7 @@ main {
   border-radius: 13px;
   background: #fff;
 }
+.neuro-results>article:hover{border-color:#b9d8cc;box-shadow:0 8px 24px #12372a0c}
 .neuro-results img {
   width: 68px;
   height: 68px;
@@ -5356,6 +5359,7 @@ main {
   padding: 0 18px 12px;
   margin: 0;
 }
+.neuro-prompts>span{width:100%;padding:2px 2px 1px;color:#65716d;font-size:8px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
 .neuro-prompts button:hover {
   border-color: #18c98e;
   background: #effbf7;
@@ -5368,6 +5372,8 @@ main {
   border-top: 1px solid #dfe7e4;
   background: #fff;
 }
+.neuro-assistant .neuro-composer{grid-template-columns:auto minmax(0,1fr) auto;align-items:end;padding:12px 14px 8px;box-shadow:0 -10px 30px #07111f08}
+.neuro-composer label{position:relative}.neuro-composer label small{position:absolute;right:10px;bottom:6px;color:#9aa39f;font-size:7px}.neuro-assistant .neuro-composer textarea{width:100%;min-height:46px;max-height:112px;padding:13px 42px 13px 13px;border:1px solid #cfd9d5;border-radius:12px;outline:0;resize:none;font:inherit;line-height:1.35}.neuro-assistant .neuro-composer textarea:focus{border-color:#18c98e;box-shadow:0 0 0 3px #18c98e1a}.neuro-assistant .neuro-composer .visual-search-button{display:grid;place-items:center;min-width:72px;height:46px;padding:4px 8px;border:1px solid #d5dedb;background:#f4f7f6;color:#33413e}.visual-search-button span{font-size:15px}.visual-search-button b{font-size:8px}.neuro-assistant .neuro-composer .neuro-send{height:46px;padding:0 15px}
 .neuro-assistant form label {
   display: block;
 }
@@ -5402,6 +5408,7 @@ main {
   text-align: center;
   font-size: 8px;
 }
+.visual-privacy{display:block;margin-bottom:5px}.visual-privacy summary{cursor:pointer;color:#67736f;font-weight:800}.visual-privacy span{display:block;padding-top:5px;line-height:1.45}
 .neuro-thinking {
   display: flex;
   align-items: center;
@@ -5459,6 +5466,7 @@ main {
   .neuro-assistant form {
     padding: 10px;
   }
+  .neuro-assistant .neuro-composer{grid-template-columns:58px minmax(0,1fr) 58px}.neuro-assistant .neuro-composer .visual-search-button{min-width:58px}.neuro-assistant .neuro-composer .neuro-send{min-width:58px;padding:0 8px}.companion-header-actions button:not(:last-child){display:none}.neuro-message-content{max-width:92%}
   .neuro-assistant > footer {
     padding-bottom: max(10px, env(safe-area-inset-bottom));
   }
