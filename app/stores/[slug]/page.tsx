@@ -67,6 +67,10 @@ const whatsappNumber = (value: string) => {
 };
 const whatsappHref = (phone: string, storeName: string) =>
   `https://wa.me/${whatsappNumber(phone)}?text=${encodeURIComponent(`Hi ${storeName}, I found your store on NeuroCity and would like some help.`)}`;
+const whatsappItemHref = (phone: string, storeName: string, product: Product) =>
+  `https://wa.me/${whatsappNumber(phone)}?text=${encodeURIComponent(
+    `Hi ${storeName}, I found ${product.name} on NeuroCity and would like to know more about it. Is it available?`,
+  )}`;
 const productPrice = (product: Product) =>
   product.itemType === "service"
     ? (product.salePrice ?? product.price ?? Number.POSITIVE_INFINITY)
@@ -334,6 +338,8 @@ export default function StorefrontPage() {
               <StoreProduct
                 key={product.id}
                 product={product}
+                storeName={store.name}
+                storePhone={store.contactOptions?.phone}
                 fulfillmentMethods={store.fulfillmentMethods}
                 accountAction={accountAction}
               />
@@ -434,10 +440,14 @@ export default function StorefrontPage() {
 
 function StoreProduct({
   product,
+  storeName,
+  storePhone,
   fulfillmentMethods,
   accountAction,
 }: {
   product: Product;
+  storeName: string;
+  storePhone?: string;
   fulfillmentMethods: string[];
   accountAction: (body: { action?: string; [key: string]: unknown }) => Promise<boolean | undefined>;
 }) {
@@ -566,9 +576,13 @@ function StoreProduct({
               {product.bookingRequired ? "Request booking" : "Enquire now"}
             </button>
           </div>
-          <button className="store-ask-button" onClick={ask}>
-            Ask about this service
-          </button>
+          {storePhone ? (
+            <a className="store-ask-button" href={whatsappItemHref(storePhone, storeName, product)} target="_blank" rel="noreferrer" aria-label={`Ask ${storeName} about ${product.name} on WhatsApp`}>
+              Ask about this service on WhatsApp
+            </a>
+          ) : (
+            <button className="store-ask-button" onClick={ask}>Ask about this service</button>
+          )}
         </div>
       </article>
     );
@@ -676,9 +690,13 @@ function StoreProduct({
             Options are being prepared by the merchant.
           </p>
         )}
-        <button className="store-ask-button" onClick={ask}>
-          Ask store about this product
-        </button>
+        {storePhone ? (
+          <a className="store-ask-button" href={whatsappItemHref(storePhone, storeName, product)} target="_blank" rel="noreferrer" aria-label={`Ask ${storeName} about ${product.name} on WhatsApp`}>
+            Ask about this product on WhatsApp
+          </a>
+        ) : (
+          <button className="store-ask-button" onClick={ask}>Ask store about this product</button>
+        )}
       </div>
     </article>
   );

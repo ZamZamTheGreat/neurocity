@@ -372,6 +372,9 @@ test("keeps the customer journey connected from storefront to multi-store checko
   assert.match(storefront, /Added to your bag/);
   assert.match(storefront, /https:\/\/wa\.me\//);
   assert.match(storefront, /Text store/);
+  assert.match(storefront, /whatsappItemHref/);
+  assert.match(storefront, /I found \$\{product\.name\} on NeuroCity/);
+  assert.match(storefront, /Ask about this product on WhatsApp/);
   assert.match(storefront, /digits\.startsWith\("0"\).*264/s);
   assert.match(account, /checkout-merchant-group/);
   assert.match(account, /ONE PAYMENT/);
