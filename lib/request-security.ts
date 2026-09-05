@@ -6,8 +6,8 @@ export function allowedOrigins() {
 export function requestOrigin(request: Request) {
   const url = new URL(request.url);
   if (process.env.NODE_ENV !== "production" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) return url.origin;
-  const host = request.headers.get("host") ?? url.host;
-  return [...allowedOrigins()].find((origin) => new URL(origin).host === host) ?? null;
+  const hosts = [request.headers.get("host") ?? url.host, request.headers.get("x-forwarded-host")?.split(",")[0]?.trim()].filter(Boolean);
+  return [...allowedOrigins()].find((origin) => hosts.includes(new URL(origin).host)) ?? null;
 }
 
 export function isSameOriginMutation(request: Request) {

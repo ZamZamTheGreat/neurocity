@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+process.env.PUBLIC_SITE_URL = "https://neurocity-fhl1.onrender.com";
 const workerUrl = new URL("../dist/server/index.js", import.meta.url);
 
 async function render(path = "/") {
@@ -14,7 +15,10 @@ async function request(path, init = {}) {
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-${Math.random()}`);
   const { default: worker } = await import(workerUrl.href);
   return worker.fetch(
-    new Request(`http://localhost${path}`, init),
+    new Request(`https://neurocity-fhl1.onrender.com${path}`, {
+      ...init,
+      headers: { ...(!["GET", "HEAD", "OPTIONS"].includes(init.method ?? "GET") ? { origin: "https://neurocity-fhl1.onrender.com", "sec-fetch-site": "same-origin" } : {}), ...init.headers },
+    }),
     { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
     { waitUntil() {}, passThroughOnException() {} },
   );
@@ -146,17 +150,18 @@ test("lets a signed-in customer apply with the same NeuroCity account", async ()
   assert.match(route, /if \(!signedInUser\).*createSession/s);
 });
 
-test("signs out without mutating immutable redirect headers", async () => {
+test("requires a same-origin POST before signing out", async () => {
   const response = await request("/api/auth/logout?return_to=%2Faccess", {
     redirect: "manual",
   });
-  assert.equal(response.status, 303);
-  assert.equal(response.headers.get("location"), "http://localhost/access");
-  assert.match(response.headers.get("set-cookie") ?? "", /Max-Age=0/);
-  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("location"), null);
+  assert.equal(response.headers.get("set-cookie"), null);
+  assert.match(await response.text(), /method="post"/);
+  assert.match(response.headers.get("cache-control") ?? "", /no-store/);
 });
 
-test("accepts same-origin writes behind Render's forwarding proxy", async () => {
+test("accepts an allowlisted origin behind Render's forwarding proxy", async () => {
   const response = await request("/api/auth/register", {
     method: "POST",
     headers: {
@@ -169,8 +174,8 @@ test("accepts same-origin writes behind Render's forwarding proxy", async () => 
     },
     body: "{}",
   });
-  assert.equal(response.status, 400);
-  assert.notEqual((await response.json()).error, "Invalid request origin.");
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error, "This service is temporarily unavailable.");
 });
 
 test("still blocks genuinely cross-site writes", async () => {
@@ -187,7 +192,7 @@ test("still blocks genuinely cross-site writes", async () => {
   assert.equal(response.status, 403);
 });
 
-test("rejects malformed registration before touching the database", async (t) => {
+test("fails closed when the persistent mutation limiter is unavailable", async (t) => {
   const cases = [
     { name: "", email: "shopper@example.com", password: "long-enough-password" },
     { name: "Shopper", email: "not-an-email", password: "long-enough-password" },
@@ -197,8 +202,8 @@ test("rejects malformed registration before touching the database", async (t) =>
     await t.test(JSON.stringify(body), async () => {
       await expectJsonError(
         "/api/auth/register",
-        400,
-        "Name, valid email and a password of at least 10 characters are required.",
+        503,
+        "This service is temporarily unavailable.",
         { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) },
       );
     });
@@ -216,7 +221,7 @@ test("protects customer APIs from anonymous access", async (t) => {
   ];
   for (const [path, method] of routes) {
     await t.test(`${method} ${path}`, async () => {
-      await expectJsonError(path, 401, "Sign in required.", {
+      await expectJsonError(path, method === "POST" ? 503 : 401, method === "POST" ? "This service is temporarily unavailable." : "Sign in required.", {
         method,
         ...(method === "POST" ? { headers: { "content-type": "application/json" }, body: "{}" } : {}),
       });
@@ -235,7 +240,8 @@ test("protects administration APIs from anonymous access", async (t) => {
   ];
   for (const [path, method] of routes) {
     await t.test(`${method} ${path}`, async () => {
-      await expectJsonError(path, 403, "Administrator access required.", {
+      const mutation = ["PATCH", "DELETE"].includes(method);
+      await expectJsonError(path, mutation ? 503 : 403, mutation ? "This service is temporarily unavailable." : "Administrator access required.", {
         method,
         ...(["PATCH", "DELETE"].includes(method) ? { headers: { "content-type": "application/json" }, body: "{}" } : {}),
       });

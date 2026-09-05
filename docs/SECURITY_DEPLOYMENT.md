@@ -1,11 +1,11 @@
 # Security hardening deployment
 
-These changes require a coordinated deployment. Apply migration `0022_security_rate_limits` before starting the new application. The application fails closed when its rate-limit database or upload scanner is unavailable.
+These changes require a coordinated deployment. Run `npm run db:migrate` to apply migration `0022_security_rate_limits` before starting the new application. The application fails closed when its rate-limit database or upload scanner is unavailable.
 
 ## Required configuration
 
 - `PUBLIC_SITE_URL`: exact HTTPS origin of the primary site.
-- `SECURITY_ALLOWED_ORIGINS`: comma-separated HTTPS origins of any additional public mall domains. Forwarded host/protocol headers cannot add trusted origins.
+- `SECURITY_ALLOWED_ORIGINS`: comma-separated HTTPS origins of any additional public mall domains. Direct and forwarded hosts can only select origins already present in this allowlist; they cannot add trusted origins.
 - `TRUSTED_CLIENT_IP_HEADER`: leave unset until the ingress is confirmed to overwrite it. Unset means requests share a conservative rate-limit bucket. For a proxy that appends to `X-Forwarded-For`, only the last address is used. Do not enable a client-controlled header. Direct ingress must be restricted accordingly.
 - `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`: private HTTPS object storage. Disable public bucket access. Browser PUT permissions are no longer required. Revoke previously issued write capabilities during rollout by rotating the storage access key using the normal secret-management process.
 - `CLAMAV_HOST`, `CLAMAV_PORT` (default 3310): a private, reachable clamd service with current signature definitions and INSTREAM enabled. Never expose its unauthenticated TCP port to the public internet. Set stream/scan limits above the application's 10 MB limit. Set `AlertExceedsMax`, `AlertEncrypted`, and `AlertBroken` to `yes` so unscannable inputs are rejected. Monitor scanner readiness and signature freshness. A scanner outage blocks uploads.

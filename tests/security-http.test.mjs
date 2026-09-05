@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { default as worker } from "../dist/server/index.js";
+process.env.PUBLIC_SITE_URL = "https://security.example";
+const { default: worker } = await import("../dist/server/index.js");
 
 const env = { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } };
 const context = { waitUntil() {}, passThroughOnException() {} };
