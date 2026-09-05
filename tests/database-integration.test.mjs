@@ -70,7 +70,7 @@ test("database-backed customer, merchant and checkout journey", async (t) => {
   const variantA = (await pool.query("insert into product_variants (product_id, sku, title, size, color, price, status) values ($1, 'A-001-M', 'Medium / Black', 'M', 'Black', 500, 'active') returning id", [productA.id])).rows[0];
   await pool.query("insert into product_variants (product_id, sku, title, price, status) values ($1, 'B-001-ONE', 'One size', 300, 'active')", [productB.id]);
   await pool.query("insert into variant_inventory (variant_id, branch_id, on_hand, reserved, safety_stock) values ($1, $2, 5, 0, 1)", [variantA.id, branchA.id]);
-  await pool.query("insert into merchant_memberships (merchant_id, user_ref, email, display_name, role, status) values ($1, $2, $3, 'Integration Shopper', 'owner', 'active')", [merchantA.id, String(customer.id), "shopper@test.example"]);
+  const merchantMembership = (await pool.query("insert into merchant_memberships (merchant_id, user_ref, email, display_name, role, status) values ($1, $2, $3, 'Integration Shopper', 'owner', 'active') returning id", [merchantA.id, String(customer.id), "shopper@test.example"])).rows[0];
   await pool.query("insert into merchant_delivery_zones (merchant_id, area, fee, estimated_time) values ($1, 'Pioneerspark', 65, '2–4 hours')", [merchantA.id]);
   const address = (await pool.query("insert into customer_addresses (user_id, label, recipient_name, phone, address_line_1, suburb) values ($1, 'Home', 'Integration Shopper', '0810000000', '1 Test Street', '  PIONEERSPARK ') returning id", [customer.id])).rows[0];
 
@@ -89,6 +89,43 @@ test("database-backed customer, merchant and checkout journey", async (t) => {
     assert.equal(products.status, 200);
     const body = await products.json();
     assert.deepEqual(body.products.map((item) => item.name), ["Pilot Jacket"]);
+  });
+
+  await t.test("shadow-resolves the legacy session without replacing NeuroCity authentication", async () => {
+    const repeated = await api("/api/merchant/products", { cookie: customerCookie });
+    assert.equal(repeated.status, 200);
+    const session = (await pool.query(
+      "select core_actor_session_id from sessions where user_id = $1 order by id desc limit 1",
+      [customer.id],
+    )).rows[0];
+    assert.match(session.core_actor_session_id, /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+
+    const mappings = (await pool.query(
+      `select legacy_source, legacy_id, canonical_subject_type, canonical_subject_id, link_method
+       from core_legacy_identity_mappings
+       order by legacy_source`,
+    )).rows;
+    assert.deepEqual(
+      mappings.map(({ legacy_source, legacy_id, canonical_subject_type, link_method }) => ({ legacy_source, legacy_id, canonical_subject_type, link_method })),
+      [
+        { legacy_source: "neurocity.merchant_memberships", legacy_id: String(merchantMembership.id), canonical_subject_type: "membership", link_method: "migration_exact" },
+        { legacy_source: "neurocity.merchants", legacy_id: String(merchantA.id), canonical_subject_type: "organisation", link_method: "migration_exact" },
+        { legacy_source: "neurocity.users", legacy_id: String(customer.id), canonical_subject_type: "person", link_method: "migration_exact" },
+      ],
+    );
+    assert.equal(mappings.some(({ legacy_id, legacy_source }) => legacy_id === String(merchantB.id) && legacy_source === "neurocity.merchants"), false);
+
+    const membership = (await pool.query(
+      `select cm.person_id, cm.organisation_id, cm.role_keys, cm.client_application_ids
+       from core_memberships cm
+       join core_legacy_identity_mappings person_map on person_map.canonical_subject_id = cm.person_id and person_map.canonical_subject_type = 'person'
+       join core_legacy_identity_mappings org_map on org_map.canonical_subject_id = cm.organisation_id and org_map.canonical_subject_type = 'organisation'
+       where person_map.legacy_id = $1 and org_map.legacy_id = $2`,
+      [String(customer.id), String(merchantA.id)],
+    )).rows[0];
+    assert.ok(membership);
+    assert.deepEqual(membership.role_keys, ["merchant.owner"]);
+    assert.equal(membership.client_application_ids.length, 1);
   });
 
   await pool.query("insert into customer_cart_items (user_id, variant_id, quantity) values ($1, $2, 2)", [customer.id, variantA.id]);
@@ -117,4 +154,3 @@ test("database-backed customer, merchant and checkout journey", async (t) => {
     assert.equal((await pool.query("select count(*)::int as count from audit_events where action = 'order.cancelled_by_customer' and resource_id = $1", [String(orderId)])).rows[0].count, 1);
   });
 });
-

@@ -1,4 +1,4 @@
-import { boolean, doublePrecision, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -20,9 +20,80 @@ export const sessions = pgTable("sessions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   tokenHash: text("token_hash").notNull(),
+  coreActorSessionId: uuid("core_actor_session_id"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [uniqueIndex("idx_sessions_token_hash").on(table.tokenHash), index("idx_sessions_user").on(table.userId), index("idx_sessions_expires_at").on(table.expiresAt)]);
+}, (table) => [uniqueIndex("idx_sessions_token_hash").on(table.tokenHash), uniqueIndex("idx_sessions_core_actor_session").on(table.coreActorSessionId), index("idx_sessions_user").on(table.userId), index("idx_sessions_expires_at").on(table.expiresAt)]);
+
+// Compatibility-first NeuroEdge Core identity projection. NeuroCity remains the
+// credential and session authority until a later, explicitly approved cutover.
+export const corePeople = pgTable("core_people", {
+  id: uuid("id").primaryKey(),
+  displayName: varchar("display_name", { length: 240 }).notNull(),
+  locale: varchar("locale", { length: 35 }).notNull().default("en-NA"),
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("idx_core_people_status").on(table.status)]);
+
+export const coreOrganisations = pgTable("core_organisations", {
+  id: uuid("id").primaryKey(),
+  legalName: varchar("legal_name", { length: 240 }).notNull(),
+  tradingName: varchar("trading_name", { length: 240 }),
+  registrationNumber: varchar("registration_number", { length: 120 }),
+  organisationType: varchar("organisation_type", { length: 40 }).notNull().default("other"),
+  jurisdiction: varchar("jurisdiction", { length: 2 }).notNull().default("NA"),
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("idx_core_organisations_status").on(table.status)]);
+
+export const coreClientApplications = pgTable("core_client_applications", {
+  id: uuid("id").primaryKey(),
+  key: varchar("key", { length: 100 }).notNull(),
+  name: varchar("name", { length: 160 }).notNull(),
+  applicationType: varchar("application_type", { length: 40 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  allowedScopes: jsonb("allowed_scopes").$type<string[]>().notNull().default([]),
+  redirectUris: jsonb("redirect_uris").$type<string[]>().notNull().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("idx_core_client_applications_key").on(table.key)]);
+
+export const coreMemberships = pgTable("core_memberships", {
+  id: uuid("id").primaryKey(),
+  personId: uuid("person_id").notNull().references(() => corePeople.id),
+  organisationId: uuid("organisation_id").notNull().references(() => coreOrganisations.id),
+  roleKeys: jsonb("role_keys").$type<string[]>().notNull(),
+  clientApplicationIds: jsonb("client_application_ids").$type<string[]>().notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  grantSource: varchar("grant_source", { length: 32 }).notNull().default("migration"),
+  grantedByActorId: uuid("granted_by_actor_id"),
+  validFrom: timestamp("valid_from", { withTimezone: true }).notNull().defaultNow(),
+  validUntil: timestamp("valid_until", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("idx_core_membership_person_org").on(table.personId, table.organisationId), index("idx_core_memberships_org_status").on(table.organisationId, table.status)]);
+
+export const coreLegacyIdentityMappings = pgTable("core_legacy_identity_mappings", {
+  id: uuid("id").primaryKey(),
+  clientApplicationId: uuid("client_application_id").notNull().references(() => coreClientApplications.id),
+  legacySource: varchar("legacy_source", { length: 160 }).notNull(),
+  legacyId: varchar("legacy_id", { length: 255 }).notNull(),
+  canonicalSubjectType: varchar("canonical_subject_type", { length: 32 }).notNull(),
+  canonicalSubjectId: uuid("canonical_subject_id").notNull(),
+  linkMethod: varchar("link_method", { length: 40 }).notNull(),
+  linkStatus: varchar("link_status", { length: 32 }).notNull().default("active"),
+  evidenceReferences: jsonb("evidence_references").$type<string[]>().notNull().default([]),
+  reviewedByActorId: uuid("reviewed_by_actor_id"),
+  reviewReason: text("review_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex("idx_core_legacy_mapping_source_subject").on(table.clientApplicationId, table.legacySource, table.legacyId, table.canonicalSubjectType),
+  index("idx_core_legacy_mapping_canonical").on(table.canonicalSubjectType, table.canonicalSubjectId),
+  index("idx_core_legacy_mapping_status").on(table.linkStatus),
+]);
 
 export const dataSubjectRequests = pgTable("data_subject_requests", {
   id: serial("id").primaryKey(),

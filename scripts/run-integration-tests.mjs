@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { Pool } from "pg";
 
@@ -43,6 +43,7 @@ try {
   process.env.NODE_ENV = "test";
   process.env.SESSION_SECRET = "integration-test-only-secret";
   process.env.SMTP_HOST = "";
+  process.env.NEUROEDGE_IDENTITY_SHADOW_ENABLED = "true";
 
   let ready = false;
   for (let attempt = 0; attempt < 30; attempt += 1) {
