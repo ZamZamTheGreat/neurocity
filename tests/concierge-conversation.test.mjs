@@ -17,7 +17,7 @@ async function search(message, availability = 'available', history = []) {
     [{ id: 5, merchantId: 2, city: 'Windhoek', pickupEnabled: true }], []
   ];
   const db = { select() { const result = rows.shift(); const q = { from: () => q, innerJoin: () => q, where: async () => result }; return q; } };
-  const schema = Object.fromEntries(['merchants', 'platformTenantMerchants', 'products', 'productVariants', 'storeBranches', 'storeHours', 'variantInventory'].map((key) => [key, {}]));
+  const schema = Object.fromEntries(['merchants', 'platformTenantMerchants', 'platformTenants', 'products', 'productVariants', 'storeBranches', 'storeHours', 'variantInventory'].map((key) => [key, {}]));
   const route = await load('../app/api/concierge/route.ts', {
     'drizzle-orm': { and() {}, eq() {}, inArray() {} }, '../../../db': { getDb: () => db }, '../../../db/schema': schema,
     '../../../lib/platform-tenant': { resolvePlatformTenant: async () => ({ id: 1, name: 'NeuroCity' }) },

@@ -14,6 +14,7 @@ type Match = {
   sizes: string[];
   fulfillment?: { pickup: boolean; delivery: boolean };
   branches?: { name: string; address: string; city: string }[];
+  venues?: { name: string; slug: string; kind: string }[];
   store: { name: string; slug: string };
 };
 type Message = {
@@ -418,6 +419,9 @@ export function NeuroConcierge({
                             ) : null}
                             {match.branches?.[0] && (
                               <small>{match.branches[0].city} · {match.fulfillment?.pickup ? "Pickup" : ""}{match.fulfillment?.pickup && match.fulfillment?.delivery ? " + " : ""}{match.fulfillment?.delivery ? "Delivery" : ""}</small>
+                            )}
+                            {match.venues?.some((venue) => venue.kind === "mall") && (
+                              <small>Also in {match.venues.filter((venue) => venue.kind === "mall").map((venue) => venue.name).join(" · ")}</small>
                             )}
                           </div>
                           <a href={`/stores/${match.store.slug}#shop`}>View</a>
