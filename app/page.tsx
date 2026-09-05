@@ -171,6 +171,13 @@ export function MarketplaceExperience({
       ),
     [stores],
   );
+  const activeCategories = useMemo(
+    () =>
+      categories.filter(
+        (category) => (categoryCounts[category.name] ?? 0) > 0,
+      ),
+    [categoryCounts],
+  );
   const cartTotal = cart.reduce(
     (sum, id) => sum + (catalogue.find((p) => p.id === id)?.price ?? 0),
     0,
@@ -239,7 +246,7 @@ export function MarketplaceExperience({
     <main
       id="main-content"
       className={
-        platform.kind === "mall" ? "white-label-mall" : "neurocity-marketplace"
+        `${platform.kind === "mall" ? "white-label-mall" : "neurocity-marketplace"} marketplace-shell`
       }
       style={
         {
@@ -451,39 +458,41 @@ export function MarketplaceExperience({
             </div>
           </section>
 
-          <section className="section">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">
-                  Shop by category
-                </p>
-                <h2>Browse what is available now.</h2>
+          {activeCategories.length > 0 && (
+            <section className="section">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Shop by category</p>
+                  <h2>Browse what is available now.</h2>
+                </div>
+                <ul className="info-list">
+                  <li>Only categories with active stores are shown.</li>
+                </ul>
               </div>
-              <ul className="info-list"><li>Only categories with active stores are shown.</li></ul>
-            </div>
-            <div className="category-grid">
-              {categories.filter((category) => (categoryCounts[category.name] ?? 0) > 0).map((category) => {
-                const count = categoryCounts[category.name] ?? 0;
-                return (
-                  <button
-                    className="category-card"
-                    key={category.name}
-                    onClick={() => showStores(category.name)}
-                  >
-                    <span className="category-icon">{category.icon}</span>
-                    <div>
-                      <small>
-                        {count} {count === 1 ? "store" : "stores"}
-                      </small>
-                      <h3>{category.name}</h3>
-                      <p>{category.detail}</p>
-                    </div>
-                    <b>↗</b>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+              <div className="category-grid">
+                {activeCategories.map((category) => {
+                  const count = categoryCounts[category.name] ?? 0;
+                  return (
+                    <button
+                      className="category-card"
+                      key={category.name}
+                      onClick={() => showStores(category.name)}
+                    >
+                      <span className="category-icon">{category.icon}</span>
+                      <div>
+                        <small>
+                          {count} {count === 1 ? "store" : "stores"}
+                        </small>
+                        <h3>{category.name}</h3>
+                        <p>{category.detail}</p>
+                      </div>
+                      <b>↗</b>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           <section className="public-stores section" id="stores">
             <div className="section-heading">
