@@ -11,7 +11,7 @@ function outputText(result: { output?: { content?: { type?: string; text?: strin
 
 export async function POST(request: Request) {
   try {
-    const limit = checkConciergeRateLimit(request, "visual");
+    const limit = await checkConciergeRateLimit(request, "visual");
     if (!limit.allowed) return Response.json({ error: "The photo-search limit has been reached. Please wait a few minutes or describe the item instead." }, { status: 429, headers: rateLimitHeaders(limit) });
     const form = await request.formData();
     const image = form.get("image");

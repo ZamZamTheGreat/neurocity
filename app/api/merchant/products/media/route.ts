@@ -1,3 +1,4 @@
+import { createUploadUrl } from "../../../../../lib/upload-security";
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "../../../../../db";
@@ -28,5 +29,5 @@ export async function POST(request: Request) {
   if (!product) return Response.json({ error: "Product not found." }, { status: 404 });
   const safeName = filename.replace(/[^a-zA-Z0-9._-]+/g, "-").slice(-120);
   const key = `merchants/${access.merchantId}/products/${product.id}/${randomUUID()}-${safeName}`;
-  return Response.json({ uploadUrl: createPresignedR2Url("PUT", key, 600), storageValue: `r2://${key}` });
+  return Response.json({ uploadUrl: createUploadUrl(key, access.user.userId, mimeType, sizeBytes!), storageValue: `r2://${key}` });
 }

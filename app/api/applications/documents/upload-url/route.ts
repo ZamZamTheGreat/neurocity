@@ -1,3 +1,4 @@
+import { createUploadUrl } from "../../../../../lib/upload-security";
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "../../../../../db";
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
   const db = getDb(); const [application] = await db.select().from(merchantApplications).where(and(eq(merchantApplications.reference, reference.toUpperCase()), eq(merchantApplications.email, user.email.toLowerCase()))).limit(1);
   if (!application || application.status === "rejected" || application.status === "withdrawn") return Response.json({ error: "Eligible application not found." }, { status: 404 });
   const safeName = filename.replace(/[^a-zA-Z0-9._-]+/g, "-").slice(-120); const key = `applications/${application.id}/${documentType}/${randomUUID()}-${safeName}`;
-  const uploadUrl = createPresignedR2Url("PUT", key, 600);
+  const uploadUrl = createUploadUrl(key, user.userId, mimeType, sizeBytes!);
   await db.update(applicationDocuments).set({ storageKey: key, originalName: filename, mimeType, sizeBytes, status: "upload_pending" }).where(and(eq(applicationDocuments.applicationId, application.id), eq(applicationDocuments.documentType, documentType)));
   return Response.json({ uploadUrl, expiresIn: 600 });
 }

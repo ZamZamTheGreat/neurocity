@@ -16,7 +16,7 @@ export async function GET() {
     db.select().from(customerWishlists).where(eq(customerWishlists.userId, userId)),
     db.select().from(customerSavedStores).where(eq(customerSavedStores.userId, userId)),
     db.select().from(orders).where(eq(orders.customerRef, auth.userId)),
-    db.select().from(serviceBookings).where(eq(serviceBookings.customerRef, auth.userId)),
+    db.select().from(serviceBookings).where(eq(serviceBookings.customerId, userId)),
     db.select().from(customerCompanionProfiles).where(eq(customerCompanionProfiles.userId, userId)),
     db.select().from(dataSubjectRequests).where(eq(dataSubjectRequests.userId, userId)),
   ]);

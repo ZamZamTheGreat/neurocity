@@ -1,3 +1,4 @@
+import { createUploadUrl } from "../../../../lib/upload-security";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
@@ -29,5 +30,5 @@ export async function POST(request: Request) {
   if (!type || !mediaTypes.has(type) || !filename || !mimeType || !imageTypes.has(mimeType) || !Number.isInteger(sizeBytes) || sizeBytes! < 1 || sizeBytes! > 10 * 1024 * 1024) return Response.json({ error: "Upload a JPG, PNG or WebP image no larger than 10 MB." }, { status: 400 });
   const safeName = filename.replace(/[^a-zA-Z0-9._-]+/g, "-").slice(-120);
   const key = `merchants/${access.merchantId}/${type}/${randomUUID()}-${safeName}`;
-  return Response.json({ uploadUrl: createPresignedR2Url("PUT", key, 600), storageValue: `r2://${key}` });
+  return Response.json({ uploadUrl: createUploadUrl(key, access.user.userId, mimeType, sizeBytes!), storageValue: `r2://${key}` });
 }

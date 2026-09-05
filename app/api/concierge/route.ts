@@ -64,7 +64,7 @@ function windhoekClock() {
 
 export async function POST(request: Request) {
   try {
-    const limit = checkConciergeRateLimit(request, "search");
+    const limit = await checkConciergeRateLimit(request, "search");
     if (!limit.allowed) return Response.json({ error: "Selma has received too many requests from this connection. Please wait a few minutes and try again." }, { status: 429, headers: rateLimitHeaders(limit) });
     const contentLength = Number(request.headers.get("content-length") ?? 0);
     if (contentLength > 32_000) return Response.json({ error: "That request is too large." }, { status: 413 });

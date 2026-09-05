@@ -1,22 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
+import { contentSecurityPolicy, isSameOriginMutation, readBoundedBody } from "./lib/request-security";
+import { clientAddress, rateLimitResponse } from "./lib/security-rate-limit";
 
-const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
-
-function publicRequestOrigin(request: NextRequest) {
-  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0].trim();
-  const host = forwardedHost || request.headers.get("host");
-  const forwardedProtocol = request.headers.get("x-forwarded-proto")?.split(",")[0].trim();
-  const protocol = forwardedProtocol || request.nextUrl.protocol.replace(":", "");
-  return host ? `${protocol}://${host}` : request.nextUrl.origin;
+export async function proxy(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  if (path.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+    if (!isSameOriginMutation(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+    const limited = await rateLimitResponse("api-mutations", clientAddress(request), 300);
+    if (limited) return limited;
+    if (["/api/auth/login", "/api/auth/register", "/api/applications", "/api/merchant/claim"].includes(path)) {
+      const authLimit = await rateLimitResponse(`auth:${path}`, clientAddress(request), 30);
+      if (authLimit) return authLimit;
+    }
+    if (!path.startsWith("/api/uploads")) {
+      try { await readBoundedBody(request.clone(), path.endsWith("/visual-search") ? 6 * 1024 * 1024 : 64 * 1024); }
+      catch { return Response.json({ error: "Request too large." }, { status: 413 }); }
+    }
+  }
+  const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(24))));
+  const csp = contentSecurityPolicy(nonce);
+  const headers = new Headers(request.headers);
+  headers.set("content-security-policy", csp);
+  const response = NextResponse.next({ request: { headers } });
+  response.headers.set("Content-Security-Policy", csp);
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
 }
 
-export function proxy(request: NextRequest) {
-  if (SAFE_METHODS.has(request.method)) return NextResponse.next();
-  const fetchSite = request.headers.get("sec-fetch-site");
-  if (fetchSite === "cross-site") return Response.json({ error: "Cross-site request blocked." }, { status: 403 });
-  const origin = request.headers.get("origin");
-  if (origin && origin !== publicRequestOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
-  return NextResponse.next();
-}
-
-export const config = { matcher: "/api/:path*" };
+export const config = { matcher: "/((?!assets/|_next/|favicon.ico).*)" };

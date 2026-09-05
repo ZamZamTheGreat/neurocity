@@ -21,7 +21,7 @@ const normalizeHostname = (value: string | null) => (value ?? "").split(":")[0].
 export async function resolvePlatformTenant(request: Request): Promise<PublicPlatformTenant> {
   const db = getDb();
   const previewSlug = new URL(request.url).searchParams.get("mall")?.trim().toLowerCase();
-  const hostname = normalizeHostname(request.headers.get("x-forwarded-host") ?? request.headers.get("host"));
+  const hostname = normalizeHostname(request.headers.get("host") ?? new URL(request.url).host);
   let tenant;
   if (previewSlug) {
     [tenant] = await db.select().from(platformTenants).where(and(eq(platformTenants.slug, previewSlug), eq(platformTenants.status, "active"))).limit(1);

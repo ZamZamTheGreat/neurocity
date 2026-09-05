@@ -8,6 +8,7 @@ import { sendMail } from "../../../lib/mail";
 import { isMerchantCategory } from "../../../lib/merchant-categories";
 import { createSession, getChatGPTUser, sessionCookieOptions, SESSION_COOKIE } from "../../chatgpt-auth";
 import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from "../../../lib/privacy";
+import { rateLimitResponse } from "../../../lib/security-rate-limit";
 
 const requiredDocuments = ["business_registration", "representative_identification", "proof_of_business_address", "bank_confirmation_letter"];
 const required = ["legalName", "tradingName", "registrationNumber", "businessType", "category", "mainOperatingArea", "description", "representativeName", "representativeRole", "email", "phone", "physicalAddress"];
@@ -37,9 +38,12 @@ export async function POST(request: Request) {
     if (!locationTypes.has(String(data.locationType ?? ""))) return Response.json({ error: "Choose how customers access this business." }, { status: 400 });
     if (!String(data.email).includes("@") || data.termsAccepted !== true || data.privacyAccepted !== true) return Response.json({ error: "A valid email and acceptance of the merchant terms and privacy notice are required." }, { status: 400 });
     const normalizedEmail = String(data.email).trim().toLowerCase();
+    const limited = await rateLimitResponse("login-account", normalizedEmail, 10);
+    if (limited) return limited;
     const signedInUser = await getChatGPTUser();
     if (signedInUser && signedInUser.email.toLowerCase() !== normalizedEmail) return Response.json({ error: "Use the email address belonging to your signed-in NeuroCity account." }, { status: 403 });
     const password = String(data.password ?? "");
+    if (new TextEncoder().encode(password).length > 72) return Response.json({ error: "Password must not exceed 72 bytes." }, { status: 400 });
     if (!signedInUser && password.length < 10) return Response.json({ error: "Create a password of at least 10 characters." }, { status: 400 });
     if (!signedInUser && password !== String(data.confirmPassword ?? "")) return Response.json({ error: "The passwords do not match." }, { status: 400 });
     const reference = `NCA-${new Date().getFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`;
