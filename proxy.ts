@@ -4,7 +4,8 @@ import { clientAddress, rateLimitResponse } from "./lib/security-rate-limit";
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  if (path.startsWith("/api/") && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+  const signedExternalWebhook = path === "/api/webhooks/whatsapp";
+  if (path.startsWith("/api/") && !signedExternalWebhook && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
     if (!isSameOriginMutation(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
     const limited = await rateLimitResponse("api-mutations", clientAddress(request), 300);
     if (limited) return limited;

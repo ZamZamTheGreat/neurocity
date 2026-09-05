@@ -48,3 +48,5 @@ Administrator password sign-in requires a six-digit TOTP code. Generate a privat
 ## WhatsApp order updates
 
 Merchants always have a manual **Send WhatsApp update** action when an order includes a customer phone number. To send approved template updates automatically after each order-status change, configure `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, and `WHATSAPP_ORDER_TEMPLATE`. The template body receives the order reference, store name, readable status, and merchant note in that order. Failed WhatsApp delivery never rolls back a valid order update and is recorded in the audit log.
+
+Meta webhook callbacks use `/api/webhooks/whatsapp`. Set `WHATSAPP_VERIFY_TOKEN` to a private random value and enter that same value in Meta's webhook form. Set `META_APP_SECRET` to the app secret from Meta App Settings. The endpoint validates Meta's `x-hub-signature-256` before accepting events, limits payload size, and records message and delivery events without storing message text or raw phone numbers.

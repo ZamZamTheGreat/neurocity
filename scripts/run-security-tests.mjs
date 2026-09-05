@@ -20,5 +20,5 @@ await build({
     builder.onResolve({ filter: /^(?:\.\.\/)+db$|^next\/(headers|navigation)$/ }, () => ({ path: resolve(projectRoot, "tests/security-fixture.ts") }));
   } }],
 });
-const result = spawnSync(process.execPath, ["--test", "--test-concurrency=1", resolve(projectRoot, "tests/security.test.mjs")], { cwd: projectRoot, stdio: "inherit", env: { ...process.env, NODE_ENV: "test", DATABASE_URL: "", SMTP_HOST: "", ADMIN_EMAIL: "administrator@security.example", ADMIN_MFA_SECRET: "JBSWY3DPEHPK3PXP" } });
+const result = spawnSync(process.execPath, ["--test", "--test-concurrency=1", resolve(projectRoot, "tests/security.test.mjs")], { cwd: projectRoot, stdio: "inherit", env: { ...process.env, NODE_ENV: "test", DATABASE_URL: "", SMTP_HOST: "", ADMIN_EMAIL: "administrator@security.example", ADMIN_MFA_SECRET: "JBSWY3DPEHPK3PXP", META_APP_SECRET: "security-test-meta-secret" } });
 process.exitCode = result.status ?? 1;

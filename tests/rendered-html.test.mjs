@@ -310,12 +310,16 @@ test("adds guarded bulk catalogue import and WhatsApp order updates", async () =
   const bulk = await readFile(new URL("../app/api/merchant/products/bulk/route.ts", import.meta.url), "utf8");
   const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");
   const orderRoute = await readFile(new URL("../app/api/merchant/orders/route.ts", import.meta.url), "utf8");
+  const webhook = await readFile(new URL("../app/api/webhooks/whatsapp/route.ts", import.meta.url), "utf8");
   assert.match(bulk, /payload\.rows\.length > 250/);
   assert.match(bulk, /catalogue\.bulk_imported/);
   assert.match(bulk, /db\.transaction/);
   assert.match(workspace, /neurocity-catalogue-template\.csv/);
   assert.match(workspace, /Send WhatsApp update/);
   assert.match(orderRoute, /sendWhatsAppOrderUpdate/);
+  assert.match(webhook, /hub\.verify_token/);
+  assert.match(webhook, /x-hub-signature-256/);
+  assert.match(webhook, /whatsapp\.message_received/);
 });
 
 test("preserves tenant and ownership predicates in sensitive routes", async () => {

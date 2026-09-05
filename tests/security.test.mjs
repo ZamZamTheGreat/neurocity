@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:net";
+import { createHmac } from "node:crypto";
 import test from "node:test";
 import sharp from "sharp";
 import { PDFDocument, PDFName, PDFString } from "pdf-lib";
@@ -62,6 +63,13 @@ test("administrator login context rejects a non-administrator before creating a 
 
 test("TOTP generation follows the RFC 6238 reference vector", () => {
   assert.equal(security.totpCode("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", 59_000), "287082");
+});
+
+test("Meta webhook signatures are checked against the unmodified request body", () => {
+  const body = new TextEncoder().encode('{"object":"whatsapp_business_account"}');
+  const signature = `sha256=${createHmac("sha256", process.env.META_APP_SECRET).update(body).digest("hex")}`;
+  assert.equal(security.verifyMetaWebhookSignature(body, signature), true);
+  assert.equal(security.verifyMetaWebhookSignature(body, `${signature.slice(0, -1)}0`), false);
 });
 
 test("persistent limiter admits exactly the configured number of concurrent attempts", async () => {
