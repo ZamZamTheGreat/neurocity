@@ -7,6 +7,7 @@ These changes require a coordinated deployment. Run `npm run db:migrate` to appl
 - `PUBLIC_SITE_URL`: exact HTTPS origin of the primary site.
 - `SECURITY_ALLOWED_ORIGINS`: comma-separated HTTPS origins of any additional public mall domains. Direct and forwarded hosts can only select origins already present in this allowlist; they cannot add trusted origins.
 - `TRUSTED_CLIENT_IP_HEADER`: leave unset until the ingress is confirmed to overwrite it. Unset means requests share a conservative rate-limit bucket. For a proxy that appends to `X-Forwarded-For`, only the last address is used. Do not enable a client-controlled header. Direct ingress must be restricted accordingly.
+- `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY`: create a Cloudflare Turnstile Managed widget restricted to every production hostname. The site key is returned to browsers; the secret must exist only in the deployment secret store. Production registration, login, merchant applications and invitation claims fail closed if the secret is missing or Siteverify is unavailable. Tokens are verified server-side and bound to their expected action and request hostname.
 - `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`: private HTTPS object storage. Disable public bucket access. Browser PUT permissions are no longer required. Revoke previously issued write capabilities during rollout by rotating the storage access key using the normal secret-management process.
 - `CLAMAV_HOST`, `CLAMAV_PORT` (default 3310): a private, reachable clamd service with current signature definitions and INSTREAM enabled. Never expose its unauthenticated TCP port to the public internet. Set stream/scan limits above the application's 10 MB limit. Set `AlertExceedsMax`, `AlertEncrypted`, and `AlertBroken` to `yes` so unscannable inputs are rejected. Monitor scanner readiness and signature freshness. A scanner outage blocks uploads.
 
@@ -23,6 +24,8 @@ Uploads are limited by actual streamed bytes, authenticated tickets, declared fi
 Nonce-based CSP replaces inline-script permission. HTML and API responses receive private/no-store cache policy. The existing Google tag and payment hosts have explicit allowances.
 
 Rate limits are shared in PostgreSQL: 300 mutations per connection per 10 minutes; 30 per authentication endpoint; 10 login attempts per normalized account (shared with merchant-application authentication); concierge search 20 and visual search 5 per connection. Expired records are opportunistically cleaned in bounded batches. Review these limits against legitimate traffic and proxy configuration before increasing them.
+
+Cloudflare Turnstile complements these limits on login, registration, merchant applications and merchant invitation claims. Do not remove the server-side limits after enabling the widget. For automated non-production testing, use Cloudflare's published test keys; never deploy test credentials to production.
 
 ## Verification
 

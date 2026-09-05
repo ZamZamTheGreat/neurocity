@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import TurnstileChallenge from "../components/TurnstileChallenge";
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
@@ -26,6 +27,9 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
+  const acceptTurnstile = useCallback((token: string | null) => setTurnstileToken(token), []);
   const passwordChecks = useMemo(
     () => [
       { label: "10 characters", met: form.password.length >= 10 },
@@ -39,6 +43,8 @@ export default function LoginPage() {
     setMode(next);
     setMessage("");
     setShowPassword(false);
+    setTurnstileToken(null);
+    setTurnstileReset((value) => value + 1);
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -48,11 +54,13 @@ export default function LoginPage() {
       const response = await fetch(`/api/auth/${mode}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, turnstileToken }),
       });
       const data = await response.json();
       if (!response.ok) {
         setMessage(data.error);
+        setTurnstileToken(null);
+        setTurnstileReset((value) => value + 1);
         return;
       }
       window.location.href =
@@ -260,10 +268,11 @@ export default function LoginPage() {
                 {message}
               </p>
             )}
+            <TurnstileChallenge action={mode} onToken={acceptTurnstile} resetKey={turnstileReset} />
             <button
               className="auth-submit"
               disabled={
-                busy ||
+                busy || !turnstileToken ||
                 (mode === "register" &&
                   (!passwordChecks.every((check) => check.met) || !form.privacyAccepted || !form.termsAccepted))
               }

@@ -9,6 +9,7 @@ import PaymentSettingsPanel, {
   type MerchantSettlement,
   type PaymentSettings,
 } from "./PaymentSettingsPanel";
+import TurnstileChallenge from "./TurnstileChallenge";
 
 type Tab =
   | "Overview"
@@ -294,6 +295,9 @@ export default function MerchantWorkspace({
   const [session, setSession] = useState<Session | null>(null);
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [claimCode, setClaimCode] = useState("");
+  const [claimTurnstileToken, setClaimTurnstileToken] = useState<string | null>(null);
+  const [claimTurnstileReset, setClaimTurnstileReset] = useState(0);
+  const acceptClaimTurnstile = useCallback((token: string | null) => setClaimTurnstileToken(token), []);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const load = useCallback(async () => {
@@ -604,8 +608,10 @@ export default function MerchantWorkspace({
             onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
           />
         </label>
+        <TurnstileChallenge action="merchant_claim" onToken={acceptClaimTurnstile} resetKey={claimTurnstileReset} />
         <button
-          onClick={() => postAccess("/api/merchant/claim", { code: claimCode })}
+          disabled={!claimTurnstileToken}
+          onClick={() => { void postAccess("/api/merchant/claim", { code: claimCode, turnstileToken: claimTurnstileToken }); setClaimTurnstileToken(null); setClaimTurnstileReset((value) => value + 1); }}
         >
           Join merchant workspace
         </button>

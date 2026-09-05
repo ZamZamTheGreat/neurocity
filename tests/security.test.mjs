@@ -63,6 +63,29 @@ test("origin enforcement rejects forged forwarded hosts, missing origins and sib
   for (const headers of [{}, { origin: "null" }, { origin: "https://evil.example", "x-forwarded-host": "evil.example", "x-forwarded-proto": "https" }, { origin: "https://platform.example", "sec-fetch-site": "same-site" }]) assert.equal(security.isSameOriginMutation(request(headers)), false);
 });
 
+test("Turnstile validation is server-side, action-bound and hostname-bound", async () => {
+  process.env.TURNSTILE_SECRET_KEY = "test-secret";
+  const previousFetch = globalThis.fetch;
+  const request = new Request("http://localhost/api/auth/login", { method: "POST", headers: { origin: "http://localhost" } });
+  try {
+    globalThis.fetch = async (_url, init) => {
+      const body = init.body;
+      assert.equal(body.get("secret"), "test-secret");
+      assert.equal(body.get("response"), "valid-token");
+      return Response.json({ success: true, action: "login", hostname: "localhost" });
+    };
+    assert.equal((await security.verifyTurnstile(request, "valid-token", "login")).ok, true);
+    globalThis.fetch = async () => Response.json({ success: true, action: "register", hostname: "localhost" });
+    assert.equal((await security.verifyTurnstile(request, "valid-token", "login")).ok, false);
+    globalThis.fetch = async () => Response.json({ success: true, action: "login", hostname: "evil.example" });
+    assert.equal((await security.verifyTurnstile(request, "valid-token", "login")).ok, false);
+    assert.equal((await security.verifyTurnstile(request, "", "login")).ok, false);
+  } finally {
+    globalThis.fetch = previousFetch;
+    delete process.env.TURNSTILE_SECRET_KEY;
+  }
+});
+
 test("body limit checks actual streamed bytes even without content-length", async () => {
   await assert.rejects(security.readBoundedBody(new Request("http://localhost", { method: "POST", body: "123456" }), 5));
   assert.equal((await security.readBoundedBody(new Request("http://localhost", { method: "POST", body: "12345" }), 5)).length, 5);

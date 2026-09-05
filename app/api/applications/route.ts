@@ -9,6 +9,7 @@ import { isMerchantCategory } from "../../../lib/merchant-categories";
 import { createSession, getChatGPTUser, sessionCookieOptions, SESSION_COOKIE } from "../../chatgpt-auth";
 import { PRIVACY_NOTICE_VERSION, TERMS_VERSION } from "../../../lib/privacy";
 import { rateLimitResponse } from "../../../lib/security-rate-limit";
+import { turnstileFailure, verifyTurnstile } from "../../../lib/turnstile";
 
 const requiredDocuments = ["business_registration", "representative_identification", "proof_of_business_address", "bank_confirmation_letter"];
 const required = ["legalName", "tradingName", "registrationNumber", "businessType", "category", "mainOperatingArea", "description", "representativeName", "representativeRole", "email", "phone", "physicalAddress"];
@@ -45,6 +46,8 @@ export async function POST(request: Request) {
     if (limited) return limited;
     const signedInUser = await getChatGPTUser();
     if (signedInUser && signedInUser.email.toLowerCase() !== normalizedEmail) return Response.json({ error: "Use the email address belonging to your signed-in NeuroCity account." }, { status: 403 });
+    const challenge = await verifyTurnstile(request, data.turnstileToken, "merchant_application");
+    if (!challenge.ok) return turnstileFailure(challenge);
     const password = String(data.password ?? "");
     if (new TextEncoder().encode(password).length > 72) return Response.json({ error: "Password must not exceed 72 bytes." }, { status: 400 });
     if (!signedInUser && password.length < 10) return Response.json({ error: "Create a password of at least 10 characters." }, { status: 400 });

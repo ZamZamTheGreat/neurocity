@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { merchantCategories } from "../../lib/merchant-categories";
+import TurnstileChallenge from "../components/TurnstileChallenge";
 
 const fields = {
   legalName: "",
@@ -47,6 +48,9 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
   const [reference, setReference] = useState(resumedReference);
   const [result, setResult] = useState("");
   const [busy, setBusy] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileReset, setTurnstileReset] = useState(0);
+  const acceptTurnstile = useCallback((token: string | null) => setTurnstileToken(token), []);
   const [account, setAccount] = useState<{ displayName: string; email: string } | null>(null);
   const [mallName, setMallName] = useState(
     mallSlug ? "" : "NeuroCity Marketplace",
@@ -84,7 +88,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
     const response = await fetch("/api/applications", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...form, mallSlug }),
+      body: JSON.stringify({ ...form, mallSlug, turnstileToken }),
     });
     const data = await response.json();
     if (response.ok) {
@@ -94,7 +98,11 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
         "",
         `/apply?reference=${encodeURIComponent(data.application.reference)}`,
       );
-    } else setResult(data.error ?? "Application could not be submitted.");
+    } else {
+      setResult(data.error ?? "Application could not be submitted.");
+      setTurnstileToken(null);
+      setTurnstileReset((value) => value + 1);
+    }
     setBusy(false);
   }
 
@@ -408,7 +416,8 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
             I have read the <a href="/privacy" target="_blank">NeuroCity privacy notice</a> and consent to processing this information and the uploaded documents for application review.
           </label>
           {result && <p className="form-error">{result}</p>}
-          <button className="submit-application" disabled={busy}>
+          <TurnstileChallenge action="merchant_application" onToken={acceptTurnstile} resetKey={turnstileReset} />
+          <button className="submit-application" disabled={busy || !turnstileToken}>
             {busy
               ? "Creating secure application…"
               : "Continue to secure document uploads"}
