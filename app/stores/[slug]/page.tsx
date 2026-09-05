@@ -59,6 +59,14 @@ type StoreData = {
   products: Product[];
 };
 const label = (value: string) => value.replaceAll("_", " ");
+const whatsappNumber = (value: string) => {
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = `264${digits.slice(1)}`;
+  return digits;
+};
+const whatsappHref = (phone: string, storeName: string) =>
+  `https://wa.me/${whatsappNumber(phone)}?text=${encodeURIComponent(`Hi ${storeName}, I found your store on NeuroCity and would like some help.`)}`;
 const productPrice = (product: Product) =>
   product.itemType === "service"
     ? (product.salePrice ?? product.price ?? Number.POSITIVE_INFINITY)
@@ -355,6 +363,16 @@ export default function StorefrontPage() {
           <div className="store-contact-links">
             {store.contactOptions?.phone && (
               <a href={`tel:${store.contactOptions.phone}`}>Call store</a>
+            )}
+            {store.contactOptions?.phone && (
+              <a
+                href={whatsappHref(store.contactOptions.phone, store.name)}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Text ${store.name} on WhatsApp`}
+              >
+                Text store
+              </a>
             )}
             {store.contactOptions?.email && (
               <a href={`mailto:${store.contactOptions.email}`}>Email store</a>

@@ -352,6 +352,9 @@ test("keeps the customer journey connected from storefront to multi-store checko
   assert.match(storefront, /account\?tab=Bag/);
   assert.match(storefront, /!preorder && item\.available !== null && item\.available < 1/);
   assert.match(storefront, /Added to your bag/);
+  assert.match(storefront, /https:\/\/wa\.me\//);
+  assert.match(storefront, /Text store/);
+  assert.match(storefront, /digits\.startsWith\("0"\).*264/s);
   assert.match(account, /checkout-merchant-group/);
   assert.match(account, /ONE PAYMENT/);
   assert.match(account, /neurocity:open-selma/);
