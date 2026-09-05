@@ -16,8 +16,11 @@ const offeringTypes = new Set(["products", "services", "both"]);
 const locationTypes = new Set(["physical_store", "service_area", "both", "remote"]);
 
 export async function GET(request: Request) {
+  const user = await getChatGPTUser();
+  if (!user) return Response.json({ error: "Sign in with the application account to view its status." }, { status: 401 });
   const url = new URL(request.url); const reference = url.searchParams.get("reference")?.trim().toUpperCase(); const email = url.searchParams.get("email")?.trim().toLowerCase();
   if (!reference || !email) return Response.json({ error: "Reference and email are required." }, { status: 400 });
+  if (email !== user.email.toLowerCase()) return Response.json({ error: "Application not found." }, { status: 404 });
   const [application] = await getDb().select({ reference: merchantApplications.reference, tradingName: merchantApplications.tradingName, status: merchantApplications.status, submittedAt: merchantApplications.submittedAt, reviewedAt: merchantApplications.reviewedAt, reviewNotes: merchantApplications.reviewNotes }).from(merchantApplications).where(and(eq(merchantApplications.reference, reference), eq(merchantApplications.email, email))).limit(1);
   if (!application) return Response.json({ error: "Application not found." }, { status: 404 });
   return Response.json({ application });

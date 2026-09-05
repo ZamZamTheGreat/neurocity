@@ -160,3 +160,12 @@ test("merchant reads cannot cross membership boundaries and customer cannot read
   const denied = await security.cookieContext.run(ownerJar, () => security.documentDownload.GET(new Request("http://localhost/api/applications/documents/download?id=1")));
   assert.equal(denied.status, 403);
 });
+
+test("application status is private to the signed-in applicant", async () => {
+  const anonymous = await security.cookieContext.run(new Map(), () => security.applications.GET(new Request("http://localhost/api/applications?reference=NCA-2026-AAAAAAAA&email=owner%40security.example")));
+  assert.equal(anonymous.status, 401);
+  const ownerJar = new Map();
+  await call(security.login.POST, { email: "owner@security.example", password: "security-test-password" }, ownerJar);
+  const mismatched = await security.cookieContext.run(ownerJar, () => security.applications.GET(new Request("http://localhost/api/applications?reference=NCA-2026-AAAAAAAA&email=victim%40security.example")));
+  assert.equal(mismatched.status, 404);
+});

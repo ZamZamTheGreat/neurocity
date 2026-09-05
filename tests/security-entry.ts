@@ -10,3 +10,4 @@ export * as auth from "../app/chatgpt-auth";
 export * as uploads from "../app/api/uploads/route";
 export * as merchantProducts from "../app/api/merchant/products/route";
 export * as documentDownload from "../app/api/applications/documents/download/route";
+export * as applications from "../app/api/applications/route";

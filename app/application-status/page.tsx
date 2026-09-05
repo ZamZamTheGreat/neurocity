@@ -38,6 +38,7 @@ export default function StatusPage() {
       <form onSubmit={lookup}>
         <p className="eyebrow">Merchant applications</p>
         <h1>Track your application</h1>
+        <p>Sign in with the account used for the application before checking its status.</p>
         <label>
           Application reference
           <input
