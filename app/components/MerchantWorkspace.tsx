@@ -1052,8 +1052,26 @@ function SetupPanel({
         hour.dayOfWeek === dayOfWeek ? { ...hour, ...values } : hour,
       ),
     });
+  const applyHoursPreset = (preset: "weekdays" | "daily") =>
+    setMerchant({
+      ...merchant,
+      hours: merchant.hours.map((hour) => ({
+        ...hour,
+        opensAt: "09:00",
+        closesAt: "17:00",
+        closed: preset === "weekdays" && (hour.dayOfWeek === 0 || hour.dayOfWeek === 6),
+      })),
+    });
   return (
     <div className="setup-workflow">
+      <section className="setup-intro">
+        <div>
+          <p className="eyebrow">Store setup</p>
+          <h1>Get ready to sell in three steps</h1>
+          <p>Start with the essentials. You can save a draft at any time and return later.</p>
+        </div>
+        <span>About 5 minutes</span>
+      </section>
       <section className="setup-readiness">
         <div>
           <p className="eyebrow">Store readiness</p>
@@ -1075,8 +1093,8 @@ function SetupPanel({
         <header>
           <span>1</span>
           <div>
-            <h2>Store identity</h2>
-            <ul className="info-list"><li>Controls what customers see at the top of your storefront.</li></ul>
+            <h2>Build your storefront</h2>
+            <p>Add the name, short introduction and images customers will see.</p>
           </div>
         </header>
         <div className="setup-fields">
@@ -1149,20 +1167,11 @@ function SetupPanel({
         <header>
           <span>2</span>
           <div>
-            <h2>Contact and location</h2>
-            <ul className="info-list"><li>Add public contact details.</li><li>Set your primary Windhoek branch.</li></ul>
+            <h2>Add contact and pickup details</h2>
+            <p>Tell customers how to reach you and where orders can be collected.</p>
           </div>
         </header>
         <div className="setup-fields">
-          <label>
-            Contact person
-            <input
-              value={merchant.contactName ?? ""}
-              onChange={(e) =>
-                setMerchant({ ...merchant, contactName: e.target.value })
-              }
-            />
-          </label>
           <label>
             Contact email
             <input
@@ -1182,35 +1191,8 @@ function SetupPanel({
               }
             />
           </label>
-          <label>
-            Website
-            <input
-              value={merchant.website ?? ""}
-              onChange={(e) =>
-                setMerchant({ ...merchant, website: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            Branch name
-            <input
-              value={merchant.branchName}
-              onChange={(e) =>
-                setMerchant({ ...merchant, branchName: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            Branch phone
-            <input
-              value={merchant.branchPhone}
-              onChange={(e) =>
-                setMerchant({ ...merchant, branchPhone: e.target.value })
-              }
-            />
-          </label>
           <label className="wide">
-            Branch address
+            Pickup address
             <input
               value={merchant.branchAddress}
               onChange={(e) =>
@@ -1222,14 +1204,23 @@ function SetupPanel({
               }
             />
           </label>
+          <details className="optional-fields wide">
+            <summary>Optional business details</summary>
+            <div>
+              <label>Contact person<input value={merchant.contactName ?? ""} onChange={(e) => setMerchant({ ...merchant, contactName: e.target.value })} /></label>
+              <label>Website<input value={merchant.website ?? ""} onChange={(e) => setMerchant({ ...merchant, website: e.target.value })} /></label>
+              <label>Location name<input value={merchant.branchName} onChange={(e) => setMerchant({ ...merchant, branchName: e.target.value })} /></label>
+              <label>Location phone<input value={merchant.branchPhone} onChange={(e) => setMerchant({ ...merchant, branchPhone: e.target.value })} /></label>
+            </div>
+          </details>
         </div>
       </section>
       <section className="setup-section">
         <header>
           <span>3</span>
           <div>
-            <h2>Fulfilment and hours</h2>
-            <ul className="info-list"><li>Choose how customers receive orders.</li><li>Set when the store is open.</li></ul>
+            <h2>Choose how you sell</h2>
+            <p>Select fulfilment, confirm your hours and add a returns policy.</p>
           </div>
         </header>
         <div className="fulfilment-options">
@@ -1259,6 +1250,10 @@ function SetupPanel({
               <small>Your store manages delivery during the pilot.</small>
             </span>
           </label>
+        </div>
+        <div className="hours-heading">
+          <strong>Opening hours</strong>
+          <div><button type="button" onClick={() => applyHoursPreset("weekdays")}>Weekdays 9–5</button><button type="button" onClick={() => applyHoursPreset("daily")}>Every day 9–5</button></div>
         </div>
         <div className="hours-grid">
           {merchant.hours.map((hour) => (
@@ -1296,18 +1291,9 @@ function SetupPanel({
             </div>
           ))}
         </div>
-      </section>
-      <section className="setup-section">
-        <header>
-          <span>4</span>
-          <div>
-            <h2>Store policies</h2>
-            <ul className="info-list"><li>Set clear expectations before customers order.</li></ul>
-          </div>
-        </header>
         <div className="setup-fields">
           <label className="wide">
-            Returns and exchanges
+            Returns and exchanges policy
             <textarea
               value={merchant.returnsPolicy}
               onChange={(e) =>
@@ -1315,30 +1301,19 @@ function SetupPanel({
               }
             />
           </label>
-          <label className="wide">
-            Delivery and pickup policy
-            <textarea
-              value={merchant.shippingPolicy}
-              onChange={(e) =>
-                setMerchant({ ...merchant, shippingPolicy: e.target.value })
-              }
-            />
-          </label>
-          <label className="wide">
-            Privacy note
-            <textarea
-              value={merchant.privacyPolicy}
-              onChange={(e) =>
-                setMerchant({ ...merchant, privacyPolicy: e.target.value })
-              }
-            />
-          </label>
+          <details className="optional-fields wide">
+            <summary>Optional customer policies</summary>
+            <div>
+              <label>Delivery and pickup policy<textarea value={merchant.shippingPolicy} onChange={(e) => setMerchant({ ...merchant, shippingPolicy: e.target.value })} /></label>
+              <label>Privacy note<textarea value={merchant.privacyPolicy} onChange={(e) => setMerchant({ ...merchant, privacyPolicy: e.target.value })} /></label>
+            </div>
+          </details>
         </div>
       </section>
       <section className="publish-panel">
         <div>
-          <h2>Save and publish</h2>
-          <ul className="info-list"><li>Save as a draft at any time.</li><li>Complete all essential setup information before publishing.</li></ul>
+          <h2>{merchant.isPublic ? "Ready to publish?" : "Keep your progress"}</h2>
+          <p>{merchant.isPublic ? "We’ll check that every required item is complete." : "Save now and finish the remaining items whenever you’re ready."}</p>
         </div>
         <label>
           <input
