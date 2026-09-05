@@ -1415,7 +1415,7 @@ function CatalogueManager({
     }
     if (!addAnother) setCreating(false);
     setMessage(
-      addAnother ? `${product.name} saved. Add the next catalogue item.` : `${product.name} created as a draft. Add its image and customer options below.`,
+      addAnother ? `${product.name} and its variants were saved. Add the next catalogue item.` : `${product.name} created as a draft. Its colour and size variants are ready below for images, stock and final details.`,
     );
     await reload();
     return true;

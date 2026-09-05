@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { auditEvents, productVariants, products } from "../../../../db/schema";
+import { auditEvents, productVariants, products, storeBranches, variantInventory } from "../../../../db/schema";
 import { requirePilotMerchant } from "../auth";
 
 const statuses = new Set(["needs_confirmation", "draft", "published", "archived"]);
@@ -10,6 +10,8 @@ const pricingModels = new Set(["fixed", "from", "quote"]);
 const serviceModes = new Set(["at_business", "at_customer", "remote"]);
 const text = (value: unknown, fallback = "") => typeof value === "string" ? value.trim() : fallback;
 const optionalText = (value: unknown, fallback: string | null = null) => value === null ? null : typeof value === "string" ? value.trim() || null : fallback;
+const optionList = (value: unknown) => Array.isArray(value) ? [...new Set(value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean))].slice(0, 20) : [];
+const skuPart = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 18) || "STD";
 
 export async function GET() {
   const access = await requirePilotMerchant();
@@ -37,16 +39,31 @@ export async function POST(request: Request) {
     const bookingRequired = itemType === "service" && payload.bookingRequired !== false;
     const price = payload.price === null || payload.price === undefined ? null : Number(payload.price);
     const salePrice = payload.salePrice === null || payload.salePrice === undefined || payload.salePrice === "" ? null : Number(payload.salePrice);
+    const colours = itemType === "product" ? optionList(payload.colours) : [];
+    const sizes = itemType === "product" ? optionList(payload.sizes) : [];
+    const combinations = Math.max(1, colours.length) * Math.max(1, sizes.length);
     if (!itemTypes.has(itemType) || !pricingModels.has(pricingModel) || (serviceMode && !serviceModes.has(serviceMode))) return Response.json({ error: "Choose valid catalogue and service settings." }, { status: 400 });
     if (!name || !sku || !category || !description || (pricingModel !== "quote" && price === null)) return Response.json({ error: "Name, reference, category, description and price are required unless pricing is by quote." }, { status: 400 });
     if (durationMinutes !== null && (!Number.isInteger(durationMinutes) || durationMinutes < 5 || durationMinutes > 10080)) return Response.json({ error: "Service duration must be between 5 minutes and 7 days." }, { status: 400 });
     if (price !== null && (!Number.isFinite(price) || price < 0)) return Response.json({ error: "Price must be a valid non-negative amount." }, { status: 400 });
-    if (salePrice !== null && (!Number.isFinite(salePrice) || salePrice < 0 || salePrice >= price)) return Response.json({ error: "Sale price must be lower than the regular price." }, { status: 400 });
+    if (salePrice !== null && (!Number.isFinite(salePrice) || salePrice < 0 || price === null || salePrice >= price)) return Response.json({ error: "Sale price must be lower than the regular price." }, { status: 400 });
+    if (combinations > 100) return Response.json({ error: "Choose no more than 100 colour and size combinations per product." }, { status: 400 });
     const db = getDb();
     const [duplicate] = await db.select({ id: products.id }).from(products).where(and(eq(products.merchantId, access.merchantId), eq(products.sku, sku))).limit(1);
     if (duplicate) return Response.json({ error: "That SKU is already used in your catalogue." }, { status: 409 });
-    const [created] = await db.insert(products).values({ merchantId: access.merchantId, itemType, name, sku, category, brand, collection, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, badge, status: "draft", availability: "available" }).returning();
-    await db.insert(auditEvents).values({ actorRef: access.user.userId, action: "product.created", resourceType: "product", resourceId: String(created.id), metadata: JSON.stringify({ name, sku }), createdAt: new Date() });
+    const created = await db.transaction(async (tx) => {
+      const [product] = await tx.insert(products).values({ merchantId: access.merchantId, itemType, name, sku, category, brand, collection, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, badge, status: "draft", availability: "available" }).returning();
+      if (itemType === "product" && price !== null) {
+        const colourOptions: (string | null)[] = colours.length ? colours : [null];
+        const sizeOptions: (string | null)[] = sizes.length ? sizes : [null];
+        const rows = colourOptions.flatMap((color) => sizeOptions.map((size, index) => ({ productId: product.id, sku: `M${access.merchantId}-${sku}-${skuPart(size ?? "")}-${skuPart(color ?? "")}-${index + 1}`, title: [size, color].filter(Boolean).join(" / ") || "Standard", size, color, attributes: { inventoryMode: "generated" }, price, salePrice, status: "draft", imageUrl: product.imageUrl })));
+        const generated = await tx.insert(productVariants).values(rows).returning({ id: productVariants.id });
+        const [branch] = await tx.select({ id: storeBranches.id }).from(storeBranches).where(eq(storeBranches.merchantId, access.merchantId)).limit(1);
+        if (branch && generated.length) await tx.insert(variantInventory).values(generated.map((variant) => ({ variantId: variant.id, branchId: branch.id, onHand: 0, reserved: 0, safetyStock: 0 })));
+      }
+      await tx.insert(auditEvents).values({ actorRef: access.user.userId, action: "product.created", resourceType: "product", resourceId: String(product.id), metadata: JSON.stringify({ name, sku, generatedVariants: itemType === "product" ? combinations : 0 }), createdAt: new Date() });
+      return product;
+    });
     return Response.json({ product: created }, { status: 201 });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Product creation failed." }, { status: 500 });

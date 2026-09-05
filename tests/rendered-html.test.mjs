@@ -427,6 +427,18 @@ test("supports product and service catalogue items", async () => {
   assert.match(schema, /serviceBookings = pgTable\("service_bookings"/);
 });
 
+test("generates product variants from colours and selected sizes", async () => {
+  const form = await readFile(new URL("../app/components/ProductCreatePanel.tsx", import.meta.url), "utf8");
+  const route = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");
+  assert.match(form, /Separate colours with commas/);
+  assert.match(form, /SIZE_OPTIONS\.map/);
+  assert.match(form, /variantCount/);
+  assert.match(route, /colourOptions\.flatMap/);
+  assert.match(route, /inventoryMode: "generated"/);
+  assert.match(route, /combinations > 100/);
+  assert.match(route, /db\.transaction/);
+});
+
 test("sends service booking lifecycle notifications", async () => {
   const customerBookings = await readFile(new URL("../app/api/service-bookings/route.ts", import.meta.url), "utf8");
   const merchantBookings = await readFile(new URL("../app/api/merchant/service-bookings/route.ts", import.meta.url), "utf8");

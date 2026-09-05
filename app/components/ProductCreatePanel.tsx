@@ -16,7 +16,10 @@ export type NewProduct = {
   serviceMode: "at_business" | "at_customer" | "remote";
   bookingRequired: boolean;
   badge: string;
+  colours: string[];
+  sizes: string[];
 };
+const SIZE_OPTIONS = ["One size", "XXS", "XS", "S", "M", "L", "XL", "XXL", "2XL", "3XL", "4XL"];
 const empty = (): NewProduct => ({
   itemType: "product",
   name: "",
@@ -32,6 +35,8 @@ const empty = (): NewProduct => ({
   serviceMode: "at_business",
   bookingRequired: true,
   badge: "",
+  colours: [],
+  sizes: [],
 });
 
 export default function ProductCreatePanel({
@@ -46,6 +51,7 @@ export default function ProductCreatePanel({
   onCreate: (product: NewProduct, addAnother?: boolean) => Promise<boolean>;
 }) {
   const [product, setProduct] = useState(empty);
+  const [colourEntry, setColourEntry] = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (open) window.setTimeout(() => nameRef.current?.focus(), 50);
@@ -65,13 +71,22 @@ export default function ProductCreatePanel({
     priceValid &&
     (product.salePrice === null ||
       (product.price !== null && product.salePrice < product.price));
+  const variantCount = service ? 0 : Math.max(1, product.colours.length) * Math.max(1, product.sizes.length);
+  function setColours(value: string) {
+    setColourEntry(value);
+    update({ colours: [...new Set(value.split(",").map((colour) => colour.trim()).filter(Boolean))].slice(0, 20) });
+  }
+  function toggleSize(size: string) {
+    update({ sizes: product.sizes.includes(size) ? product.sizes.filter((item) => item !== size) : [...product.sizes, size] });
+  }
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (valid && (await onCreate(product))) setProduct(empty());
+    if (valid && (await onCreate(product))) { setProduct(empty()); setColourEntry(""); }
   }
   async function saveAndAddAnother() {
     if (valid && (await onCreate(product, true))) {
       setProduct(empty());
+      setColourEntry("");
       window.setTimeout(() => nameRef.current?.focus(), 50);
     }
   }
@@ -270,23 +285,33 @@ export default function ProductCreatePanel({
             </label>
           )}
           {!service && (
-            <label>
-              Sale price (optional)
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={product.salePrice ?? ""}
-                onChange={(event) =>
-                  update({
-                    salePrice:
-                      event.target.value === ""
-                        ? null
-                        : Number(event.target.value),
-                  })
-                }
-              />
-            </label>
+            <>
+              <label>
+                Sale price (optional)
+                <input type="number" min="0" step="0.01" value={product.salePrice ?? ""} onChange={(event) => update({ salePrice: event.target.value === "" ? null : Number(event.target.value) })} />
+              </label>
+              <label className="wide">
+                Available colours
+                <input value={colourEntry} placeholder="e.g. Black, White, Maroon" onChange={(event) => setColours(event.target.value)} />
+                <small>Separate colours with commas. Each colour becomes a customer choice.</small>
+              </label>
+              <fieldset className="wide product-size-picker">
+                <legend>Available sizes</legend>
+                <small>Select every size customers can choose. Leave empty for products without sizes.</small>
+                <div>
+                  {SIZE_OPTIONS.map((size) => (
+                    <label key={size} className={product.sizes.includes(size) ? "selected" : ""}>
+                      <input type="checkbox" checked={product.sizes.includes(size)} onChange={() => toggleSize(size)} />
+                      <span>{size}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <div className="wide variant-plan" aria-live="polite">
+                <b>{variantCount} variant{variantCount === 1 ? "" : "s"} will be prepared</b>
+                <span>{product.colours.length ? product.colours.join(" · ") : "No colour option"} × {product.sizes.length ? product.sizes.join(" · ") : "No size option"}</span>
+              </div>
+            </>
           )}
           <label className="wide">
             Description
@@ -315,8 +340,7 @@ export default function ProductCreatePanel({
         <aside>
           <b>Saved safely as a draft</b>
           <span>
-            The {service ? "service" : "product"} remains private until an image
-            is added and it is published.
+            {service ? "The service remains" : "The product and its generated variants remain"} private until images, stock and final details are reviewed and published.
           </span>
         </aside>
         <footer>
