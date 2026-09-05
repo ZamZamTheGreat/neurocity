@@ -13,11 +13,26 @@ const items = [
 export function MobileDock() {
   const [path, setPath] = useState("");
   const [selmaOpen, setSelmaOpen] = useState(false);
+  const [companionName, setCompanionName] = useState("Selma");
   useEffect(() => {
     setPath(window.location.pathname);
     const openSelma = () => setSelmaOpen(true);
+    const updateCompanionName = (event: Event) => {
+      const name = (event as CustomEvent<string>).detail;
+      if (name) setCompanionName(name);
+    };
     window.addEventListener("neurocity:open-selma", openSelma);
-    return () => window.removeEventListener("neurocity:open-selma", openSelma);
+    window.addEventListener("neurocity:companion-name", updateCompanionName);
+    fetch("/api/concierge/profile")
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (data?.profile?.companionName) setCompanionName(data.profile.companionName);
+      })
+      .catch(() => undefined);
+    return () => {
+      window.removeEventListener("neurocity:open-selma", openSelma);
+      window.removeEventListener("neurocity:companion-name", updateCompanionName);
+    };
   }, []);
   return (
     <>
@@ -30,8 +45,8 @@ export function MobileDock() {
             </a>
           );
         })}
-        <button className={`mobile-selma${selmaOpen ? " active" : ""}`} onClick={() => setSelmaOpen(true)} aria-label="Ask Selma" aria-expanded={selmaOpen}>
-          <i aria-hidden="true">✦</i><span>Selma</span>
+        <button className={`mobile-selma${selmaOpen ? " active" : ""}`} onClick={() => setSelmaOpen(true)} aria-label={`Ask ${companionName}`} aria-expanded={selmaOpen}>
+          <i aria-hidden="true">✦</i><span>{companionName}</span>
         </button>
         {items.slice(2).map((item) => {
           const active = item.href === "/access"

@@ -33,6 +33,7 @@ const prompts = [
   "What can I collect locally today?",
 ];
 const GUEST_CHAT_KEY = "neurocity_guest_selma_chat";
+const COMPANION_NAME_EVENT = "neurocity:companion-name";
 const money = (value: number | null) =>
   value === null
     ? "Ask store for price"
@@ -107,6 +108,7 @@ export function NeuroConcierge({
         };
         setProfile(next);
         setNewName(next.companionName);
+        window.dispatchEvent(new CustomEvent(COMPANION_NAME_EVENT, { detail: next.companionName }));
         const welcome: Message =
           {
             id: "welcome",
@@ -233,6 +235,7 @@ export function NeuroConcierge({
         ? { ...current, companionName: result.profile.companionName }
         : current,
     );
+    window.dispatchEvent(new CustomEvent(COMPANION_NAME_EVENT, { detail: result.profile.companionName }));
     setMessages((current) => [
       ...current,
       {
@@ -474,7 +477,7 @@ export function NeuroConcierge({
               </div>
             )}
             <form className="neuro-composer" onSubmit={submit}>
-              <input ref={imageInputRef} className="visual-search-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={(event) => void findFromImage(event.target.files?.[0])} />
+              <input ref={imageInputRef} className="visual-search-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => void findFromImage(event.target.files?.[0])} />
               <button className="visual-search-button" type="button" disabled={busy} onClick={() => imageInputRef.current?.click()} aria-label="Upload a screenshot or take a photo to search">
                 <span aria-hidden="true">▧</span>
                 <b>Add photo</b>

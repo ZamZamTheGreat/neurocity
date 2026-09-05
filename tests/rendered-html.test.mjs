@@ -359,6 +359,8 @@ test("keeps the customer journey connected from storefront to multi-store checko
   assert.match(account, /ONE PAYMENT/);
   assert.match(account, /neurocity:open-selma/);
   assert.match(mobileDock, /neurocity:open-selma/);
+  assert.match(mobileDock, /neurocity:companion-name/);
+  assert.match(mobileDock, /\{companionName\}/);
   assert.doesNotMatch(account, /href="\/concierge"/);
 });
 
@@ -370,6 +372,7 @@ test("supports private screenshot-led catalogue search in Selma", async () => {
   assert.match(route, /MAX_IMAGE_BYTES/);
   assert.match(route, /OPENAI_API_KEY/);
   assert.match(companion, /accept="image\/jpeg,image\/png,image\/webp"/);
+  assert.doesNotMatch(companion, /capture="environment"/);
   assert.match(companion, /api\/concierge\/visual-search/);
   assert.match(companion, /imagePreview: _imagePreview/);
   assert.match(companion, /analysed by OpenAI/);
