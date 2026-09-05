@@ -15,7 +15,7 @@ type SetupPayload = {
 function readiness(merchant: typeof merchants.$inferSelect, branch?: typeof storeBranches.$inferSelect, hours: Hours = []) {
   const checks = [
     ["identity", Boolean(merchant.name && merchant.category && merchant.tagline && merchant.description)],
-    ["contact", Boolean(merchant.contactName && merchant.contactEmail && merchant.contactPhone)],
+    ["contact", Boolean(merchant.contactEmail && merchant.contactPhone)],
     ["branding", Boolean(merchant.logoUrl && merchant.bannerUrl)],
     ["location", Boolean(branch?.address)],
     ["fulfilment", Boolean(branch?.pickupEnabled || branch?.deliveryEnabled)],

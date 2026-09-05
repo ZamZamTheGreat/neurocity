@@ -295,6 +295,7 @@ export default function MerchantWorkspace({
     readiness: 42,
   });
   const [message, setMessage] = useState("");
+  const [setupSaving, setSetupSaving] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [claimCode, setClaimCode] = useState("");
@@ -419,21 +420,24 @@ export default function MerchantWorkspace({
   }
   async function saveSetup() {
     if (!merchant) return;
-    const response = await fetch("/api/merchant/setup", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(merchant),
-    });
-    const data = await response.json();
-    if (!response.ok) return setMessage(data.error);
-    const next = setupMerchant(data);
-    setMerchant(next);
-    setStats((current) => ({ ...current, readiness: next.readiness.percent }));
-    setMessage(
-      merchant.isPublic
-        ? "Storefront setup saved and published."
-        : "Merchant setup saved as a draft.",
-    );
+    setSetupSaving(true);
+    try {
+      const response = await fetch("/api/merchant/setup", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(merchant),
+      });
+      const data = await response.json();
+      if (!response.ok) return setMessage(data.error);
+      const next = setupMerchant(data);
+      setMerchant(next);
+      setStats((current) => ({ ...current, readiness: next.readiness.percent }));
+      setMessage(merchant.isPublic ? "Storefront setup saved and published." : "Merchant setup saved as a draft.");
+    } catch {
+      setMessage("Your setup could not be saved. Check your connection and try again.");
+    } finally {
+      setSetupSaving(false);
+    }
   }
   async function uploadMedia(type: "logo" | "banner", file?: File) {
     if (!merchant || !file) return false;
@@ -752,6 +756,7 @@ export default function MerchantWorkspace({
               setMerchant={setMerchant}
               uploadMedia={uploadMedia}
               saveSetup={saveSetup}
+              saving={setupSaving}
               inviteEmail={inviteEmail}
               setInviteEmail={setInviteEmail}
               createInvite={createInvite}
@@ -1026,6 +1031,7 @@ function SetupPanel({
   setMerchant,
   uploadMedia,
   saveSetup,
+  saving,
   inviteEmail,
   setInviteEmail,
   createInvite,
@@ -1036,6 +1042,7 @@ function SetupPanel({
   setMerchant: (merchant: Merchant) => void;
   uploadMedia: (type: "logo" | "banner", file?: File) => Promise<boolean>;
   saveSetup: () => void;
+  saving: boolean;
   inviteEmail: string;
   setInviteEmail: (email: string) => void;
   createInvite: () => void;
@@ -1062,6 +1069,17 @@ function SetupPanel({
         closed: preset === "weekdays" && (hour.dayOfWeek === 0 || hour.dayOfWeek === 6),
       })),
     });
+  const setupChecks = [
+    { key: "identity", label: "Store details", target: "setup-storefront", done: Boolean(merchant.name && merchant.category && merchant.tagline && merchant.description) },
+    { key: "branding", label: "Logo and banner", target: "setup-storefront", done: Boolean(merchant.logoUrl && merchant.bannerUrl) },
+    { key: "contact", label: "Contact details", target: "setup-contact", done: Boolean(merchant.contactEmail && merchant.contactPhone) },
+    { key: "location", label: "Pickup address", target: "setup-contact", done: Boolean(merchant.branchAddress) },
+    { key: "fulfilment", label: "Fulfilment", target: "setup-selling", done: merchant.pickupEnabled || merchant.deliveryEnabled },
+    { key: "hours", label: "Opening hours", target: "setup-selling", done: merchant.hours.length === 7 && merchant.hours.every((hour) => hour.closed || (hour.opensAt && hour.closesAt)) },
+    { key: "policies", label: "Returns policy", target: "setup-selling", done: Boolean(merchant.returnsPolicy) },
+  ];
+  const completion = Math.round(setupChecks.filter((check) => check.done).length / setupChecks.length * 100);
+  const goToSetupSection = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   return (
     <div className="setup-workflow">
       <section className="setup-intro">
@@ -1075,21 +1093,23 @@ function SetupPanel({
       <section className="setup-readiness">
         <div>
           <p className="eyebrow">Store readiness</p>
-          <strong>{merchant.readiness.percent}%</strong>
+          <strong>{completion}%</strong>
           <span>{merchant.isPublic ? "Published" : "Draft storefront"}</span>
         </div>
         <div className="readiness-bar">
-          <i style={{ width: `${merchant.readiness.percent}%` }} />
+          <i style={{ width: `${completion}%` }} />
         </div>
         <ul>
-          {merchant.readiness.checks.map((check) => (
+          {setupChecks.map((check) => (
             <li className={check.done ? "done" : ""} key={check.key}>
-              {check.done ? "✓" : "○"} {pretty(check.key)}
+              <button type="button" onClick={() => goToSetupSection(check.target)}>
+                {check.done ? "✓" : "○"} {check.label}
+              </button>
             </li>
           ))}
         </ul>
       </section>
-      <section className="setup-section">
+      <section className="setup-section" id="setup-storefront">
         <header>
           <span>1</span>
           <div>
@@ -1101,6 +1121,7 @@ function SetupPanel({
           <label>
             Business name
             <input
+              required
               value={merchant.name}
               onChange={(e) =>
                 setMerchant({ ...merchant, name: e.target.value })
@@ -1110,6 +1131,7 @@ function SetupPanel({
           <label>
             Main category
             <select
+              required
               value={merchant.category}
               onChange={(e) =>
                 setMerchant({ ...merchant, category: e.target.value })
@@ -1130,6 +1152,7 @@ function SetupPanel({
           <label className="wide">
             Store tagline
             <input
+              required
               value={merchant.tagline ?? ""}
               onChange={(e) =>
                 setMerchant({ ...merchant, tagline: e.target.value })
@@ -1139,6 +1162,7 @@ function SetupPanel({
           <label className="wide">
             Store description
             <textarea
+              required
               value={merchant.description ?? ""}
               onChange={(e) =>
                 setMerchant({ ...merchant, description: e.target.value })
@@ -1163,7 +1187,7 @@ function SetupPanel({
         </div>
       </section>
       {mediaCrop && <ImageCropper file={mediaCrop.file} aspect={mediaCrop.type === "banner" ? 16 / 5 : 1} width={mediaCrop.type === "banner" ? 1600 : 800} title={mediaCrop.type === "banner" ? "Crop storefront banner" : "Crop store logo"} onCancel={() => setMediaCrop(null)} onApply={async (file) => { const type = mediaCrop.type; if (await uploadMedia(type, file)) { setMediaPreview((current) => ({ ...current, [type]: URL.createObjectURL(file) })); setMediaCrop(null); } }} />}
-      <section className="setup-section">
+      <section className="setup-section" id="setup-contact">
         <header>
           <span>2</span>
           <div>
@@ -1175,6 +1199,7 @@ function SetupPanel({
           <label>
             Contact email
             <input
+              required
               type="email"
               value={merchant.contactEmail ?? ""}
               onChange={(e) =>
@@ -1185,6 +1210,7 @@ function SetupPanel({
           <label>
             Phone
             <input
+              required
               value={merchant.contactPhone ?? ""}
               onChange={(e) =>
                 setMerchant({ ...merchant, contactPhone: e.target.value })
@@ -1194,6 +1220,7 @@ function SetupPanel({
           <label className="wide">
             Pickup address
             <input
+              required
               value={merchant.branchAddress}
               onChange={(e) =>
                 setMerchant({
@@ -1215,7 +1242,7 @@ function SetupPanel({
           </details>
         </div>
       </section>
-      <section className="setup-section">
+      <section className="setup-section" id="setup-selling">
         <header>
           <span>3</span>
           <div>
@@ -1295,6 +1322,7 @@ function SetupPanel({
           <label className="wide">
             Returns and exchanges policy
             <textarea
+              required
               value={merchant.returnsPolicy}
               onChange={(e) =>
                 setMerchant({ ...merchant, returnsPolicy: e.target.value })
@@ -1325,11 +1353,12 @@ function SetupPanel({
           />{" "}
           Make this storefront public
         </label>
-        <button onClick={saveSetup}>
-          {merchant.isPublic
+        <button onClick={saveSetup} disabled={saving || (merchant.isPublic && completion < 100)}>
+          {saving ? "Saving…" : merchant.isPublic
             ? "Save and publish storefront"
             : "Save setup draft"}
         </button>
+        {merchant.isPublic && completion < 100 && <small className="publish-blocked">Complete the unchecked items to publish.</small>}
       </section>
       {canInvite && (
         <section className="invite-panel">
