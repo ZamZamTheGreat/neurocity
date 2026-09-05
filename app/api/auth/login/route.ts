@@ -12,7 +12,7 @@ import { securityAlert, securityFingerprint } from "../../../../lib/security-mon
 const DUMMY_HASH = "$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW";
 export async function POST(request: Request) {
   try {
-    const { email, password, mfaCode, turnstileToken } = await request.json();
+    const { email, password, mfaCode, accountType, turnstileToken } = await request.json();
     if (typeof email !== "string" || email.length > 320 || typeof password !== "string" || !password || new TextEncoder().encode(password).length > 72) return Response.json({ error: "Invalid email or password." }, { status: 401 });
     const normalized = email.trim().toLowerCase();
     const limited = await rateLimitResponse("login-account", normalized, 10);
@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     const [user] = await getDb().select().from(users).where(eq(users.email, normalized)).limit(1);
     const valid = await compare(password, user?.passwordHash ?? DUMMY_HASH);
     if (!valid || !user?.passwordHash || user.status !== "active") return Response.json({ error: "Invalid email or password." }, { status: 401 });
+    if (accountType === "administrator" && user.platformRole !== "administrator") return Response.json({ error: "This account does not have administrator access." }, { status: 403 });
     if (user.platformRole === "administrator") {
       if (!adminMfaConfigured()) return Response.json({ error: "Administrator MFA is not configured. Set ADMIN_MFA_SECRET before signing in." }, { status: 503 });
       const mfaLimited = await rateLimitResponse("admin-mfa", normalized, 8);

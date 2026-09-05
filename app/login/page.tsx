@@ -62,7 +62,7 @@ export default function LoginPage() {
       const response = await fetch(`/api/auth/${mode}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...form, turnstileToken }),
+        body: JSON.stringify({ ...form, accountType, turnstileToken }),
       });
       const data = await response.json();
       if (!response.ok) {

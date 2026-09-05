@@ -170,10 +170,16 @@ test("lets a signed-in customer apply with the same NeuroCity account", async ()
 
 test("requires authenticator MFA for administrator sign-in", async () => {
   const login = await readFile(new URL("../app/api/auth/login/route.ts", import.meta.url), "utf8");
+  const loginPage = await readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8");
+  const adminPage = await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8");
   const google = await readFile(new URL("../app/api/auth/google/callback/route.ts", import.meta.url), "utf8");
   const screen = await readFile(new URL("../app/login/page.tsx", import.meta.url), "utf8");
   assert.match(login, /user\.platformRole === "administrator"/);
   assert.match(login, /verifyAdminMfa\(mfaCode\)/);
+  assert.match(login, /accountType === "administrator" && user\.platformRole !== "administrator"/);
+  assert.match(loginPage, /JSON\.stringify\(\{ \.\.\.form, accountType, turnstileToken \}\)/);
+  assert.match(adminPage, /\/login\?account_type=administrator&return_to=%2Fadmin/);
+  assert.doesNotMatch(adminPage, /Create the first administrator/);
   assert.match(google, /administrator_password_required/);
   assert.match(screen, /Authenticator code/);
 });

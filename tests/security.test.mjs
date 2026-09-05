@@ -51,6 +51,15 @@ test("administrator MFA accepts only a current authenticator code", async () => 
   await security.pg.query("update users set platform_role = 'customer' where email = $1", [process.env.ADMIN_EMAIL]);
 });
 
+test("administrator login context rejects a non-administrator before creating a session", async () => {
+  await security.pg.query("delete from security_rate_limits");
+  const count = Number((await security.pg.query("select count(*) from sessions")).rows[0].count);
+  const response = await call(security.login.POST, { email: process.env.ADMIN_EMAIL, password: "security-test-password", accountType: "administrator", mfaCode: security.totpCode(process.env.ADMIN_MFA_SECRET) }, new Map());
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).error, "This account does not have administrator access.");
+  assert.equal(Number((await security.pg.query("select count(*) from sessions")).rows[0].count), count);
+});
+
 test("TOTP generation follows the RFC 6238 reference vector", () => {
   assert.equal(security.totpCode("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", 59_000), "287082");
 });

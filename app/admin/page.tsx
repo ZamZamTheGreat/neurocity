@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import AdminOrderCentre, {
   type AdminOrder,
 } from "../components/AdminOrderCentre";
@@ -61,13 +62,6 @@ export default function AdminPage() {
     completedOrders: 0,
   });
   const [platforms, setPlatforms] = useState<MallPlatform[]>([]);
-  const [auth, setAuth] = useState({
-    name: "Sergej Witbooi",
-    email: "sergejwitbooi@gmail.com",
-    password: "",
-    mfaCode: "",
-  });
-  const [mode, setMode] = useState<"login" | "register">("register");
   const [message, setMessage] = useState("");
   const [view, setView] = useState<View>("applications");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -81,7 +75,11 @@ export default function AdminPage() {
       fetch("/api/admin/transactions"),
       fetch("/api/admin/platforms"),
     ]);
-    if (!response.ok) return setItems(null);
+    if (response.status === 401 || response.status === 403) {
+      window.location.replace("/login?account_type=administrator&return_to=%2Fadmin");
+      return;
+    }
+    if (!response.ok) return setMessage("Administration is temporarily unavailable. Please try again.");
     const data = await response.json();
     setItems(data.applications);
     setMerchants(data.merchants ?? []);
@@ -145,18 +143,6 @@ export default function AdminPage() {
     item.documents?.length === 4 && item.documents.every((document) => document.status === "uploaded"),
   ).length;
 
-  async function authenticate(event: FormEvent) {
-    event.preventDefault();
-    const response = await fetch(`/api/auth/${mode}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(auth),
-    });
-    const data = await response.json();
-    if (!response.ok) return setMessage(data.error);
-    setMessage("");
-    await load();
-  }
   async function review(id: number, status: string) {
     if (status === "delete") {
       const application = items?.find((item) => item.id === id);
@@ -279,14 +265,7 @@ export default function AdminPage() {
 
   if (!items)
     return (
-      <AdminLogin
-        auth={auth}
-        setAuth={setAuth}
-        mode={mode}
-        setMode={setMode}
-        message={message}
-        authenticate={authenticate}
-      />
+      <AdminLogin message={message} />
     );
 
   return (
@@ -514,19 +493,9 @@ export default function AdminPage() {
 }
 
 function AdminLogin({
-  auth,
-  setAuth,
-  mode,
-  setMode,
   message,
-  authenticate,
 }: {
-  auth: { name: string; email: string; password: string; mfaCode: string };
-  setAuth: (value: { name: string; email: string; password: string; mfaCode: string }) => void;
-  mode: "login" | "register";
-  setMode: (value: "login" | "register") => void;
   message: string;
-  authenticate: (event: FormEvent) => void;
 }) {
   return (
     <main className="admin-auth">
@@ -534,65 +503,13 @@ function AdminLogin({
         <span>Neuro</span>
         <strong>City</strong>
       </a>
-      <form onSubmit={authenticate}>
+      <section>
         <p className="eyebrow">NeuroCity administration</p>
-        <h1>
-          {mode === "register"
-            ? "Create the first administrator"
-            : "Administrator login"}
-        </h1>
-        {mode === "register" && (
-          <label>
-            Full name
-            <input
-              value={auth.name}
-              onChange={(event) =>
-                setAuth({ ...auth, name: event.target.value })
-              }
-            />
-          </label>
-        )}
-        <label>
-          Email
-          <input
-            type="email"
-            value={auth.email}
-            onChange={(event) =>
-              setAuth({ ...auth, email: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          Password
-          <input
-            type="password"
-            minLength={10}
-            value={auth.password}
-            onChange={(event) =>
-              setAuth({ ...auth, password: event.target.value })
-            }
-          />
-        </label>
-        {mode === "login" && (
-          <label>
-            Authenticator code
-            <input type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={auth.mfaCode} onChange={(event) => setAuth({ ...auth, mfaCode: event.target.value.replace(/\D/g, "").slice(0, 6) })} placeholder="000000" />
-          </label>
-        )}
+        <h1>Administrator login required</h1>
+        <p>Continue through NeuroCity’s protected sign-in flow using your password, authenticator code and security challenge.</p>
         {message && <p className="form-error">{message}</p>}
-        <button>
-          {mode === "register" ? "Create administrator" : "Sign in"}
-        </button>
-        <button
-          type="button"
-          className="switch-auth"
-          onClick={() => setMode(mode === "register" ? "login" : "register")}
-        >
-          {mode === "register"
-            ? "I already have an account"
-            : "Create the first administrator"}
-        </button>
-      </form>
+        <Link className="auth-submit" href="/login?account_type=administrator&return_to=%2Fadmin">Continue to secure sign in</Link>
+      </section>
     </main>
   );
 }
