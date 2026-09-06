@@ -1,11 +1,9 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { ensurePilotCatalogue } from "../../../db/catalogue";
 import { merchants, platformTenantMerchants, storeBranches } from "../../../db/schema";
 import { resolvePlatformTenant } from "../../../lib/platform-tenant";
 
 export async function GET(request: Request) {
-  await ensurePilotCatalogue();
   const db = getDb();
   const platform = await resolvePlatformTenant(request);
   const stores = await db.select({ id: merchants.id, name: merchants.name, slug: merchants.slug, category: merchants.category, status: merchants.status, tagline: merchants.tagline, description: merchants.description, logoUrl: merchants.logoUrl, bannerUrl: merchants.bannerUrl, fulfillmentMethods: merchants.fulfillmentMethods, policies: merchants.policies, contactEmail: merchants.contactEmail }).from(platformTenantMerchants).innerJoin(merchants, eq(platformTenantMerchants.merchantId, merchants.id)).where(and(eq(platformTenantMerchants.tenantId, platform.id), eq(platformTenantMerchants.status, "active"), eq(merchants.isPublic, true), inArray(merchants.status, ["pilot", "active"]))).orderBy(asc(platformTenantMerchants.sortOrder), asc(merchants.name));

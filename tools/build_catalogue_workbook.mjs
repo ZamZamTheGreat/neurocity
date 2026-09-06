@@ -1,5 +1,17 @@
 import fs from "node:fs/promises";
-import { SpreadsheetFile, Workbook } from "@oai/artifact-tool";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
+const artifactToolPath = process.env.ARTIFACT_TOOL_PATH
+  ? path.resolve(process.env.ARTIFACT_TOOL_PATH)
+  : path.join(scriptDirectory, "node_modules", "@oai", "artifact-tool", "dist", "artifact_tool.mjs");
+try {
+  await fs.access(artifactToolPath);
+} catch {
+  throw new Error("Workbook generation requires @oai/artifact-tool. Set ARTIFACT_TOOL_PATH to its dist/artifact_tool.mjs file.");
+}
+const { SpreadsheetFile, Workbook } = await import(pathToFileURL(artifactToolPath).href);
 
 const outputDir = "outputs/neurocity-validation-kit";
 await fs.mkdir(outputDir, { recursive: true });

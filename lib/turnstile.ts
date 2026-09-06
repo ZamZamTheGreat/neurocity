@@ -4,6 +4,9 @@ import { requestOrigin } from "./request-security";
 const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 export async function verifyTurnstile(request: Request, token: unknown, expectedAction: string) {
+  if (process.env.NEUROCITY_INTEGRATION_TEST === "true" && process.env.DATABASE_URL?.includes("neurocity_test")) {
+    return { ok: true as const };
+  }
   const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
   if (!secret) {
     if (process.env.NODE_ENV !== "production") return { ok: true as const };

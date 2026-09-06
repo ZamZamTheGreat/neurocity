@@ -13,13 +13,17 @@
     "test:integration": "node scripts/run-integration-tests.mjs",
     "test:security": "node scripts/run-security-tests.mjs",
     "test:identity": "tsc --target ES2017 --module esnext --moduleResolution bundler --skipLibCheck --strict --outDir .identity-test-dist --rootDir lib/neuroedge lib/neuroedge/uuid-v7.ts lib/neuroedge/current-actor.ts && node --test tests/neuroedge-identity.test.mjs",
-    "test:all": "npm test && npm run test:integration",
+    "test:all": "npm run typecheck && npm run test:unit && npm run test:security && npm run test:identity && npm run test:http && npm run test:integration",
     "test:load": "node scripts/load-test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:migrate": "node scripts/migrate.mjs",
     "db:grant-runtime": "node scripts/grant-runtime-db-role.mjs",
     "db:verify-runtime": "node scripts/verify-runtime-db-role.mjs",
-    "db:verify-restore": "node scripts/verify-restored-database.mjs"
+    "db:verify-restore": "node scripts/verify-restored-database.mjs",
+    "test:unit": "node --test tests/concierge-conversation.test.mjs tests/preorder-checkout.test.mjs tests/cleanup.test.mjs",
+    "test:http": "npm run build && node --test tests/rendered-html.test.mjs tests/security-http.test.mjs",
+    "typecheck": "tsc --noEmit --incremental false",
+    "db:provision-pilot": "node scripts/provision-pilot.mjs"
   },
   "dependencies": {
     "@types/nodemailer": "^7.0.9",

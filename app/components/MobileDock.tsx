@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { OPEN_CONCIERGE_EVENT, openConcierge, type ConciergeRequest } from "../../lib/concierge-events";
 import { NeuroConcierge } from "./NeuroConcierge";
 
 const items = [
@@ -12,25 +13,25 @@ const items = [
 
 export function MobileDock() {
   const [path, setPath] = useState("");
+  const [request, setRequest] = useState<ConciergeRequest & { promptKey: number }>({ promptKey: 0 });
   const [selmaOpen, setSelmaOpen] = useState(false);
   const [companionName, setCompanionName] = useState("Selma");
   useEffect(() => {
     setPath(window.location.pathname);
-    const openSelma = () => setSelmaOpen(true);
+    const openSelma = (event: Event) => {
+      const detail = (event as CustomEvent<ConciergeRequest>).detail ?? {};
+      const mallPath = window.location.pathname.match(/^\/malls\/([^/]+)$/)?.[1];
+      setRequest((current) => ({ ...detail, platformSlug: detail.platformSlug ?? (mallPath ? decodeURIComponent(mallPath) : undefined), promptKey: current.promptKey + 1 }));
+      setSelmaOpen(true);
+    };
     const updateCompanionName = (event: Event) => {
       const name = (event as CustomEvent<string>).detail;
       if (name) setCompanionName(name);
     };
-    window.addEventListener("neurocity:open-selma", openSelma);
+    window.addEventListener(OPEN_CONCIERGE_EVENT, openSelma);
     window.addEventListener("neurocity:companion-name", updateCompanionName);
-    fetch("/api/concierge/profile")
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => {
-        if (data?.profile?.companionName) setCompanionName(data.profile.companionName);
-      })
-      .catch(() => undefined);
     return () => {
-      window.removeEventListener("neurocity:open-selma", openSelma);
+      window.removeEventListener(OPEN_CONCIERGE_EVENT, openSelma);
       window.removeEventListener("neurocity:companion-name", updateCompanionName);
     };
   }, []);
@@ -45,7 +46,7 @@ export function MobileDock() {
             </a>
           );
         })}
-        <button className={`mobile-selma${selmaOpen ? " active" : ""}`} onClick={() => setSelmaOpen(true)} aria-label={`Ask ${companionName}`} aria-expanded={selmaOpen}>
+        <button className={`mobile-selma${selmaOpen ? " active" : ""}`} onClick={() => openConcierge()} aria-label={`Ask ${companionName}`} aria-expanded={selmaOpen}>
           <i aria-hidden="true">✦</i><span>{companionName}</span>
         </button>
         {items.slice(2).map((item) => {
@@ -59,7 +60,7 @@ export function MobileDock() {
           );
         })}
       </nav>
-      <NeuroConcierge open={selmaOpen} onClose={() => setSelmaOpen(false)} />
+      <NeuroConcierge {...request} open={selmaOpen} onClose={() => setSelmaOpen(false)} />
     </>
   );
 }

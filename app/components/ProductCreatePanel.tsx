@@ -93,8 +93,14 @@ export default function ProductCreatePanel({
   return (
     <div
       className="product-create-backdrop"
+      role="button"
+      tabIndex={0}
+      aria-label="Close catalogue form"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busy) onClose();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && !busy) onClose();
       }}
     >
       <form className="product-create-panel" onSubmit={submit}>

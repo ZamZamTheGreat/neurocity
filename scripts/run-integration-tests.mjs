@@ -41,9 +41,11 @@ try {
   if (!port) throw new Error(`Could not determine PostgreSQL test port from: ${portOutput}`);
   process.env.DATABASE_URL = `postgres://postgres:${password}@127.0.0.1:${port}/neurocity_test`;
   process.env.NODE_ENV = "test";
+  process.env.PUBLIC_SITE_URL = "http://localhost";
   process.env.SESSION_SECRET = "integration-test-only-secret";
   process.env.SMTP_HOST = "";
   process.env.NEUROEDGE_IDENTITY_SHADOW_ENABLED = "true";
+  process.env.NEUROCITY_INTEGRATION_TEST = "true";
 
   let ready = false;
   for (let attempt = 0; attempt < 30; attempt += 1) {
@@ -64,7 +66,7 @@ try {
   if (!npmCli) throw new Error("npm_execpath is unavailable; run this harness with npm run test:integration.");
   command(process.execPath, [npmCli, "run", "db:migrate"]);
   command(process.execPath, [npmCli, "run", "build"]);
-  command(process.execPath, ["--test", "--test-concurrency=1", "tests/database-integration.test.mjs"]);
+  command(process.execPath, ["--test", "--test-concurrency=1", "--test-reporter=spec", "tests/database-integration.test.mjs"]);
 } finally {
   cleanup();
 }

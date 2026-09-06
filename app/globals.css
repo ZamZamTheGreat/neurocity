@@ -3463,16 +3463,26 @@ main {
   gap: 12px;
 }
 .account-order {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  align-items: center;
-  gap: 20px;
+  display: block;
   padding: 17px;
   background: #fff;
   border: 1px solid #e4e0da;
   border-radius: 13px;
 }
-.account-order > div {
+.account-order-summary {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.account-order-summary > div {
   display: grid;
   gap: 4px;
 }

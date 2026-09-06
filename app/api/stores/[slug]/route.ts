@@ -1,10 +1,8 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { ensurePilotCatalogue } from "../../../../db/catalogue";
 import { merchants, productVariants, products, storeBranches, storeHours, storePromotions, variantInventory } from "../../../../db/schema";
 
 export async function GET(_request: Request, context: { params: Promise<{ slug: string }> }) {
-  await ensurePilotCatalogue();
   const { slug } = await context.params; const db = getDb();
   const [store] = await db.select().from(merchants).where(and(eq(merchants.slug, slug), inArray(merchants.status, ["pilot", "active"]))).limit(1);
   const setupComplete = store && store.name && store.category && store.tagline && store.description && store.logoUrl && store.bannerUrl && store.contactEmail && Array.isArray(store.fulfillmentMethods) && store.fulfillmentMethods.length > 0 && Boolean((store.policies as Record<string, string> | null)?.returns);

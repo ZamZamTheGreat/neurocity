@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from ".";
 import { merchants, platformTenantMerchants, platformTenants, productVariants, products, storeBranches, variantInventory } from "./schema";
 
@@ -10,20 +10,69 @@ const productSeeds = [
 ];
 
 export async function ensurePilotCatalogue() {
-  const db = getDb();
-  let [merchant] = await db.select().from(merchants).where(eq(merchants.slug, "lightwork-clothing")).limit(1);
-  const identity = { name: "LightWork Clothing", category: "Fashion / streetwear", contactName: "Zephan Stadhauer", contactEmail: "lightworkclothing.na@gmail.com", contactPhone: "0814953446", website: "https://lightworkclothing.com", pickupLocation: "Baines Centre, Pioneerspark, Windhoek", deliveryMode: "merchant_managed", setupStep: 2, tagline: "Global established movement.", description: "Independent Windhoek streetwear from Baines Centre, Pioneerspark.", logoUrl: "/lightwork-logo.png", bannerUrl: "/lightwork-crown-v1.png", primaryCategory: "Fashion", policies: { returns: "Returns and exchanges are confirmed directly with LightWork during the pilot." }, contactOptions: { phone: "0814953446", email: "lightworkclothing.na@gmail.com", website: "https://lightworkclothing.com" }, fulfillmentMethods: ["pickup", "merchant_delivery"] };
-  if (!merchant) [merchant] = await db.insert(merchants).values({ slug: "lightwork-clothing", status: "pilot", isPublic: true, ...identity }).returning(); else [merchant] = await db.update(merchants).set(identity).where(eq(merchants.id, merchant.id)).returning();
-  const [tenant] = await db.select().from(platformTenants).where(eq(platformTenants.slug, "neurocity")).limit(1);
-  if (tenant) await db.insert(platformTenantMerchants).values({ tenantId: tenant.id, merchantId: merchant.id, status: "active", featured: true }).onConflictDoNothing();
-  for (const product of productSeeds) await db.insert(products).values({ ...product, merchantId: merchant.id }).onConflictDoNothing();
-  let [branch] = await db.select().from(storeBranches).where(eq(storeBranches.merchantId, merchant.id)).limit(1);
-  if (!branch) [branch] = await db.insert(storeBranches).values({ merchantId: merchant.id, name: "Baines Centre", address: "Baines Centre, Pioneerspark, Windhoek", city: "Windhoek", phone: merchant.contactPhone, pickupEnabled: true, deliveryEnabled: true, isPrimary: true }).returning();
-  const seededProducts = await db.select().from(products).where(eq(products.merchantId, merchant.id));
-  for (const product of seededProducts) {
-    const variantPrice = Number(product.price ?? 0);
-    const [variant] = await db.insert(productVariants).values({ productId: product.id, sku: `${product.sku}-DEFAULT`, title: "Default", attributes: {}, price: variantPrice, status: product.price === null ? "needs_confirmation" : "active", imageUrl: product.imageUrl }).onConflictDoUpdate({ target: productVariants.sku, set: { title: "Default", price: variantPrice, imageUrl: product.imageUrl } }).returning();
-    await db.insert(variantInventory).values({ variantId: variant.id, branchId: branch.id, onHand: 0, reserved: 0, safetyStock: 0 }).onConflictDoNothing();
-  }
-  return merchant;
+  return getDb().transaction(async (db) => {
+    await db.execute(sql`select pg_advisory_xact_lock(hashtext('neurocity:pilot-catalogue:v1'))`);
+    let [merchant] = await db
+      .select()
+      .from(merchants)
+      .where(eq(merchants.slug, "lightwork-clothing"))
+      .limit(1);
+    const identity = { name: "LightWork Clothing", category: "Fashion / streetwear", contactName: "Zephan Stadhauer", contactEmail: "lightworkclothing.na@gmail.com", contactPhone: "0814953446", website: "https://lightworkclothing.com", pickupLocation: "Baines Centre, Pioneerspark, Windhoek", deliveryMode: "merchant_managed", setupStep: 2, tagline: "Global established movement.", description: "Independent Windhoek streetwear from Baines Centre, Pioneerspark.", logoUrl: "/lightwork-logo.png", bannerUrl: "/lightwork-crown-v1.png", primaryCategory: "Fashion", policies: { returns: "Returns and exchanges are confirmed directly with LightWork during the pilot." }, contactOptions: { phone: "0814953446", email: "lightworkclothing.na@gmail.com", website: "https://lightworkclothing.com" }, fulfillmentMethods: ["pickup", "merchant_delivery"] };
+    if (!merchant) {
+      [merchant] = await db
+        .insert(merchants)
+        .values({ slug: "lightwork-clothing", status: "pilot", isPublic: true, ...identity })
+        .returning();
+    }
+    const [tenant] = await db
+      .select()
+      .from(platformTenants)
+      .where(eq(platformTenants.slug, "neurocity"))
+      .limit(1);
+    if (tenant) {
+      await db
+        .insert(platformTenantMerchants)
+        .values({ tenantId: tenant.id, merchantId: merchant.id, status: "active", featured: true })
+        .onConflictDoNothing();
+    }
+    for (const product of productSeeds) {
+      await db.insert(products).values({ ...product, merchantId: merchant.id }).onConflictDoNothing();
+    }
+    let [branch] = await db
+      .select()
+      .from(storeBranches)
+      .where(eq(storeBranches.merchantId, merchant.id))
+      .limit(1);
+    if (!branch) {
+      [branch] = await db
+        .insert(storeBranches)
+        .values({ merchantId: merchant.id, name: "Baines Centre", address: "Baines Centre, Pioneerspark, Windhoek", city: "Windhoek", phone: merchant.contactPhone, pickupEnabled: true, deliveryEnabled: true, isPrimary: true })
+        .returning();
+    }
+    const seededProducts = await db
+      .select()
+      .from(products)
+      .where(and(
+        eq(products.merchantId, merchant.id),
+        inArray(products.sku, productSeeds.map((seed) => seed.sku)),
+      ));
+    for (const product of seededProducts) {
+      const [existing] = await db
+        .select({ id: productVariants.id })
+        .from(productVariants)
+        .where(eq(productVariants.productId, product.id))
+        .limit(1);
+      if (existing) continue;
+      const variantPrice = Number(product.price ?? 0);
+      const [variant] = await db
+        .insert(productVariants)
+        .values({ productId: product.id, sku: `${product.sku}-DEFAULT`, title: "Default", attributes: {}, price: variantPrice, status: product.price === null ? "needs_confirmation" : "active", imageUrl: product.imageUrl })
+        .returning();
+      await db
+        .insert(variantInventory)
+        .values({ variantId: variant.id, branchId: branch.id, onHand: 0, reserved: 0, safetyStock: 0 })
+        .onConflictDoNothing();
+    }
+    return merchant;
+  });
 }

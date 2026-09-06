@@ -1,7 +1,8 @@
 "use client";
 
 import { type CSSProperties, useEffect, useState } from "react";
-import { NeuroConcierge } from "./NeuroConcierge";
+import { openConcierge } from "../../lib/concierge-events";
+import { ManagedImage } from "./ManagedImage";
 
 type Mall = {
   id: number;
@@ -27,12 +28,7 @@ export default function NeuroCityNetworkHome({
   const [malls, setMalls] = useState<Mall[]>([]);
   const [loading, setLoading] = useState(true);
   const [featured, setFeatured] = useState<{ merchant: FeaturedMerchant; products: FeaturedProduct[] } | null>(null);
-  const [selmaOpen, setSelmaOpen] = useState(false);
-  const [selmaPrompt, setSelmaPrompt] = useState({ text: "", key: 0 });
-  const askSelma = (text = "") => {
-    if (text) setSelmaPrompt({ text, key: Date.now() });
-    setSelmaOpen(true);
-  };
+  const askSelma = (text = "") => openConcierge({ initialPrompt: text });
   useEffect(() => {
     fetch("/api/malls")
       .then(async (response) => {
@@ -51,7 +47,7 @@ export default function NeuroCityNetworkHome({
     <main id="main-content" className="network-home digital-malls-home">
       <header className="network-header">
         <a href="/" className="network-brand">
-          <img src="/branding/neurocity-malls-mark.png" alt="" />
+          <ManagedImage src="/branding/neurocity-malls-mark.png" alt="" width={180} height={180} />
           <span>
             <b className="network-wordmark">Neuro<span>City</span></b>
             <small>Namibia&apos;s connected shopping network</small>
@@ -116,7 +112,7 @@ export default function NeuroCityNetworkHome({
           </section>
           {featured?.products.length ? <section className="network-featured-products">
             <header><div><p className="eyebrow"><span /> AVAILABLE NOW</p><h2>Start with what&apos;s in the marketplace.</h2></div><a href="/marketplace">Browse everything →</a></header>
-            <div>{featured.products.map((product) => <article key={product.id}><a href={`/stores/${featured.merchant.slug}`}><div><img src={product.imageUrl ?? "/branding/neurocity-malls-mark.png"} alt={product.name} />{product.badge && <span>{product.badge}</span>}</div><small>{featured.merchant.name}</small><h3>{product.name}</h3><p>{product.salePrice != null ? `N$${product.salePrice.toFixed(2)}` : product.price != null ? `N$${product.price.toFixed(2)}` : "Price confirmed by store"}</p><b>View in store →</b></a></article>)}</div>
+            <div>{featured.products.map((product) => <article key={product.id}><a href={`/stores/${featured.merchant.slug}`}><div><ManagedImage src={product.imageUrl ?? "/branding/neurocity-malls-mark.png"} alt={product.name} />{product.badge && <span>{product.badge}</span>}</div><small>{featured.merchant.name}</small><h3>{product.name}</h3><p>{product.salePrice != null ? `N$${product.salePrice.toFixed(2)}` : product.price != null ? `N$${product.price.toFixed(2)}` : "Price confirmed by store"}</p><b>View in store →</b></a></article>)}</div>
             {featured.merchant.pickupLocation && <p className="featured-pickup">Collection available from {featured.merchant.pickupLocation}.</p>}
           </section> : null}
           <section className="network-paths">
@@ -144,7 +140,7 @@ export default function NeuroCityNetworkHome({
                 <small>NEED A HAND?</small>
                 <h2>Ask Selma</h2>
                 <ul className="info-list"><li>Describe your budget, size, colour, location or occasion.</li></ul>
-                <button onClick={() => setSelmaOpen(true)}>
+                <button onClick={() => askSelma()}>
                   Start a conversation →
                 </button>
               </div>
@@ -194,7 +190,7 @@ export default function NeuroCityNetworkHome({
                 <div className="mall-cover">
                   <span>
                     {mall.markUrl ? (
-                      <img src={mall.markUrl} alt="" />
+                      <ManagedImage src={mall.markUrl} alt="" />
                     ) : (
                       mall.name
                         .split(" ")
@@ -272,7 +268,7 @@ export default function NeuroCityNetworkHome({
       )}
       <footer className="network-footer">
         <div className="network-brand">
-          <img src="/branding/neurocity-malls-mark.png" alt="" />
+          <ManagedImage src="/branding/neurocity-malls-mark.png" alt="" width={180} height={180} />
           <span>
             <b className="network-wordmark">Neuro<span>City</span></b>
           </span>
@@ -295,12 +291,6 @@ export default function NeuroCityNetworkHome({
       >
         ✦
       </button>
-      <NeuroConcierge
-        open={selmaOpen}
-        onClose={() => setSelmaOpen(false)}
-        initialPrompt={selmaPrompt.text}
-        promptKey={selmaPrompt.key}
-      />
     </main>
   );
 }

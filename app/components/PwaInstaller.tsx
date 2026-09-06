@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ManagedImage } from "./ManagedImage";
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -72,10 +73,10 @@ export function PwaInstaller() {
       Install NeuroCity
     </button>
     {showIosGuide && (
-      <div className="ios-install-backdrop" onClick={() => setShowIosGuide(false)}>
-        <section className="ios-install-guide" role="dialog" aria-modal="true" aria-labelledby="ios-install-title" onClick={(event) => event.stopPropagation()}>
+      <div className="ios-install-backdrop" role="button" tabIndex={0} aria-label="Close installation instructions" onClick={(event) => { if (event.target === event.currentTarget) setShowIosGuide(false); }} onKeyDown={(event) => { if (event.key === "Escape") setShowIosGuide(false); }}>
+        <section className="ios-install-guide" role="dialog" aria-modal="true" aria-labelledby="ios-install-title">
           <button className="ios-install-close" type="button" onClick={() => setShowIosGuide(false)} aria-label="Close installation instructions">×</button>
-          <img src="/icons/neurocity-malls-180.png?v=20260902" alt="" />
+          <ManagedImage src="/icons/neurocity-malls-180.png?v=20260902" alt="" width={180} height={180} />
           <p className="eyebrow">Install on iPhone or iPad</p>
           <h2 id="ios-install-title">Add NeuroCity to your Home Screen</h2>
           <ol>

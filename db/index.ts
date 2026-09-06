@@ -33,3 +33,5 @@ export function getDb() {
 export function getDatabasePoolStats() {
   return pool ? { total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount } : { total: 0, idle: 0, waiting: 0 };
 }
+
+export type DatabaseTransaction = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];

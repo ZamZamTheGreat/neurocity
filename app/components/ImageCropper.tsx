@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ManagedImage } from "./ManagedImage";
 
 export default function ImageCropper({ file, aspect, width, title, onCancel, onApply }: { file: File; aspect: number; width: number; title: string; onCancel: () => void; onApply: (file: File) => void | boolean | Promise<void | boolean> }) {
   const source = useMemo(() => URL.createObjectURL(file), [file]);
@@ -34,7 +35,7 @@ export default function ImageCropper({ file, aspect, width, title, onCancel, onA
   return <div className="image-editor-backdrop" role="dialog" aria-modal="true" aria-label={title}>
     <section className="image-editor-panel">
       <header><div><small>IMAGE EDITOR</small><h3>{title}</h3><p>Drag the controls until the important part of the image sits inside the frame.</p></div><button onClick={onCancel} aria-label="Close image editor">×</button></header>
-      <div className="image-crop-preview" style={{ aspectRatio: String(aspect) }}><img src={source} alt="Crop preview" style={{ transform: `scale(${zoom})`, transformOrigin: `${horizontal}% ${vertical}%` }} /></div>
+      <div className="image-crop-preview" style={{ aspectRatio: String(aspect) }}><ManagedImage src={source} alt="Crop preview" style={{ transform: `scale(${zoom})`, transformOrigin: `${horizontal}% ${vertical}%` }} /></div>
       <div className="image-editor-controls">
         <label>Zoom <input type="range" min="1" max="3" step="0.05" value={zoom} onChange={(event) => setZoom(Number(event.target.value))} /></label>
         <label>Move left / right <input type="range" min="0" max="100" value={horizontal} onChange={(event) => setHorizontal(Number(event.target.value))} /></label>

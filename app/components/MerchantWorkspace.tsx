@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { merchantCategories } from "../../lib/merchant-categories";
 import ProductOptionsPanel from "./ProductOptionsPanel";
 import ProductCreatePanel, { type NewProduct } from "./ProductCreatePanel";
@@ -11,6 +11,9 @@ import PaymentSettingsPanel, {
 } from "./PaymentSettingsPanel";
 import TurnstileChallenge from "./TurnstileChallenge";
 import ImageCropper from "./ImageCropper";
+import { whatsappNumber } from "../../lib/phone";
+import { LatestRequestTracker } from "../../lib/latest-request";
+import { ManagedImage } from "./ManagedImage";
 
 type Tab =
   | "Overview"
@@ -21,6 +24,18 @@ type Tab =
   | "Products"
   | "Variants"
   | "Inventory";
+const allResources = ["overview", "products", "inventory", "orders", "variants", "conversations", "delivery-zones", "payments", "service-bookings"] as const;
+type Resource = typeof allResources[number];
+const tabResources: Record<Tab, readonly Resource[]> = {
+  Setup: ["payments", "delivery-zones"],
+  Overview: ["overview", "inventory", "orders", "conversations"],
+  Products: ["products", "variants"],
+  Variants: ["products", "variants"],
+  Inventory: ["inventory"],
+  Orders: ["orders"],
+  Inbox: ["conversations"],
+  Bookings: ["service-bookings"],
+};
 type Product = {
   id: number;
   itemType: "product" | "service";
@@ -194,12 +209,6 @@ type ServiceBooking = {
 const pretty = (value: string) => value.replaceAll("_", " ");
 const money = (value: number | null) =>
   value === null ? "Not set" : `N$${value.toFixed(2)}`;
-const whatsappNumber = (value: string) => {
-  let digits = value.replace(/\D/g, "");
-  if (digits.startsWith("00")) digits = digits.slice(2);
-  if (digits.startsWith("0")) digits = `264${digits.slice(1)}`;
-  return digits;
-};
 function parseCatalogueCsv(source: string) {
   const records: string[][] = [];
   let record: string[] = [], field = "", quoted = false;
@@ -217,7 +226,24 @@ function parseCatalogueCsv(source: string) {
   const headers = (records.shift() ?? []).map((value) => value.trim().toLowerCase());
   const required = ["name", "sku", "category", "description", "price"];
   if (!required.every((header) => headers.includes(header))) throw new Error("Missing required columns");
-  return records.map((values) => Object.fromEntries(headers.map((header, index) => [header === "sale_price" ? "salePrice" : header, values[index]?.trim() ?? ""])));
+  const apiFields: Record<string, string> = { sale_price: "salePrice", variant_sku: "variantSku", variant_title: "variantTitle", variant_price: "variantPrice", variant_sale_price: "variantSalePrice" };
+  return records.map((values) => Object.fromEntries(headers.map((header, index) => [apiFields[header] ?? header, values[index]?.trim() ?? ""])));
+}
+const catalogueCsvHeaders = ["name", "sku", "category", "description", "price", "sale_price", "brand", "collection", "variant_sku", "variant_title", "size", "color", "variant_price", "variant_sale_price", "stock"] as const;
+const csvCell = (value: unknown) => {
+  const text = value == null ? "" : String(value);
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+};
+function catalogueCsv(rows: Record<(typeof catalogueCsvHeaders)[number], unknown>[]) {
+  return `\uFEFF${[catalogueCsvHeaders.join(","), ...rows.map((row) => catalogueCsvHeaders.map((header) => csvCell(row[header])).join(","))].join("\r\n")}\r\n`;
+}
+function downloadCatalogueCsv(filename: string, rows: Record<(typeof catalogueCsvHeaders)[number], unknown>[]) {
+  const url = URL.createObjectURL(new Blob([catalogueCsv(rows)], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 const dayNames = [
   "Sunday",
@@ -262,7 +288,8 @@ const defaultHours = dayNames.map((_, dayOfWeek) => ({
   closesAt: dayOfWeek === 0 ? null : "17:00",
   closed: dayOfWeek === 0,
 }));
-function setupMerchant(data: any): Merchant {
+type SetupResponse = { merchant: Merchant & { policies?: { returns?: string; shipping?: string; privacy?: string } }; branch?: { name?: string; address?: string; phone?: string; pickupEnabled?: boolean; deliveryEnabled?: boolean }; hours?: StoreHour[]; readiness?: Merchant["readiness"] };
+function setupMerchant(data: SetupResponse): Merchant {
   const merchant = data.merchant;
   const branch = data.branch ?? {};
   const policies = merchant.policies ?? {};
@@ -329,65 +356,45 @@ export default function MerchantWorkspace({
   const acceptClaimTurnstile = useCallback((token: string | null) => setClaimTurnstileToken(token), []);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteCode, setInviteCode] = useState("");
-  const load = useCallback(async () => {
-    const responses = await Promise.all([
-      fetch("/api/merchant/overview"),
-      fetch("/api/merchant/products"),
-      fetch("/api/merchant/inventory"),
-      fetch("/api/merchant/orders"),
-      fetch("/api/merchant/variants"),
-      fetch("/api/merchant/conversations"),
-      fetch("/api/merchant/delivery-zones"),
-      fetch("/api/merchant/payments"),
-      fetch("/api/merchant/service-bookings"),
-    ]);
-    if (!responses.every((response) => response.ok))
-      throw new Error("Merchant workspace could not be loaded.");
-    const [
-      overview,
-      productData,
-      stockData,
-      orderData,
-      variantData,
-      conversationData,
-      zoneData,
-      paymentData,
-      bookingData,
-    ] = await Promise.all(responses.map((response) => response.json()));
-    setStats(overview);
-    setProducts(productData.products);
-    setStock(stockData.inventory);
-    setOrders(orderData.orders);
-    setVariants(variantData.variants);
-    setConversations(conversationData.conversations);
-    setDeliveryZones(zoneData.zones);
-    setPaymentSettings(paymentData.settings);
-    setSettlements(paymentData.settlements ?? []);
-    setSettlementSummary(paymentData.summary ?? { pendingCustomerPayment: 0, scheduled: 0, dueNow: 0, processing: 0, awaitingSettlement: 0, settled: 0, refundAdjustment: 0, grossSales: 0 });
-    setBookings(bookingData.bookings ?? []);
-  }, []);
-  const refreshLiveOperations = useCallback(async () => {
-    const responses = await Promise.all([
-      fetch("/api/merchant/overview", { cache: "no-store" }),
-      fetch("/api/merchant/inventory", { cache: "no-store" }),
-      fetch("/api/merchant/orders", { cache: "no-store" }),
-      fetch("/api/merchant/variants", { cache: "no-store" }),
-    ]);
-    if (!responses.every((response) => response.ok)) return;
-    const [overview, stockData, orderData, variantData] = await Promise.all(
-      responses.map((response) => response.json()),
-    );
-    setStats(overview);
-    setStock(stockData.inventory);
-    setOrders(orderData.orders);
-    setVariants(variantData.variants);
+  const inFlight = useRef(new Map<Resource, Promise<void>>());
+  const requestVersions = useRef(new LatestRequestTracker<Resource>());
+  const load = useCallback(async (resources: readonly Resource[] = allResources, fresh = false) => {
+    await Promise.all(resources.map((resource) => {
+      const existing = inFlight.current.get(resource);
+      if (existing && !fresh) return existing;
+      const version = requestVersions.current.begin(resource);
+      const pending = (async () => {
+        const response = await fetch(`/api/merchant/${resource}`, { cache: "no-store" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error ?? "Merchant workspace could not be loaded.");
+        if (!requestVersions.current.isLatest(resource, version)) return;
+        switch (resource) {
+          case "overview": setStats(data); break;
+          case "products": setProducts(data.products); break;
+          case "inventory": setStock(data.inventory); break;
+          case "orders": setOrders(data.orders); break;
+          case "variants": setVariants(data.variants); break;
+          case "conversations": setConversations(data.conversations); break;
+          case "delivery-zones": setDeliveryZones(data.zones); break;
+          case "service-bookings": setBookings(data.bookings ?? []); break;
+          case "payments":
+            setPaymentSettings(data.settings);
+            setSettlements(data.settlements ?? []);
+            setSettlementSummary(data.summary);
+            break;
+        }
+      })().finally(() => {
+        if (inFlight.current.get(resource) === pending) inFlight.current.delete(resource);
+      });
+      inFlight.current.set(resource, pending);
+      return pending;
+    }));
   }, []);
   const loadSession = useCallback(async () => {
     const response = await fetch("/api/merchant/session");
     const data = await response.json();
     setSession(data);
     if (response.ok && data.memberships?.length) {
-      await load();
       const setup = await fetch("/api/merchant/setup");
       if (setup.ok) {
         const setupData = await setup.json();
@@ -399,17 +406,20 @@ export default function MerchantWorkspace({
         }));
       }
     }
-  }, [load]);
+  }, []);
   useEffect(() => {
     loadSession().catch((error) => setMessage(error.message));
   }, [loadSession]);
   useEffect(() => {
     if (!session?.memberships?.length) return;
+    const refresh = () => load(tabResources[tab]).catch((error: Error) => setMessage(error.message));
+    void refresh();
+    if (tab === "Setup" || tab === "Products") return;
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") refreshLiveOperations();
-    }, 15000);
+      if (document.visibilityState === "visible") void refresh();
+    }, 30000);
     return () => window.clearInterval(timer);
-  }, [session, refreshLiveOperations]);
+  }, [session, tab, load]);
   async function patch(url: string, body: object, success: string) {
     const response = await fetch(url, {
       method: "PATCH",
@@ -419,7 +429,7 @@ export default function MerchantWorkspace({
     const data = await response.json();
     if (!response.ok) return setMessage(data.error);
     setMessage(success);
-    await load();
+    await load(url.endsWith("/inventory") ? ["inventory", "variants"] : ["orders", "inventory", "overview"], true);
   }
   async function postAccess(url: string, body: object = {}) {
     const response = await fetch(url, {
@@ -519,7 +529,7 @@ export default function MerchantWorkspace({
     const data = await response.json();
     if (!response.ok) return setMessage(data.error);
     setMessage(`${variant.sku} saved.`);
-    await load();
+    await load(["variants", "inventory"], true);
   }
   async function createVariant(
     product: Product,
@@ -566,7 +576,7 @@ export default function MerchantWorkspace({
     const data = await response.json();
     if (!response.ok) return setMessage(data.error);
     setMessage(`${payload.sku.toUpperCase()} created and ready to manage.`);
-    await load();
+    await load(["variants", "inventory"], true);
   }
   async function replyToConversation(conversationId: number, message: string) {
     const response = await fetch("/api/merchant/conversations", {
@@ -576,7 +586,7 @@ export default function MerchantWorkspace({
     });
     const data = await response.json();
     if (!response.ok) return setMessage(data.error);
-    await load();
+    await load(["conversations"], true);
   }
   async function updateConversation(
     conversationId: number,
@@ -590,7 +600,7 @@ export default function MerchantWorkspace({
     });
     const data = await response.json();
     if (!response.ok) return setMessage(data.error);
-    await load();
+    await load(["conversations"], true);
   }
   async function updatePayment(
     orderId: number,
@@ -609,7 +619,7 @@ export default function MerchantWorkspace({
     const data = await response.json();
     if (!response.ok) return setMessage(data.error);
     setMessage(`Payment marked ${paymentStatus}.`);
-    await load();
+    await load(["orders", "payments"], true);
   }
   const previewStore = () => {
     if (merchant?.slug) window.location.href = `/stores/${merchant.slug}`;
@@ -688,7 +698,7 @@ export default function MerchantWorkspace({
       <aside className={menuOpen ? "workspace-drawer-open" : ""}>
         <button className="workspace-drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close merchant menu">×</button>
         <div className="merchant-mark">
-          <img src={merchant?.logoUrl ?? "/lightwork-logo.png"} alt="" />
+          <ManagedImage src={merchant?.logoUrl ?? "/lightwork-logo.png"} alt="" width={160} height={160} />
           <div>
             <b>{merchant?.name ?? "Merchant"}</b>
             <span>
@@ -767,7 +777,6 @@ export default function MerchantWorkspace({
         {tab === "Overview" && (
           <MerchantOverview
             stats={stats}
-            products={products}
             orders={orders}
             stock={stock}
             conversations={conversations}
@@ -798,7 +807,7 @@ export default function MerchantWorkspace({
             <DeliveryZonesPanel
               zones={deliveryZones}
               setZones={setDeliveryZones}
-              reload={load}
+              reload={() => load(["delivery-zones"], true)}
               setMessage={setMessage}
               deliveryEnabled={merchant.deliveryEnabled}
             />
@@ -812,7 +821,7 @@ export default function MerchantWorkspace({
             setVariants={setVariants}
             saveVariant={saveVariant}
             createVariant={createVariant}
-            reload={load}
+            reload={() => load(["products", "variants", "overview"], true)}
             setMessage={setMessage}
           />
         )}
@@ -838,7 +847,7 @@ export default function MerchantWorkspace({
         {tab === "Bookings" && (
           <ServiceBookingsPanel
             bookings={bookings}
-            reload={load}
+            reload={() => load(["service-bookings"], true)}
             setMessage={setMessage}
           />
         )}
@@ -1198,7 +1207,7 @@ function SetupPanel({
             {(["logo", "banner"] as const).map((type) => (
               <label className={`media-upload media-upload-${type}`} key={type}>
                 <span className="media-preview">
-                  {mediaSource(type) ? <img src={mediaSource(type)!} alt={`Current store ${type}`} /> : <b>{type === "logo" ? "LOGO" : "BANNER"}</b>}
+                  {mediaSource(type) ? <ManagedImage src={mediaSource(type)!} alt={`Current store ${type}`} /> : <b>{type === "logo" ? "LOGO" : "BANNER"}</b>}
                 </span>
                 <span className="media-upload-copy">
                   <strong>Store {type}</strong>
@@ -1276,8 +1285,9 @@ function SetupPanel({
           </div>
         </header>
         <div className="fulfilment-options">
-          <label>
+          <label aria-label="Customer pickup" htmlFor="pickup-enabled">
             <input
+              id="pickup-enabled"
               type="checkbox"
               checked={merchant.pickupEnabled}
               onChange={(e) =>
@@ -1289,8 +1299,9 @@ function SetupPanel({
               <small>Customers collect from the primary branch.</small>
             </span>
           </label>
-          <label>
+          <label aria-label="Merchant delivery" htmlFor="delivery-enabled">
             <input
+              id="delivery-enabled"
               type="checkbox"
               checked={merchant.deliveryEnabled}
               onChange={(e) =>
@@ -1436,12 +1447,35 @@ function CatalogueManager({
   const [createBusy, setCreateBusy] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
   const downloadTemplate = () => {
-    const csv = "name,sku,category,description,price,sale_price,brand,collection,stock\nExample product,EXAMPLE-001,Fashion,Describe the product,199.00,,Your brand,New arrivals,10\n";
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    link.download = "neurocity-catalogue-template.csv";
-    link.click();
-    URL.revokeObjectURL(link.href);
+    downloadCatalogueCsv("neurocity-catalogue-template.csv", [
+      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "TSHIRT-001-BLK-S", variant_title: "Black / Small", size: "S", color: "Black", variant_price: "299.00", variant_sale_price: "249.00", stock: 12 },
+      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "TSHIRT-001-BLK-M", variant_title: "Black / Medium", size: "M", color: "Black", variant_price: "299.00", variant_sale_price: "249.00", stock: 12 },
+    ]);
+  };
+  const exportCatalogue = () => {
+    const rows = products.filter((product) => product.itemType === "product").flatMap((product) => {
+      const options = variants.filter((variant) => variant.productId === product.id);
+      return (options.length ? options : [null]).map((variant) => ({
+        name: product.name,
+        sku: product.sku,
+        category: product.category ?? "",
+        description: product.description,
+        price: product.price?.toFixed(2) ?? "",
+        sale_price: product.salePrice?.toFixed(2) ?? "",
+        brand: product.brand ?? "",
+        collection: product.collection ?? "",
+        variant_sku: variant?.sku ?? "",
+        variant_title: variant?.title ?? "Standard",
+        size: variant?.size ?? "",
+        color: variant?.color ?? "",
+        variant_price: variant?.price.toFixed(2) ?? product.price?.toFixed(2) ?? "",
+        variant_sale_price: variant?.salePrice?.toFixed(2) ?? product.salePrice?.toFixed(2) ?? "",
+        stock: variant?.stock.reduce((sum, row) => sum + row.onHand, 0) ?? 0,
+      }));
+    });
+    if (!rows.length) return setMessage("Add a product before exporting your catalogue.");
+    downloadCatalogueCsv(`neurocity-catalogue-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+    setMessage(`${products.filter((product) => product.itemType === "product").length} products and ${rows.length} variant rows exported. Stock is totalled across branches for each variant.`);
   };
   async function importCatalogue(file?: File) {
     if (!file) return;
@@ -1451,7 +1485,7 @@ function CatalogueManager({
       const response = await fetch("/api/merchant/products/bulk", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rows }) });
       const data = await response.json();
       if (!response.ok) return setMessage(data.invalid?.length ? `${data.error} Rows: ${data.invalid.map((item: { row: number; fields: string[] }) => `${item.row} (${item.fields.join(", ")})`).join("; ")}` : data.error);
-      setMessage(`${data.imported} product${data.imported === 1 ? "" : "s"} imported as drafts. Add images and review them before publishing.`);
+      setMessage(`${data.imported} product${data.imported === 1 ? "" : "s"} and ${data.variantsImported} variant${data.variantsImported === 1 ? "" : "s"} imported as drafts. Add images and review them before publishing.`);
       await reload();
     } catch {
       setMessage("The CSV could not be read. Download the template and keep its column headings unchanged.");
@@ -1554,6 +1588,14 @@ function CatalogueManager({
     setMessage(`${product.name} archived.`);
     await reload();
   }
+  async function deleteProduct(product: Product) {
+    if (!window.confirm(`Permanently delete ${product.name}? Its variants, stock and saved customer references will also be removed. This cannot be undone.`)) return;
+    const response = await fetch(`/api/merchant/products?id=${product.id}&permanent=true`, { method: "DELETE" });
+    const data = await response.json();
+    if (!response.ok) return setMessage(data.error);
+    setMessage(`${product.name} permanently deleted.`);
+    await reload();
+  }
   return (
     <div className="catalogue-manager">
       <div className="catalogue-toolbar">
@@ -1566,10 +1608,12 @@ function CatalogueManager({
         </div>
         <div className="catalogue-actions">
           <button className="secondary" onClick={downloadTemplate}>Download CSV template</button>
+          <button className="secondary" onClick={exportCatalogue}>Export catalogue</button>
           <label className="catalogue-import-button">{importBusy ? "Importing…" : "Import CSV"}<input type="file" accept=".csv,text/csv" disabled={importBusy} onChange={(event) => { void importCatalogue(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label>
           <button onClick={() => setCreating(true)}>+ Add product</button>
         </div>
       </div>
+      <p className="catalogue-csv-help"><b>CSV rules:</b> Use one row per variant and repeat the same product details and product SKU for every variant. Every variant SKU must be unique. Variant title, size and colour describe the option; blank variant prices inherit the product prices. Use an exact NeuroCity category, plain numbers without N$, and sale prices lower than regular prices. Imports are saved as drafts and stock defaults to 0.</p>
       <ProductCreatePanel
         open={creating}
         busy={createBusy}
@@ -1600,6 +1644,7 @@ function CatalogueManager({
                   onSave={(confirmed) => saveProduct(product, confirmed)}
                   onUpload={(slot, file) => uploadImage(product, slot, file)}
                   onArchive={() => archiveProduct(product)}
+                  onDelete={() => deleteProduct(product)}
                 />
                 <ProductOptionsPanel
                   product={product}
@@ -1626,12 +1671,14 @@ function ProductEditor({
   onSave,
   onUpload,
   onArchive,
+  onDelete,
 }: {
   product: Product;
   onChange: (product: Product) => void;
   onSave: (confirmed: boolean) => void;
   onUpload: (slot: number, file?: File) => Promise<boolean>;
   onArchive: () => void;
+  onDelete: () => void;
 }) {
   const [confirmed, setConfirmed] = useState(false);
   const [crop, setCrop] = useState<{ file: File; slot: number } | null>(null);
@@ -1640,7 +1687,7 @@ function ProductEditor({
       <header>
         <div className="catalogue-image product-gallery-admin" aria-label="Product image gallery">
           {[0, 1, 2].map((slot) => <label key={slot}>
-            {product.imageUrls?.[slot] ? <img src={product.imageUrls[slot]} alt={`${product.name} view ${slot + 1}`} /> : <span>{slot === 0 ? "Main image" : `Add view ${slot + 1}`}</span>}
+            {product.imageUrls?.[slot] ? <ManagedImage src={product.imageUrls[slot]} alt={`${product.name} view ${slot + 1}`} /> : <span>{slot === 0 ? "Main image" : `Add view ${slot + 1}`}</span>}
             <em>{product.imageUrls?.[slot] ? "Replace" : slot === 0 ? "Add main image" : "Add another view"}</em>
             <input type="file" aria-label={`${product.imageUrls?.[slot] ? "Replace" : "Upload"} ${product.name} image ${slot + 1}`} accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) setCrop({ file, slot }); event.target.value = ""; }} />
           </label>)}
@@ -1784,6 +1831,9 @@ function ProductEditor({
         <div>
           <button className="danger-text" onClick={onArchive}>
             Archive
+          </button>
+          <button className="danger-text danger-delete" onClick={onDelete}>
+            Delete permanently
           </button>
           <button onClick={() => onSave(confirmed)}>Save product</button>
         </div>
@@ -1992,7 +2042,6 @@ function ConversationThread({
 }
 function MerchantOverview({
   stats,
-  products,
   orders,
   stock,
   conversations,
@@ -2004,7 +2053,6 @@ function MerchantOverview({
     orders: number;
     readiness: number;
   };
-  products: Product[];
   orders: Order[];
   stock: Stock[];
   conversations: Conversation[];
@@ -2351,7 +2399,15 @@ function MerchantOrderCard({
   };
   return (
     <article className={`merchant-order-card ${open ? "open" : ""}`}>
-      <header onClick={() => setOpen(!open)}>
+      <header
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") setOpen(!open);
+        }}
+      >
         <div>
           <span className={`order-priority status-${order.status}`}>
             {pretty(order.status)}

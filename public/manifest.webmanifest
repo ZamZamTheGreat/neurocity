@@ -21,6 +21,6 @@
   "shortcuts": [
     { "name": "Browse stores", "short_name": "Stores", "url": "/marketplace#stores", "icons": [{ "src": "/icons/neurocity-malls-192.png?v=20260902", "sizes": "192x192" }] },
     { "name": "My account", "short_name": "Account", "url": "/account", "icons": [{ "src": "/icons/neurocity-malls-192.png?v=20260902", "sizes": "192x192" }] },
-    { "name": "Merchant dashboard", "short_name": "Dashboard", "url": "/dashboard", "icons": [{ "src": "/icons/neurocity-malls-192.png?v=20260902", "sizes": "192x192" }] }
+    { "name": "Merchant dashboard", "short_name": "Dashboard", "url": "/marketplace?workspace=merchant", "icons": [{ "src": "/icons/neurocity-malls-192.png?v=20260902", "sizes": "192x192" }] }
   ]
 }

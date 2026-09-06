@@ -90,12 +90,12 @@ export async function POST(request: Request) {
     }
     const catalogue = [...new Map(catalogueRows.map((row) => [row.id, { ...row, venues: venuesByProduct.get(row.id) ?? [] }])).values()];
     if (!catalogue.length) return Response.json({ reply: `${platform.name} does not have any published catalogue items yet.`, matches: [], platform: { name: platform.name, slug: platform.slug }, searchedAt: new Date().toISOString() }, { headers: { "cache-control": "no-store, no-cache, must-revalidate" } });
-    const variants = await db.select().from(productVariants).where(inArray(productVariants.productId, catalogue.map((item) => item.id)));
-    const active = variants.filter((item) => item.status === "active");
-    const inventory = active.length ? await db.select().from(variantInventory).where(inArray(variantInventory.variantId, active.map((item) => item.id))) : [];
     const safeHistory = history.filter((item) => item && ["user", "assistant"].includes(item.role ?? "") && typeof item.text === "string").slice(-6).map((item) => ({ role: item.role, text: item.text!.trim().slice(0, 300) }));
     const intent = await reasonAboutSearch(message.trim(), safeHistory, catalogue);
     if (intent?.needsLocation) return Response.json({ reply: "Which Namibian town, suburb or area should I search near? Once you tell me, I’ll check the relevant stores and live availability.", matches: [], understood: { needsLocation: true }, reasoning: "openai", platform: { name: platform.name, slug: platform.slug }, searchedAt: new Date().toISOString() }, { headers: { "cache-control": "no-store, no-cache, must-revalidate" } });
+    const variants = await db.select().from(productVariants).where(inArray(productVariants.productId, catalogue.map((item) => item.id)));
+    const active = variants.filter((item) => item.status === "active");
+    const inventory = active.length ? await db.select().from(variantInventory).where(inArray(variantInventory.variantId, active.map((item) => item.id))) : [];
     const branches = await db.select().from(storeBranches).where(inArray(storeBranches.merchantId, [...new Set(catalogue.map((item) => item.storeId))]));
     const branchHours = branches.length ? await db.select().from(storeHours).where(inArray(storeHours.branchId, branches.map((branch) => branch.id))) : [];
     const clock = windhoekClock();

@@ -2,9 +2,10 @@
 
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import MerchantWorkspace from "./components/MerchantWorkspace";
-import { NeuroConcierge } from "./components/NeuroConcierge";
+import { openConcierge } from "../lib/concierge-events";
 import { merchantCategories } from "../lib/merchant-categories";
 import NeuroCityNetworkHome from "./components/NeuroCityNetworkHome";
+import { ManagedImage } from "./components/ManagedImage";
 
 type Product = {
   id: number;
@@ -55,7 +56,6 @@ export function MarketplaceExperience({
 }: { mallSlug?: string } = {}) {
   const [view, setView] = useState<"mall" | "store" | "merchant">("mall");
   const [query, setQuery] = useState("");
-  const [cart, setCart] = useState<number[]>([]);
   const [catalogue, setCatalogue] = useState<Product[]>([]);
   const [storeAvailable, setStoreAvailable] = useState<boolean | null>(null);
   const [stores, setStores] = useState<PublicStore[]>([]);
@@ -71,21 +71,7 @@ export function MarketplaceExperience({
     theme: { primary: "#18c98e", surface: "#07111f" },
   });
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [assistantOpen, setAssistantOpen] = useState(false);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [fulfillment, setFulfillment] = useState<
-    "pickup" | "merchant_delivery"
-  >("pickup");
-  const [payment, setPayment] = useState<"online" | "pay_on_collection">(
-    "pay_on_collection",
-  );
-  const [placingOrder, setPlacingOrder] = useState(false);
-  const [merchantStats, setMerchantStats] = useState({
-    products: 4,
-    publishedProducts: 0,
-    orders: 0,
-    readiness: 42,
-  });
+  const askConcierge = () => openConcierge({ platformSlug: mallSlug });
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -134,14 +120,6 @@ export function MarketplaceExperience({
       .catch(() => setCatalogue([]));
   }, [mallSlug]);
 
-  useEffect(() => {
-    if (view !== "merchant") return;
-    fetch("/api/merchant/overview")
-      .then((response) => (response.ok ? response.json() : Promise.reject()))
-      .then(setMerchantStats)
-      .catch(() => undefined);
-  }, [view]);
-
   const filtered = useMemo(
     () =>
       catalogue.filter((p) =>
@@ -178,17 +156,9 @@ export function MarketplaceExperience({
       ),
     [categoryCounts],
   );
-  const cartTotal = cart.reduce(
-    (sum, id) => sum + (catalogue.find((p) => p.id === id)?.price ?? 0),
-    0,
-  );
   const openStore = (slug: string) => {
     window.location.href = `/stores/${slug}`;
   };
-  const openPilotStore = () =>
-    stores[0]
-      ? openStore(stores[0].slug)
-      : setNotice("No public storefronts are available right now.");
   const showStores = (category = "") => {
     setSelectedCategory(category);
     setView("mall");
@@ -205,41 +175,13 @@ export function MarketplaceExperience({
       setNotice(
         `${product.name} is in pilot review. Ask LightWork to confirm price and availability.`,
       );
-      setAssistantOpen(true);
+      askConcierge();
       return;
     }
     setNotice(
       `Choose the size and colour for ${product.name} in the LightWork storefront.`,
     );
     window.location.href = "/stores/lightwork-clothing#shop";
-  }
-
-  async function placeOrder() {
-    setPlacingOrder(true);
-    try {
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          productIds: cart,
-          fulfillmentMethod: fulfillment,
-          paymentMethod: payment,
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "Order creation failed");
-      setCart([]);
-      setCheckoutOpen(false);
-      setNotice(
-        `${data.order.reference} created · ${data.order.status.replaceAll("_", " ")}.`,
-      );
-    } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Order creation failed",
-      );
-    } finally {
-      setPlacingOrder(false);
-    }
   }
 
   return (
@@ -263,7 +205,7 @@ export function MarketplaceExperience({
           aria-label={`Go to ${platform.name} home`}
         >
           {platform.markUrl ? (
-            <img
+            <ManagedImage
               className="brand-symbol"
               src={platform.markUrl}
               alt=""
@@ -318,11 +260,7 @@ export function MarketplaceExperience({
           </span>
           <details className="account-menu">
             <summary>Account</summary>
-            <div
-              onClick={(event) =>
-                event.currentTarget.parentElement?.removeAttribute("open")
-              }
-            >
+            <div>
               <a href="/account">Customer account</a>
               <a href="/marketplace?workspace=merchant">Merchant workspace</a>
               <a href="/mall-manager">Mall management</a>
@@ -331,16 +269,7 @@ export function MarketplaceExperience({
               <a href="/access">All account options</a>
             </div>
           </details>
-          <button
-            className="cart-button"
-            onClick={() =>
-              cart.length
-                ? setCheckoutOpen(true)
-                : setNotice("Your mall basket is empty.")
-            }
-          >
-            Bag <b>{cart.length}</b>
-          </button>
+          <a className="cart-button" href="/account?tab=bag">Bag</a>
         </div>
       </header>
       {platform.kind !== "mall" && (
@@ -423,7 +352,7 @@ export function MarketplaceExperience({
               {stores[0] ? (
                 <div className="city-card main-card">
                   <span>FEATURED LOCAL STORE</span>
-                  <img
+                  <ManagedImage
                     src={stores[0].logoUrl ?? "/lightwork-logo.png"}
                     alt={stores[0].name}
                   />
@@ -532,12 +461,12 @@ export function MarketplaceExperience({
                 {visibleStores.map((store) => (
                   <article className="public-store-card" key={store.id}>
                     <div className="public-store-art">
-                      {store.bannerUrl && <img src={store.bannerUrl} alt="" />}
+                      {store.bannerUrl && <ManagedImage src={store.bannerUrl} alt="" />}
                       <span>Approved store</span>
                     </div>
                     <div className="public-store-copy">
                       {store.logoUrl && (
-                        <img src={store.logoUrl} alt={`${store.name} logo`} />
+                        <ManagedImage src={store.logoUrl} alt={`${store.name} logo`} />
                       )}
                       <small>{store.category}</small>
                       <h3>{store.name}</h3>
@@ -615,7 +544,7 @@ export function MarketplaceExperience({
               </h2>
               <ul className="info-list"><li>Describe the product, colour, size or budget.</li><li>Neuro searches live catalogues from approved local stores.</li></ul>
             </div>
-            <button onClick={() => setAssistantOpen(true)}>
+            <button onClick={() => askConcierge()}>
               <span>✦</span>
               <div>
                 <small>Ask Selma</small>
@@ -668,13 +597,13 @@ export function MarketplaceExperience({
           <section className="store-hero">
             <div className="store-branding">
               <span>NEUROCITY / FASHION / LIGHTWORK</span>
-              <img src="/lightwork-logo.png" alt="LightWork Clothing logo" />
+              <ManagedImage src="/lightwork-logo.png" alt="LightWork Clothing logo" />
               <p>
                 Global established movement. Windhoek streetwear from Baines
                 Centre, Pioneerspark.
               </p>
               <div>
-                <button onClick={() => setAssistantOpen(true)}>
+                <button onClick={() => askConcierge()}>
                   ✦ Ask the store AI
                 </button>
                 <button
@@ -690,7 +619,7 @@ export function MarketplaceExperience({
               </div>
             </div>
             <div className="store-art">
-              <img
+              <ManagedImage
                 src="/lightwork-crown-v1.png"
                 alt="LightWork Crown V1 tracksuit reference"
               />
@@ -726,132 +655,9 @@ export function MarketplaceExperience({
       {view === "merchant" && (
         <MerchantWorkspace onPreview={() => setView("store")} />
       )}
-      {false && (
-        <section className="dashboard-shell">
-          <aside>
-            <div className="merchant-mark">
-              <img src="/lightwork-logo.png" alt="" />
-              <div>
-                <b>LightWork</b>
-                <span>Pilot workspace</span>
-              </div>
-            </div>
-            {[
-              "Overview",
-              "Orders",
-              "Products",
-              "Inventory",
-              "Storefront",
-              "AI conversations",
-              "Reports",
-            ].map((item, i) => (
-              <button className={i === 0 ? "active" : ""} key={item}>
-                {item}
-                <span>
-                  {item === "Products" ? "4" : item === "Orders" ? "0" : ""}
-                </span>
-              </button>
-            ))}
-            <div className="pilot-status">
-              <span />
-              <b>Pilot setup</b>
-              <small>42% complete</small>
-            </div>
-          </aside>
-          <div className="dashboard-main">
-            <div className="dashboard-head">
-              <div>
-                <p className="eyebrow">Merchant overview</p>
-                <h1>Good evening, Zephan.</h1>
-                <p>
-                  Your storefront is in private pilot setup. Complete the
-                  catalogue before accepting orders.
-                </p>
-              </div>
-              <button onClick={() => setView("store")}>
-                Preview storefront ↗
-              </button>
-            </div>
-            <div className="metric-grid">
-              <Metric
-                label="Published products"
-                value={String(merchantStats.publishedProducts)}
-                note={`${merchantStats.products} need confirmation`}
-                tone="gold"
-              />
-              <Metric
-                label="Orders recorded"
-                value={String(merchantStats.orders)}
-                note="Persistent merchant orders"
-              />
-              <Metric
-                label="Store readiness"
-                value={`${merchantStats.readiness}%`}
-                note="7 details remaining"
-                tone="violet"
-              />
-              <Metric
-                label="AI catalogue coverage"
-                value="0%"
-                note="Publish products first"
-              />
-            </div>
-            <div className="dashboard-columns">
-              <div className="task-panel">
-                <div className="panel-title">
-                  <div>
-                    <h3>Launch checklist</h3>
-                    <p>What LightWork needs before pilot review</p>
-                  </div>
-                  <b>3 of 7</b>
-                </div>
-                {[
-                  ["Business and pickup location", "Complete", true],
-                  ["Brand logo and website", "Complete", true],
-                  ["Starter product evidence", "Complete", true],
-                  ["Current prices and sizes", "Required", false],
-                  ["Branch stock or confirmation mode", "Required", false],
-                  ["Delivery zones and fees", "Required", false],
-                  ["Returns and exchange policy", "Required", false],
-                ].map(([task, status, done]) => (
-                  <div className="task-row" key={String(task)}>
-                    <span className={done ? "done" : ""}>
-                      {done ? "✓" : ""}
-                    </span>
-                    <b>{task}</b>
-                    <small>{status}</small>
-                  </div>
-                ))}
-              </div>
-              <div className="activity-panel">
-                <div className="panel-title">
-                  <div>
-                    <h3>Catalogue health</h3>
-                    <p>Confirmation required</p>
-                  </div>
-                </div>
-                {catalogue.map((p) => (
-                  <div className="mini-product" key={p.id}>
-                    <img src={p.image} alt="" />
-                    <div>
-                      <b>{p.name}</b>
-                      <span>
-                        {p.price ? "Historic price recorded" : "Price missing"}
-                      </span>
-                    </div>
-                    <em>Review</em>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
       {notice && (
         <button
           className="notice"
-          role="status"
           aria-live="polite"
           onClick={() => setNotice("")}
           aria-label="Dismiss notification"
@@ -860,127 +666,13 @@ export function MarketplaceExperience({
           <b>×</b>
         </button>
       )}
-      {checkoutOpen && (
-        <div
-          className="checkout-backdrop"
-          onClick={() => setCheckoutOpen(false)}
-        >
-          <section
-            className="checkout-panel"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <header>
-              <div>
-                <small>LIGHTWORK ORDER</small>
-                <h2>Review your order</h2>
-              </div>
-              <button onClick={() => setCheckoutOpen(false)}>×</button>
-            </header>
-            <div className="checkout-items">
-              {cart.map((id, index) => {
-                const product = catalogue.find((item) => item.id === id);
-                return product ? (
-                  <div className="checkout-item" key={`${id}-${index}`}>
-                    <img src={product.image} alt="" />
-                    <div>
-                      <b>{product.name}</b>
-                      <span>{product.collection}</span>
-                    </div>
-                    <strong>{money(product.price)}</strong>
-                  </div>
-                ) : null;
-              })}
-            </div>
-            <fieldset>
-              <legend>How would you like it?</legend>
-              <label className={fulfillment === "pickup" ? "selected" : ""}>
-                <input
-                  type="radio"
-                  checked={fulfillment === "pickup"}
-                  onChange={() => setFulfillment("pickup")}
-                />
-                <span>
-                  <b>Pickup at Baines Centre</b>
-                  <small>Timing confirmed by LightWork</small>
-                </span>
-              </label>
-              <label
-                className={
-                  fulfillment === "merchant_delivery" ? "selected" : ""
-                }
-              >
-                <input
-                  type="radio"
-                  checked={fulfillment === "merchant_delivery"}
-                  onChange={() => setFulfillment("merchant_delivery")}
-                />
-                <span>
-                  <b>Merchant delivery</b>
-                  <small>Zone and fee confirmed before fulfillment</small>
-                </span>
-              </label>
-            </fieldset>
-            <fieldset>
-              <legend>Payment preference</legend>
-              <label
-                className={payment === "pay_on_collection" ? "selected" : ""}
-              >
-                <input
-                  type="radio"
-                  checked={payment === "pay_on_collection"}
-                  onChange={() => setPayment("pay_on_collection")}
-                />
-                <span>
-                  <b>Pay on collection</b>
-                  <small>Available during the controlled pilot</small>
-                </span>
-              </label>
-              <label className={payment === "online" ? "selected" : ""}>
-                <input
-                  type="radio"
-                  checked={payment === "online"}
-                  onChange={() => setPayment("online")}
-                />
-                <span>
-                  <b>Online payment</b>
-                  <small>Provider connection pending</small>
-                </span>
-              </label>
-            </fieldset>
-            <div className="checkout-total">
-              <span>Total</span>
-              <b>{money(cartTotal)}</b>
-            </div>
-            <button
-              className="place-order"
-              disabled={placingOrder}
-              onClick={placeOrder}
-            >
-              {placingOrder
-                ? "Creating order…"
-                : payment === "online"
-                  ? "Create order and continue to payment"
-                  : "Place pilot order"}
-            </button>
-            <p className="checkout-note">
-              This creates a real private pilot order. Products awaiting
-              merchant confirmation cannot be ordered.
-            </p>
-          </section>
-        </div>
-      )}
       <button
         className="ai-fab"
-        onClick={() => setAssistantOpen(true)}
+        onClick={() => askConcierge()}
         aria-label="Open shopping assistant"
       >
         ✦
       </button>
-      <NeuroConcierge
-        open={assistantOpen}
-        onClose={() => setAssistantOpen(false)}
-        platformSlug={mallSlug}
-      />
       {view !== "merchant" && (
         <footer className="public-footer">
           <a href="/" className="brand">
@@ -1013,7 +705,7 @@ function ProductCard({
   return (
     <article className="product-card">
       <div className="product-image">
-        <img src={product.image} alt={product.name} />
+        <ManagedImage src={product.image} alt={product.name} />
         <span>{product.badge}</span>
         <button aria-label={`Save ${product.name}`}>♡</button>
       </div>
@@ -1027,26 +719,6 @@ function ProductCard({
           </button>
         </div>
       </div>
-    </article>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  note,
-  tone = "plain",
-}: {
-  label: string;
-  value: string;
-  note: string;
-  tone?: string;
-}) {
-  return (
-    <article className={`metric ${tone}`}>
-      <span>{label}</span>
-      <b>{value}</b>
-      <small>{note}</small>
     </article>
   );
 }

@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities -- Legal prose contains possessives. */
 import Link from "next/link";
 import { PRIVACY_CONTACT_EMAIL, PRIVACY_NOTICE_VERSION } from "../../lib/privacy";
 

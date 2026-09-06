@@ -12,7 +12,15 @@ const eslintConfig = defineConfig([
     ".next/**",
     "dist/**",
     "out/**",
-    "build/**",
+    ".vinext/**",
+    ".wrangler/**",
+    ".identity-test-dist/**",
+    ".security-test-dist/**",
+    ".seed-dist/**",
+    ".sites-release-worktree/**",
+    "outputs/**",
+    "work/**",
+    "**/node_modules/**",
     "next-env.d.ts",
   ]),
   eslint.configs.recommended,
@@ -34,6 +42,12 @@ const eslintConfig = defineConfig([
       react: {
         version: "detect",
       },
+    },
+    rules: {
+      // Vinext routes use ordinary anchors for deliberate full-document navigation.
+      "@next/next/no-html-link-for-pages": "off",
+      // Stable async loaders update state after their network requests resolve.
+      "react-hooks/set-state-in-effect": "off",
     },
   },
 ]);

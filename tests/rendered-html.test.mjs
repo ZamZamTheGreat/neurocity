@@ -42,9 +42,6 @@ test("renders the NeuroCity network gateway", async () => {
   assert.match(html, /How NeuroCity is organised/);
   assert.match(html, /Selma/);
   const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  assert.match(source, /Review your order/);
-  assert.match(source, /Pay on collection/);
-  assert.match(source, /\/api\/orders/);
   assert.doesNotMatch(source, /merchants are being recruited|: "Recruiting"/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|react-loading-skeleton/);
 });
@@ -56,6 +53,7 @@ test("keeps the commerce experience at the marketplace route", async () => {
   assert.match(html, /Sell on NeuroCity/);
   assert.match(html, /How it works/);
   assert.match(html, /What are you looking for/);
+  assert.match(html, /href="\/account\?tab=bag"/);
 });
 
 test("keeps digital-mall branding isolated from the marketplace", async () => {
@@ -316,12 +314,29 @@ test("adds guarded bulk catalogue import and WhatsApp order updates", async () =
   assert.match(bulk, /payload\.rows\.length > 250/);
   assert.match(bulk, /catalogue\.bulk_imported/);
   assert.match(bulk, /db\.transaction/);
+  assert.match(bulk, /variantCount: parsed\.length/);
+  assert.match(bulk, /option\.variantSku/);
   assert.match(workspace, /neurocity-catalogue-template\.csv/);
+  assert.match(workspace, /Fashion & Clothing/);
+  assert.match(workspace, /Export catalogue/);
+  assert.match(workspace, /variant_sale_price/);
+  assert.match(workspace, /text\/csv;charset=utf-8/);
   assert.match(workspace, /Send WhatsApp update/);
   assert.match(orderRoute, /sendWhatsAppOrderUpdate/);
   assert.match(webhook, /hub\.verify_token/);
   assert.match(webhook, /x-hub-signature-256/);
   assert.match(webhook, /whatsapp\.message_received/);
+});
+
+test("allows safe permanent catalogue deletion while preserving commerce history", async () => {
+  const products = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");
+  const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");
+  assert.match(products, /permanent.*=== "true"/);
+  assert.match(products, /orderItems\.productId/);
+  assert.match(products, /serviceBookings\.productId/);
+  assert.match(products, /product\.deleted/);
+  assert.match(workspace, /Delete permanently/);
+  assert.match(workspace, /This cannot be undone/);
 });
 
 test("gives administrators a live operations overview", async () => {
@@ -440,6 +455,8 @@ test("keeps the customer journey connected from storefront to multi-store checko
   const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
   const account = await readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8");
   const mobileDock = await readFile(new URL("../app/components/MobileDock.tsx", import.meta.url), "utf8");
+  const phone = await readFile(new URL("../lib/phone.ts", import.meta.url), "utf8");
+  const conciergeEvents = await readFile(new URL("../lib/concierge-events.ts", import.meta.url), "utf8");
   assert.match(storefront, /account\?tab=Bag/);
   assert.match(storefront, /!preorder && item\.available !== null && item\.available < 1/);
   assert.match(storefront, /Added to your bag/);
@@ -448,11 +465,12 @@ test("keeps the customer journey connected from storefront to multi-store checko
   assert.match(storefront, /whatsappItemHref/);
   assert.match(storefront, /I found \$\{product\.name\} on NeuroCity/);
   assert.match(storefront, /Ask about this product on WhatsApp/);
-  assert.match(storefront, /digits\.startsWith\("0"\).*264/s);
+  assert.match(phone, /digits\.startsWith\("0"\).*264/s);
   assert.match(account, /checkout-merchant-group/);
   assert.match(account, /ONE PAYMENT/);
   assert.match(account, /neurocity:open-selma/);
-  assert.match(mobileDock, /neurocity:open-selma/);
+  assert.match(mobileDock, /OPEN_CONCIERGE_EVENT/);
+  assert.match(conciergeEvents, /neurocity:open-selma/);
   assert.match(mobileDock, /neurocity:companion-name/);
   assert.match(mobileDock, /\{companionName\}/);
   assert.doesNotMatch(account, /href="\/concierge"/);
@@ -472,7 +490,7 @@ test("supports private screenshot-led catalogue search in Selma", async () => {
   assert.match(companion, /capture="environment"/);
   assert.match(companion, /Your device may ask for permission to use the camera/);
   assert.match(companion, /api\/concierge\/visual-search/);
-  assert.match(companion, /imagePreview: _imagePreview/);
+  assert.match(companion, /messages\.map\(withoutImagePreview\)/);
   assert.match(companion, /analysed by OpenAI/);
   assert.match(companion, /not saved to your NeuroCity account or chat history/);
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { ManagedImage } from "./ManagedImage";
 
 type Match = {
   id: number;
@@ -38,6 +39,10 @@ const money = (value: number | null) =>
   value === null
     ? "Ask store for price"
     : `N$${new Intl.NumberFormat("en-NA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
+const withoutImagePreview = ({ imagePreview, ...message }: Message) => {
+  void imagePreview;
+  return message;
+};
 
 export function NeuroConcierge({
   open,
@@ -152,11 +157,11 @@ export function NeuroConcierge({
   }, [open, onClose]);
   useEffect(() => {
     if (guest && messages.length)
-      sessionStorage.setItem(GUEST_CHAT_KEY, JSON.stringify(messages.map(({ imagePreview: _imagePreview, ...message }) => message)));
+      sessionStorage.setItem(GUEST_CHAT_KEY, JSON.stringify(messages.map(withoutImagePreview)));
   }, [guest, messages]);
   useEffect(() => {
     if (!guest && profile?.id && profile.memoryEnabled && messages.length)
-      localStorage.setItem(`neurocity_selma_chat_${profile.id}`, JSON.stringify(messages.slice(-40).map(({ imagePreview: _imagePreview, ...message }) => message)));
+      localStorage.setItem(`neurocity_selma_chat_${profile.id}`, JSON.stringify(messages.slice(-40).map(withoutImagePreview)));
   }, [guest, profile, messages]);
   useEffect(() => {
     if (
@@ -169,6 +174,8 @@ export function NeuroConcierge({
       return;
     submittedPromptKey.current = promptKey;
     void ask(initialPrompt);
+    // promptKey is the explicit trigger; including ask would resubmit after each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, profile, initialPrompt, promptKey]);
   if (!open) return null;
 
@@ -335,7 +342,7 @@ export function NeuroConcierge({
       >
         <header>
           <div>
-            <img src="/branding/neurocity-mark.png" alt="" />
+            <ManagedImage src="/branding/neurocity-mark.png" alt="" width={160} height={160} />
             <div>
               <span>SHOPPING ASSISTANT</span>
               <b id="selma-title">{profile?.companionName ?? "Selma"}</b>
@@ -409,7 +416,7 @@ export function NeuroConcierge({
                       </span>
                     )}
                     <div className="neuro-message-content">
-                      {message.imagePreview && <img src={message.imagePreview} alt="Customer shopping reference" />}
+                      {message.imagePreview && <ManagedImage src={message.imagePreview} alt="Customer shopping reference" />}
                       <p>{message.text}</p>
                       {message.error && <button className="neuro-retry" onClick={() => void ask(messages.filter((item) => item.role === "user").at(-1)?.text ?? "")}>Try again</button>}
                     </div>
@@ -418,7 +425,7 @@ export function NeuroConcierge({
                     <div className="neuro-results">
                       {message.matches.map((match) => (
                         <article key={match.id}>
-                          <img
+                          <ManagedImage
                             src={
                               match.imageUrl ?? "/branding/neurocity-mark.png"
                             }

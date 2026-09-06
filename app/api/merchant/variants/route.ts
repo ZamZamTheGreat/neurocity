@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { auditEvents, productVariants, products, storeBranches, variantInventory } from "../../../../db/schema";
 import { requirePilotMerchant } from "../auth";
@@ -6,7 +6,7 @@ import { requirePilotMerchant } from "../auth";
 export async function GET() {
   const access = await requirePilotMerchant(); if (!access) return Response.json({ error: "Merchant authentication required." }, { status: 401 });
   const db = getDb(); const rows = await db.select({ id: productVariants.id, productId: productVariants.productId, productName: products.name, sku: productVariants.sku, title: productVariants.title, size: productVariants.size, color: productVariants.color, price: productVariants.price, salePrice: productVariants.salePrice, status: productVariants.status, imageUrl: productVariants.imageUrl }).from(productVariants).innerJoin(products, eq(products.id, productVariants.productId)).where(eq(products.merchantId, access.merchantId)).orderBy(asc(products.id), asc(productVariants.id));
-  const stock = rows.length ? await db.select({ variantId: variantInventory.variantId, onHand: variantInventory.onHand, reserved: variantInventory.reserved, safetyStock: variantInventory.safetyStock, branchId: variantInventory.branchId, branchName: storeBranches.name }).from(variantInventory).innerJoin(storeBranches, eq(storeBranches.id, variantInventory.branchId)) : [];
+  const stock = rows.length ? await db.select({ variantId: variantInventory.variantId, onHand: variantInventory.onHand, reserved: variantInventory.reserved, safetyStock: variantInventory.safetyStock, branchId: variantInventory.branchId, branchName: storeBranches.name }).from(variantInventory).innerJoin(storeBranches, eq(storeBranches.id, variantInventory.branchId)).where(inArray(variantInventory.variantId, rows.map((row) => row.id))) : [];
   return Response.json({ variants: rows.map((row) => ({ ...row, stock: stock.filter((item) => item.variantId === row.id) })) });
 }
 

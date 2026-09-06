@@ -1,6 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { auditEvents, productVariants, products, storeBranches, variantInventory } from "../../../../db/schema";
+import { auditEvents, orderItems, productVariants, products, serviceBookings, storeBranches, variantInventory } from "../../../../db/schema";
+import { createPresignedR2Url } from "../../../../lib/r2";
 import { requirePilotMerchant } from "../auth";
 
 const statuses = new Set(["needs_confirmation", "draft", "published", "archived"]);
@@ -132,6 +133,21 @@ export async function DELETE(request: Request) {
   const db = getDb();
   const [current] = await db.select().from(products).where(and(eq(products.id, id), eq(products.merchantId, access.merchantId))).limit(1);
   if (!current) return Response.json({ error: "Product not found." }, { status: 404 });
+  const permanent = new URL(request.url).searchParams.get("permanent") === "true";
+  if (permanent) {
+    const [[ordered], [booked]] = await Promise.all([
+      db.select({ id: orderItems.id }).from(orderItems).where(eq(orderItems.productId, id)).limit(1),
+      db.select({ id: serviceBookings.id }).from(serviceBookings).where(eq(serviceBookings.productId, id)).limit(1),
+    ]);
+    if (ordered || booked) return Response.json({ error: `This ${current.itemType} has order or booking history and cannot be permanently deleted. Archive it instead.` }, { status: 409 });
+    await db.transaction(async (tx) => {
+      await tx.delete(products).where(and(eq(products.id, id), eq(products.merchantId, access.merchantId)));
+      await tx.insert(auditEvents).values({ actorRef: access.user.userId, action: "product.deleted", resourceType: "product", resourceId: String(id), metadata: JSON.stringify({ name: current.name, sku: current.sku }), createdAt: new Date() });
+    });
+    const mediaKeys = [...new Set([current.imageUrl, ...((current.imageUrls as string[] | null) ?? [])].filter((value): value is string => typeof value === "string" && value.startsWith("r2://")).map((value) => value.slice(5)))];
+    await Promise.allSettled(mediaKeys.map((key) => fetch(createPresignedR2Url("DELETE", key, 300), { method: "DELETE" })));
+    return Response.json({ deleted: true });
+  }
   const [product] = await db.update(products).set({ status: "archived", availability: "unavailable" }).where(and(eq(products.id, id), eq(products.merchantId, access.merchantId))).returning();
   await db.insert(auditEvents).values({ actorRef: access.user.userId, action: "product.archived", resourceType: "product", resourceId: String(id), metadata: JSON.stringify({ name: current.name, sku: current.sku }), createdAt: new Date() });
   return Response.json({ product });

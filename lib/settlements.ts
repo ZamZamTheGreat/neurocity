@@ -1,3 +1,4 @@
+import type { DatabaseTransaction } from "../db";
 import { isPreorderLine } from "./preorders";
 import { eq, inArray, sql } from "drizzle-orm";
 import { customerCartItems, merchantPaymentAllocations, orderItems, orders, variantInventory } from "../db/schema";
@@ -13,13 +14,13 @@ export function addBusinessDays(from: Date, days: number) {
   return result;
 }
 
-export async function makeCheckoutAllocationsPayable(tx: any, checkoutGroupId: number, paidAt = new Date()) {
+export async function makeCheckoutAllocationsPayable(tx: DatabaseTransaction, checkoutGroupId: number, paidAt = new Date()) {
   const dueAt = addBusinessDays(paidAt, 2);
   await tx.update(merchantPaymentAllocations).set({ settlementStatus: "scheduled", settlementDueAt: dueAt, updatedAt: paidAt }).where(eq(merchantPaymentAllocations.checkoutGroupId, checkoutGroupId));
   return dueAt;
 }
 
-export async function cancelCheckoutAllocationsAndReleaseStock(tx: any, checkoutGroupId: number, customerId: number, at = new Date()) {
+export async function cancelCheckoutAllocationsAndReleaseStock(tx: DatabaseTransaction, checkoutGroupId: number, customerId: number, at = new Date()) {
   const checkoutOrders = await tx.select({ id: orders.id }).from(orders).where(eq(orders.checkoutGroupId, checkoutGroupId));
   const ids = checkoutOrders.map((item: { id: number }) => item.id);
   const items = ids.length ? await tx.select().from(orderItems).where(inArray(orderItems.orderId, ids)) : [];

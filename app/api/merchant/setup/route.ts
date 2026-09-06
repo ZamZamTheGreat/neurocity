@@ -1,3 +1,4 @@
+import { merchantReadiness } from "../../../../lib/merchant-readiness";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { auditEvents, merchants, storeBranches, storeHours } from "../../../../db/schema";
@@ -12,20 +13,6 @@ type SetupPayload = {
   deliveryEnabled?: boolean; branchName?: string; branchAddress?: string; branchPhone?: string; hours?: Hours;
 };
 
-function readiness(merchant: typeof merchants.$inferSelect, branch?: typeof storeBranches.$inferSelect, hours: Hours = []) {
-  const checks = [
-    ["identity", Boolean(merchant.name && merchant.category && merchant.tagline && merchant.description)],
-    ["contact", Boolean(merchant.contactEmail && merchant.contactPhone)],
-    ["branding", Boolean(merchant.logoUrl && merchant.bannerUrl)],
-    ["location", Boolean(branch?.address)],
-    ["fulfilment", Boolean(branch?.pickupEnabled || branch?.deliveryEnabled)],
-    ["hours", hours.length === 7],
-    ["policies", Boolean((merchant.policies as Record<string, string> | null)?.returns)],
-  ] as const;
-  const complete = checks.filter(([, done]) => done).length;
-  return { percent: Math.round(complete / checks.length * 100), checks: checks.map(([key, done]) => ({ key, done })) };
-}
-
 export async function GET() {
   const access = await requirePilotMerchant();
   if (!access) return Response.json({ error: "Merchant access required." }, { status: 403 });
@@ -33,7 +20,7 @@ export async function GET() {
   const [merchant] = await db.select().from(merchants).where(eq(merchants.id, access.merchantId)).limit(1);
   const [branch] = await db.select().from(storeBranches).where(and(eq(storeBranches.merchantId, access.merchantId), eq(storeBranches.isPrimary, true))).limit(1);
   const hours = branch ? await db.select().from(storeHours).where(eq(storeHours.branchId, branch.id)) : [];
-  return Response.json({ merchant, branch: branch ?? null, hours, readiness: readiness(merchant, branch, hours), role: access.membership.role });
+  return Response.json({ merchant, branch: branch ?? null, hours, readiness: merchantReadiness(merchant, branch, hours), role: access.membership.role });
 }
 
 export async function PATCH(request: Request) {
@@ -65,5 +52,5 @@ export async function PATCH(request: Request) {
     await tx.insert(auditEvents).values({ actorRef: access.user.userId, action: publishing ? "merchant.storefront_published" : "merchant.setup_updated", resourceType: "merchant", resourceId: String(access.merchantId), metadata: { isPublic: values.isPublic, category, setupStep: values.setupStep, previousStatus: currentMerchant.status, status: values.status }, createdAt: new Date() });
     return { merchant, branch };
   });
-  return Response.json({ ...result, hours, readiness: readiness(result.merchant, result.branch, hours) });
+  return Response.json({ ...result, hours, readiness: merchantReadiness(result.merchant, result.branch, hours) });
 }

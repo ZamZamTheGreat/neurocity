@@ -2,6 +2,8 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { whatsappNumber } from "../../../lib/phone";
+import { ManagedImage } from "../../components/ManagedImage";
 
 type Variant = {
   id: number;
@@ -59,12 +61,6 @@ type StoreData = {
   products: Product[];
 };
 const label = (value: string) => value.replaceAll("_", " ");
-const whatsappNumber = (value: string) => {
-  let digits = value.replace(/\D/g, "");
-  if (digits.startsWith("00")) digits = digits.slice(2);
-  if (digits.startsWith("0")) digits = `264${digits.slice(1)}`;
-  return digits;
-};
 const whatsappHref = (phone: string, storeName: string) =>
   `https://wa.me/${whatsappNumber(phone)}?text=${encodeURIComponent(`Hi ${storeName}, I found your store on NeuroCity and would like some help.`)}`;
 const whatsappItemHref = (phone: string, storeName: string, product: Product) =>
@@ -190,7 +186,6 @@ export default function StorefrontPage() {
       {notice && (
         <button
           className="store-notice"
-          role="status"
           aria-live="polite"
           onClick={() => setNotice("")}
         >
@@ -205,7 +200,7 @@ export default function StorefrontPage() {
             {store.category}
           </p>
           {store.logoUrl && (
-            <img
+            <ManagedImage
               className="store-logo-v2"
               src={store.logoUrl}
               alt={`${store.name} logo`}
@@ -233,7 +228,7 @@ export default function StorefrontPage() {
         </div>
         <div className="store-hero-art">
           {store.bannerUrl ? (
-            <img src={store.bannerUrl} alt={`${store.name} collection`} />
+            <ManagedImage src={store.bannerUrl} alt={`${store.name} collection`} />
           ) : (
             <div>
               <span>{store.name.slice(0, 1)}</span>
@@ -534,7 +529,7 @@ function StoreProduct({
       <article className="store-product-v2 service-card" aria-labelledby={`product-${product.id}`}>
         <div className="store-product-image">
           {activeImage ? (
-            <img src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
+            <ManagedImage src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
           ) : (
             <span>Service image coming soon</span>
           )}
@@ -548,7 +543,7 @@ function StoreProduct({
             ♡
           </button>
         </div>
-        {gallery.length > 1 && <div className="store-product-thumbnails" aria-label={`${product.name} images`}>{gallery.map((image, index) => <button className={index === imageIndex ? "active" : ""} key={image} onClick={() => setImageIndex(index)} aria-label={`View image ${index + 1}`}><img src={image} alt="" /></button>)}</div>}
+        {gallery.length > 1 && <div className="store-product-thumbnails" aria-label={`${product.name} images`}>{gallery.map((image, index) => <button className={index === imageIndex ? "active" : ""} key={image} onClick={() => setImageIndex(index)} aria-label={`View image ${index + 1}`}><ManagedImage src={image} alt="" width={160} height={120} /></button>)}</div>}
         <div className="store-product-copy">
           <small>
             {product.brand ?? "Local service"}
@@ -591,7 +586,7 @@ function StoreProduct({
     <article className="store-product-v2" aria-labelledby={`product-${product.id}`}>
       <div className="store-product-image">
         {activeImage ? (
-          <img src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
+          <ManagedImage src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
         ) : (
           <span>Image coming soon</span>
         )}
@@ -605,7 +600,7 @@ function StoreProduct({
           ♡
         </button>
       </div>
-      {gallery.length > 1 && <div className="store-product-thumbnails" aria-label={`${product.name} images`}>{gallery.map((image, index) => <button className={index === imageIndex ? "active" : ""} key={image} onClick={() => setImageIndex(index)} aria-label={`View image ${index + 1}`}><img src={image} alt="" /></button>)}</div>}
+      {gallery.length > 1 && <div className="store-product-thumbnails" aria-label={`${product.name} images`}>{gallery.map((image, index) => <button className={index === imageIndex ? "active" : ""} key={image} onClick={() => setImageIndex(index)} aria-label={`View image ${index + 1}`}><ManagedImage src={image} alt="" width={160} height={120} /></button>)}</div>}
       <div className="store-product-copy">
         <small>
           {product.brand ?? "Local brand"}

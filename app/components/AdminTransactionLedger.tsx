@@ -40,6 +40,7 @@ const money = (value: number, currency = "NAD") => `${currency === "NAD" ? "N$" 
 const pretty = (value: string) => value.replaceAll("_", " ");
 
 export default function AdminTransactionLedger({ transactions, summary }: { transactions: AdminTransaction[]; summary: TransactionSummary }) {
+  const [now] = useState(() => Date.now());
   const [status, setStatus] = useState("all");
   const [method, setMethod] = useState("all");
   const [query, setQuery] = useState("");
@@ -63,7 +64,6 @@ export default function AdminTransactionLedger({ transactions, summary }: { tran
   }), [transactions, status, method, query]);
   const merchantBalances = useMemo(() => {
     const balances = new Map<string, { merchant: string; pendingPayment: number; scheduled: number; dueNow: number; settled: number; refundReview: number }>();
-    const now = Date.now();
     for (const allocation of transactions.flatMap((row) => row.allocations)) {
       const current = balances.get(allocation.merchantName) ?? { merchant: allocation.merchantName, pendingPayment: 0, scheduled: 0, dueNow: 0, settled: 0, refundReview: 0 };
       const amount = Number(allocation.netAmount);
@@ -75,7 +75,7 @@ export default function AdminTransactionLedger({ transactions, summary }: { tran
       balances.set(allocation.merchantName, current);
     }
     return [...balances.values()].sort((a, b) => b.dueNow + b.scheduled - a.dueNow - a.scheduled);
-  }, [transactions]);
+  }, [transactions, now]);
   return <div className="admin-transaction-ledger">
     <section className="transaction-analytics transaction-ledger-summary">
       <article><span>Records</span><strong>{summary.totalRecords}</strong></article>

@@ -6,15 +6,20 @@ The implementation-ready V1 product blueprint is in [docs/V1_PRODUCT_BLUEPRINT.m
 
 ## Current status
 
-- Product concept assessed
-- V1 pilot scope defined
-- Architecture and core data model proposed
-- Commerce, payment, fulfillment, and AI boundaries documented
-- Delivery backlog and acceptance criteria prepared
+The application includes customer and merchant accounts, public storefronts,
+digital malls, catalogue search, checkout, service bookings, merchant operations,
+administrator workflows, PayToday integration, and operational security controls.
 
-## Recommended next step
+## Local development
 
-Validate the blueprint with 5–10 pilot merchants and shortlisted payment providers, then create the UX wireframes and application skeleton.
+1. Copy `.env.example` to `.env.local` and configure PostgreSQL and any optional integrations.
+2. Install dependencies with `npm ci`.
+3. Apply migrations with `npm run db:migrate` from a trusted operator environment.
+4. Start the application with `npm run dev`.
+
+Pilot catalogue provisioning is an explicit administrator or operator action. Run
+`npm run db:provision-pilot` only when setting up the original LightWork pilot;
+normal storefront requests never seed or modify catalogue data.
 
 ## Automated tests
 

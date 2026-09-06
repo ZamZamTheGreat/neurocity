@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { ManagedImage } from "../components/ManagedImage";
 
 type CustomerConversation = {
   id: number;
@@ -498,7 +499,7 @@ export default function AccountPage() {
           <div className="account-grid">
             {data.wishlist.map((item) => (
               <article key={item.id}>
-                {item.imageUrl && <img src={item.imageUrl} alt="" />}
+                {item.imageUrl && <ManagedImage src={item.imageUrl} alt="" />}
                 <h3>{item.name}</h3>
                 <p>{item.storeName}</p>
                 <div>
@@ -522,7 +523,7 @@ export default function AccountPage() {
           <div className="account-grid">
             {data.savedStores.map((store) => (
               <article key={store.id}>
-                {store.logoUrl && <img src={store.logoUrl} alt="" />}
+                {store.logoUrl && <ManagedImage src={store.logoUrl} alt="" />}
                 <h3>{store.name}</h3>
                 <p>{store.tagline}</p>
                 <div>
@@ -887,8 +888,10 @@ function CheckoutBag({
               <h3>1. Fulfilment</h3>
               <div className="checkout-options">
                 {methods.includes("pickup") && (
-                  <label className={fulfillment === "pickup" ? "selected" : ""}>
+                  <label aria-label="Customer pickup" htmlFor="fulfillment-pickup" className={fulfillment === "pickup" ? "selected" : ""}>
                     <input
+                      id="fulfillment-pickup"
+                      name="fulfillment"
                       type="radio"
                       checked={fulfillment === "pickup"}
                       onChange={() => setFulfillment("pickup")}
@@ -901,11 +904,15 @@ function CheckoutBag({
                 )}
                 {methods.includes("merchant_delivery") && (
                   <label
+                    aria-label="Merchant delivery"
+                    htmlFor="fulfillment-delivery"
                     className={
                       fulfillment === "merchant_delivery" ? "selected" : ""
                     }
                   >
                     <input
+                      id="fulfillment-delivery"
+                      name="fulfillment"
                       type="radio"
                       checked={fulfillment === "merchant_delivery"}
                       onChange={() => setFulfillment("merchant_delivery")}
@@ -1046,7 +1053,7 @@ function CheckoutBag({
             </header>
             {items.map((item) => (
               <article className="account-product-row" key={item.id}>
-                {item.imageUrl && <img src={item.imageUrl} alt="" />}
+                {item.imageUrl && <ManagedImage src={item.imageUrl} alt="" />}
                 <div>
                   <strong>{item.productName}</strong>
                   {item.availability === "preorder" && <small>Preorder only · Merchant confirms fulfilment date</small>}
@@ -1144,10 +1151,8 @@ function OrderRow({ order }: { order: Account["orders"][number] }) {
     setUploading(false);
   }
   return (
-    <article
-      className={`account-order ${open ? "expanded" : ""}`}
-      onClick={() => setOpen(!open)}
-    >
+    <article className={`account-order ${open ? "expanded" : ""}`}>
+      <button type="button" className="account-order-summary" aria-expanded={open} onClick={() => setOpen(!open)}>
       <div>
         <span>{order.reference}</span>
         <strong>{order.storeName}</strong>
@@ -1163,10 +1168,10 @@ function OrderRow({ order }: { order: Account["orders"][number] }) {
         </small>
       </div>
       <strong>N${Number(order.total).toFixed(2)}</strong>
+      </button>
       {open && (
         <div
           className="customer-order-detail"
-          onClick={(event) => event.stopPropagation()}
         >
           <h4>Items</h4>
           {order.items.map((item) => (

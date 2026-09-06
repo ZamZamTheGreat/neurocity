@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ManagedImage } from "../components/ManagedImage";
 
 type Access = {
   authenticated: boolean;
@@ -80,7 +81,7 @@ export default function AccessPage() {
     <main className="account-access" id="main-content">
       <header>
         <a href="/" className="network-brand">
-          <img src="/branding/neurocity-malls-mark.png" alt="" />
+          <ManagedImage src="/branding/neurocity-malls-mark.png" alt="" width={180} height={180} />
           <span><b className="network-wordmark">Neuro<span>City</span></b><small>One identity · every workspace</small></span>
         </a>
         <nav className="account-centre-nav" aria-label="NeuroCity navigation">

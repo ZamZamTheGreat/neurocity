@@ -16,11 +16,16 @@ const workerContext = { waitUntil() {}, passThroughOnException() {} };
 async function api(path, { cookie, json, ...init } = {}) {
   const headers = new Headers(init.headers);
   if (cookie) headers.set("cookie", cookie);
-  if (json !== undefined) headers.set("content-type", "application/json");
+  const body = json === undefined ? undefined : JSON.stringify(json);
+  if (body !== undefined) {
+    headers.set("content-type", "application/json");
+    headers.set("content-length", String(new TextEncoder().encode(body).byteLength));
+  }
+  if (init.method && !["GET", "HEAD"].includes(init.method)) headers.set("origin", "http://localhost");
   return worker.fetch(new Request(`http://localhost${path}`, {
     ...init,
     headers,
-    ...(json !== undefined ? { body: JSON.stringify(json) } : {}),
+    ...(body !== undefined ? { body } : {}),
   }), workerEnv, workerContext);
 }
 
@@ -35,16 +40,16 @@ test.after(async () => pool.end());
 test("database-backed customer, merchant and checkout journey", async (t) => {
   let response = await api("/api/auth/register", {
     method: "POST",
-    json: { name: "Integration Shopper", email: " Shopper@Test.Example ", password: "Strong-Test-Password-2026" },
+    json: { name: "Integration Shopper", email: " Shopper@Test.Example ", password: "Strong-Test-Password-2026", privacyAccepted: true, termsAccepted: true },
   });
-  assert.equal(response.status, 201);
+  assert.equal(response.status, 201, await response.clone().text());
   const customerCookie = sessionCookie(response);
   assert.equal((await response.json()).user.email, "shopper@test.example");
 
   await t.test("rejects duplicate normalized email", async () => {
     const duplicate = await api("/api/auth/register", {
       method: "POST",
-      json: { name: "Duplicate", email: "SHOPPER@test.example", password: "Another-Strong-Password" },
+      json: { name: "Duplicate", email: "SHOPPER@test.example", password: "Another-Strong-Password", privacyAccepted: true, termsAccepted: true },
     });
     assert.equal(duplicate.status, 409);
     assert.deepEqual(await duplicate.json(), { error: "An account already exists for this email." });
@@ -77,7 +82,7 @@ test("database-backed customer, merchant and checkout journey", async (t) => {
   await t.test("quotes only the signed-in customer address", async () => {
     const quote = await api(`/api/orders/quote?merchantId=${merchantA.id}&addressId=${address.id}`, { cookie: customerCookie });
     assert.equal(quote.status, 200);
-    assert.deepEqual(await quote.json(), { supported: true, deliveryFee: 65, area: "Pioneerspark", estimatedTime: "2–4 hours" });
+    assert.deepEqual(await quote.json(), { supported: true, deliveryFee: 65, area: "Pioneerspark", estimatedTime: "2–4 hours", stores: [{ merchantId: merchantA.id, name: "Pilot Store A", fee: 65, estimatedTime: "2–4 hours" }] });
     const otherAddress = (await pool.query("insert into users (email, display_name) values ('other@test.example', 'Other') returning id")).rows[0];
     const foreign = (await pool.query("insert into customer_addresses (user_id, label, recipient_name, phone, address_line_1, suburb) values ($1, 'Other', 'Other', '0811111111', '2 Other Street', 'Pioneerspark') returning id", [otherAddress.id])).rows[0];
     const denied = await api(`/api/orders/quote?merchantId=${merchantA.id}&addressId=${foreign.id}`, { cookie: customerCookie });
@@ -129,28 +134,15 @@ test("database-backed customer, merchant and checkout journey", async (t) => {
   });
 
   await pool.query("insert into customer_cart_items (user_id, variant_id, quantity) values ($1, $2, 2)", [customer.id, variantA.id]);
-  let orderId;
-  await t.test("creates an EFT delivery order using server-side totals", async () => {
+  await t.test("keeps checkout closed until PayToday is configured", async () => {
     const placed = await api("/api/orders", {
       method: "POST", cookie: customerCookie,
       json: { merchantId: merchantA.id, addressId: address.id, fulfillmentMethod: "merchant_delivery", paymentMethod: "eft", customerNotes: "Gate 2", total: 1 },
     });
-    assert.equal(placed.status, 201, await placed.clone().text());
-    const body = await placed.json();
-    orderId = body.order.id;
-    assert.equal(body.order.total, 1065);
-    const persisted = (await pool.query("select subtotal, delivery_fee, total, customer_ref from orders where id = $1", [orderId])).rows[0];
-    assert.deepEqual({ subtotal: persisted.subtotal, deliveryFee: persisted.delivery_fee, total: persisted.total, customerRef: persisted.customer_ref }, { subtotal: 1000, deliveryFee: 65, total: 1065, customerRef: String(customer.id) });
-    assert.equal((await pool.query("select reserved from variant_inventory where variant_id = $1", [variantA.id])).rows[0].reserved, 2);
-    assert.equal((await pool.query("select count(*)::int as count from customer_cart_items where user_id = $1", [customer.id])).rows[0].count, 0);
-    assert.equal((await pool.query("select count(*)::int as count from audit_events where action = 'order.created' and resource_id = $1", [String(orderId)])).rows[0].count, 1);
-  });
-
-  await t.test("cancels an eligible order and releases reserved inventory", async () => {
-    const cancelled = await api("/api/orders", { method: "PATCH", cookie: customerCookie, json: { orderId, reason: "Integration cancellation" } });
-    assert.equal(cancelled.status, 200);
-    assert.equal((await pool.query("select status from orders where id = $1", [orderId])).rows[0].status, "cancelled");
+    assert.equal(placed.status, 409);
+    assert.match((await placed.json()).error, /PayToday is not active/);
     assert.equal((await pool.query("select reserved from variant_inventory where variant_id = $1", [variantA.id])).rows[0].reserved, 0);
-    assert.equal((await pool.query("select count(*)::int as count from audit_events where action = 'order.cancelled_by_customer' and resource_id = $1", [String(orderId)])).rows[0].count, 1);
+    assert.equal((await pool.query("select count(*)::int as count from customer_cart_items where user_id = $1", [customer.id])).rows[0].count, 1);
+    assert.equal((await pool.query("select count(*)::int as count from orders where customer_ref = $1", [String(customer.id)])).rows[0].count, 0);
   });
 });
