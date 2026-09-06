@@ -16,6 +16,8 @@ type Mall = {
   storeCount: number;
   domain: string | null;
 };
+type FeaturedProduct = { id: number; name: string; imageUrl: string | null; price: number | null; salePrice: number | null; badge: string | null };
+type FeaturedMerchant = { name: string; slug: string; pickupLocation: string | null };
 
 export default function NeuroCityNetworkHome({
   directoryOnly = false,
@@ -24,6 +26,7 @@ export default function NeuroCityNetworkHome({
 }) {
   const [malls, setMalls] = useState<Mall[]>([]);
   const [loading, setLoading] = useState(true);
+  const [featured, setFeatured] = useState<{ merchant: FeaturedMerchant; products: FeaturedProduct[] } | null>(null);
   const [selmaOpen, setSelmaOpen] = useState(false);
   const [selmaPrompt, setSelmaPrompt] = useState({ text: "", key: 0 });
   const askSelma = (text = "") => {
@@ -40,6 +43,10 @@ export default function NeuroCityNetworkHome({
       .catch(() => setMalls([]))
       .finally(() => setLoading(false));
   }, []);
+  useEffect(() => {
+    if (directoryOnly) return;
+    fetch("/api/catalogue").then(async (response) => { const data = await response.json(); if (response.ok) setFeatured({ merchant: data.merchant, products: (data.products ?? []).slice(0, 4) }); }).catch(() => undefined);
+  }, [directoryOnly]);
   return (
     <main id="main-content" className="network-home digital-malls-home">
       <header className="network-header">
@@ -107,6 +114,11 @@ export default function NeuroCityNetworkHome({
             <article><b>Shop by mall</b><span>Visit the online version of a participating physical mall.</span></article>
             <article><b>Selma</b><span>Your shopping assistant for finding and comparing local options.</span></article>
           </section>
+          {featured?.products.length ? <section className="network-featured-products">
+            <header><div><p className="eyebrow"><span /> AVAILABLE NOW</p><h2>Start with what&apos;s in the marketplace.</h2></div><a href="/marketplace">Browse everything →</a></header>
+            <div>{featured.products.map((product) => <article key={product.id}><a href={`/stores/${featured.merchant.slug}`}><div><img src={product.imageUrl ?? "/branding/neurocity-malls-mark.png"} alt={product.name} />{product.badge && <span>{product.badge}</span>}</div><small>{featured.merchant.name}</small><h3>{product.name}</h3><p>{product.salePrice != null ? `N$${product.salePrice.toFixed(2)}` : product.price != null ? `N$${product.price.toFixed(2)}` : "Price confirmed by store"}</p><b>View in store →</b></a></article>)}</div>
+            {featured.merchant.pickupLocation && <p className="featured-pickup">Collection available from {featured.merchant.pickupLocation}.</p>}
+          </section> : null}
           <section className="network-paths">
             <article>
               <span>01</span>
@@ -120,10 +132,10 @@ export default function NeuroCityNetworkHome({
             <article>
               <span>02</span>
               <div>
-                <small>SHOP BY PLACE</small>
-                <h2>Visit a mall online</h2>
-                <ul className="info-list"><li>Browse participating shopping centres and their stores.</li></ul>
-                <a href="/malls">Shop by mall →</a>
+                <small>{malls.length ? "SHOP BY PLACE" : "LOCAL STORES"}</small>
+                <h2>{malls.length ? "Visit a mall online" : "Meet approved stores"}</h2>
+                <ul className="info-list"><li>{malls.length ? "Browse participating shopping centres and their stores." : "Visit verified Namibian storefronts and their live catalogues."}</li></ul>
+                <a href={malls.length ? "/malls" : "/marketplace#stores"}>{malls.length ? "Shop by mall" : "Browse stores"} →</a>
               </div>
             </article>
             <article>
@@ -140,7 +152,7 @@ export default function NeuroCityNetworkHome({
           </section>
         </>
       )}
-      <section
+      {(directoryOnly || loading || malls.length > 0) && <section
         className={`network-malls ${directoryOnly ? "directory-page" : ""}`}
       >
         <header>
@@ -226,7 +238,7 @@ export default function NeuroCityNetworkHome({
             View all malls →
           </a>
         )}
-      </section>
+      </section>}
       {!directoryOnly && (
         <section className="network-james">
           <div>

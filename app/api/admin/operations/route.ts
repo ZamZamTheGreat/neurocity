@@ -1,7 +1,7 @@
-import { desc, gte } from "drizzle-orm";
+import { desc, eq, gte, inArray } from "drizzle-orm";
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import { getDb } from "../../../../db";
-import { auditEvents } from "../../../../db/schema";
+import { auditEventReviews, auditEvents } from "../../../../db/schema";
 
 type AuditMetadata = Record<string, unknown> | string | null;
 
@@ -38,11 +38,13 @@ export async function GET() {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const rows = await getDb().select({ id: auditEvents.id, action: auditEvents.action, resourceType: auditEvents.resourceType, resourceId: auditEvents.resourceId, metadata: auditEvents.metadata, createdAt: auditEvents.createdAt })
     .from(auditEvents).where(gte(auditEvents.createdAt, since)).orderBy(desc(auditEvents.createdAt)).limit(150);
+  const reviewRows = rows.length ? await getDb().select().from(auditEventReviews).where(inArray(auditEventReviews.auditEventId, rows.map((row) => row.id))) : [];
   const events = rows.map((event) => {
     const details = metadata(event.metadata as AuditMetadata);
-    return { ...event, metadata: details, area: area(event.action), severity: severity(event.action, details) };
+    const review = reviewRows.find((row) => row.auditEventId === event.id);
+    return { ...event, metadata: details, area: area(event.action), severity: severity(event.action, details), reviewStatus: review?.status ?? "open", reviewNote: review?.note ?? null };
   });
-  const attention = events.filter((event) => event.severity !== "normal");
+  const attention = events.filter((event) => event.severity !== "normal" && event.reviewStatus !== "resolved");
   const whatsapp = events.filter((event) => event.area === "WhatsApp");
 
   return Response.json({
@@ -66,4 +68,18 @@ export async function GET() {
     attention: attention.slice(0, 30),
     recent: events.slice(0, 40),
   }, { headers: { "cache-control": "no-store" } });
+}
+
+export async function PATCH(request: Request) {
+  const user = await getChatGPTUser();
+  if (user?.platformRole !== "administrator") return Response.json({ error: "Administrator access required." }, { status: 403 });
+  const payload = await request.json() as { eventId?: number; status?: string; note?: string };
+  const note = payload.note?.trim().slice(0, 1000) || null;
+  if (!Number.isInteger(payload.eventId) || !["acknowledged", "resolved"].includes(payload.status ?? "") || (payload.status === "resolved" && !note)) return Response.json({ error: "Choose an event and add a resolution note before closing it." }, { status: 400 });
+  const db = getDb();
+  const [event] = await db.select({ id: auditEvents.id }).from(auditEvents).where(eq(auditEvents.id, payload.eventId!)).limit(1);
+  if (!event) return Response.json({ error: "Event not found." }, { status: 404 });
+  const [review] = await db.insert(auditEventReviews).values({ auditEventId: event.id, status: payload.status!, note, reviewedBy: user.userId, reviewedAt: new Date() }).onConflictDoUpdate({ target: auditEventReviews.auditEventId, set: { status: payload.status!, note, reviewedBy: user.userId, reviewedAt: new Date() } }).returning();
+  await db.insert(auditEvents).values({ actorRef: user.userId, action: `operations.event_${payload.status}`, resourceType: "audit_event", resourceId: String(event.id), metadata: { note } });
+  return Response.json({ review });
 }

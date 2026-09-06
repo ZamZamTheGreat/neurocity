@@ -31,6 +31,15 @@ export const sessions = pgTable("sessions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("idx_sessions_token_hash").on(table.tokenHash), uniqueIndex("idx_sessions_core_actor_session").on(table.coreActorSessionId), index("idx_sessions_user").on(table.userId), index("idx_sessions_expires_at").on(table.expiresAt)]);
 
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [uniqueIndex("idx_password_reset_token_hash").on(table.tokenHash), index("idx_password_reset_user").on(table.userId), index("idx_password_reset_expiry").on(table.expiresAt)]);
+
 // Compatibility-first NeuroEdge Core identity projection. NeuroCity remains the
 // credential and session authority until a later, explicitly approved cutover.
 export const corePeople = pgTable("core_people", {
@@ -284,3 +293,4 @@ export const serviceBookings = pgTable("service_bookings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [index("idx_service_bookings_merchant_status").on(table.merchantId, table.status), index("idx_service_bookings_customer").on(table.customerId, table.createdAt), index("idx_service_bookings_schedule").on(table.merchantId, table.scheduledStart)]);
 export const auditEvents = pgTable("audit_events", { id: serial("id").primaryKey(), actorRef: text("actor_ref").notNull(), action: varchar("action", { length: 120 }).notNull(), resourceType: varchar("resource_type", { length: 80 }).notNull(), resourceId: text("resource_id").notNull(), metadata: jsonb("metadata").notNull().default({}), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [index("idx_audit_resource").on(table.resourceType, table.resourceId)]);
+export const auditEventReviews = pgTable("audit_event_reviews", { id: serial("id").primaryKey(), auditEventId: integer("audit_event_id").notNull().references(() => auditEvents.id, { onDelete: "cascade" }), status: varchar("status", { length: 24 }).notNull().default("acknowledged"), note: text("note"), reviewedBy: text("reviewed_by").notNull(), reviewedAt: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [uniqueIndex("idx_audit_event_review_event").on(table.auditEventId), index("idx_audit_event_review_status").on(table.status)]);

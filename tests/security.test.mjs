@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:net";
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import test from "node:test";
 import sharp from "sharp";
 import { PDFDocument, PDFName, PDFString } from "pdf-lib";
@@ -278,4 +278,32 @@ test("application status is private to the signed-in applicant", async () => {
   await call(security.login.POST, { email: "owner@security.example", password: "security-test-password" }, ownerJar);
   const mismatched = await security.cookieContext.run(ownerJar, () => security.applications.GET(new Request("http://localhost/api/applications?reference=NCA-2026-AAAAAAAA&email=victim%40security.example")));
   assert.equal(mismatched.status, 404);
+});
+
+test("password reset tokens are single-use and revoke existing sessions", async () => {
+  const user = (await security.pg.query("select id from users where email = $1", [process.env.ADMIN_EMAIL])).rows[0];
+  const token = "security-reset-token-that-is-long-enough-for-validation";
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  await security.pg.query(
+    "insert into password_reset_tokens (user_id, token_hash, expires_at) values ($1, $2, now() + interval '30 minutes')",
+    [user.id, tokenHash],
+  );
+  await security.pg.query(
+    "insert into sessions (user_id, token_hash, expires_at) values ($1, $2, now() + interval '1 hour')",
+    [user.id, createHash("sha256").update(crypto.randomUUID()).digest("hex")],
+  );
+
+  const completed = await call(security.passwordResetComplete.POST, {
+    token,
+    password: "replacement-password-2",
+  }, new Map());
+  assert.equal(completed.status, 200);
+  assert.ok((await security.pg.query("select used_at from password_reset_tokens where token_hash = $1", [tokenHash])).rows[0].used_at);
+  assert.equal(Number((await security.pg.query("select count(*) from sessions where user_id = $1", [user.id])).rows[0].count), 0);
+
+  const replay = await call(security.passwordResetComplete.POST, {
+    token,
+    password: "another-password-3",
+  }, new Map());
+  assert.equal(replay.status, 400);
 });

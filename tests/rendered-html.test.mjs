@@ -78,6 +78,7 @@ test("renders the public onboarding routes", async (t) => {
     ["/join", /What would you like to create/],
     ["/apply", /Apply as a merchant or service provider/],
     ["/application-status", /Track your application/],
+    ["/reset-password", /Reset your password/],
     ["/malls", /Shop by mall/],
   ];
   for (const [path, marker] of routes) {
@@ -335,6 +336,28 @@ test("gives administrators a live operations overview", async () => {
   assert.match(route, /auditEvents/);
   assert.match(route, /WHATSAPP_VERIFY_TOKEN/);
   assert.match(route, /Administrator access required/);
+  assert.match(route, /auditEventReviews/);
+  assert.match(route, /operations\.event_/);
+});
+
+test("provides one-use password recovery without account disclosure", async () => {
+  const requestRoute = await readFile(new URL("../app/api/auth/password-reset/request/route.ts", import.meta.url), "utf8");
+  const completeRoute = await readFile(new URL("../app/api/auth/password-reset/complete/route.ts", import.meta.url), "utf8");
+  const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
+  assert.match(requestRoute, /If an account exists for that email/);
+  assert.match(requestRoute, /randomBytes\(32\)/);
+  assert.match(requestRoute, /30 \* 60 \* 1000/);
+  assert.match(completeRoute, /isNull\(passwordResetTokens\.usedAt\)/);
+  assert.match(completeRoute, /delete\(sessions\)/);
+  assert.match(completeRoute, /hash\(password, 12\)/);
+  assert.match(schema, /idx_password_reset_token_hash/);
+});
+
+test("brings live catalogue products forward on the network homepage", async () => {
+  const home = await readFile(new URL("../app/components/NeuroCityNetworkHome.tsx", import.meta.url), "utf8");
+  assert.match(home, /\/api\/catalogue/);
+  assert.match(home, /AVAILABLE NOW/);
+  assert.match(home, /directoryOnly \|\| loading \|\| malls\.length > 0/);
 });
 
 test("preserves tenant and ownership predicates in sensitive routes", async () => {

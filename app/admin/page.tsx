@@ -470,7 +470,7 @@ export default function AdminPage() {
           )}
         </div>
         {view === "operations" ? (
-          <AdminOperationsOverview data={operations} onNavigate={switchView} />
+          <AdminOperationsOverview data={operations} onNavigate={switchView} onRefresh={load} notify={setMessage} />
         ) : view === "applications" ? (
           <ApplicationList items={filteredApplications} review={review} deletingId={deletingId} />
         ) : view === "merchants" ? (

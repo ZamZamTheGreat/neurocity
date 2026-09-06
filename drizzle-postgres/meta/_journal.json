@@ -169,6 +169,13 @@
       "when": 1788610000000,
       "tag": "0023_product_image_gallery",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788620000000,
+      "tag": "0024_account_recovery_operations",
+      "breakpoints": true
     }
   ]
 }

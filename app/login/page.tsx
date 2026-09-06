@@ -224,7 +224,7 @@ export default function LoginPage() {
               />
             </label>
             <label>
-              Password
+              <span className="password-label-row"><b>Password</b>{mode === "login" && <Link href="/reset-password">Forgot password?</Link>}</span>
               <span>
                 {mode === "register"
                   ? "Create a secure password"

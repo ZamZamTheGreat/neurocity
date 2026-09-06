@@ -10,6 +10,7 @@ export * from "../lib/meta-webhook";
 export * as registration from "../app/api/auth/register/route";
 export * as login from "../app/api/auth/login/route";
 export * as logout from "../app/api/auth/logout/route";
+export * as passwordResetComplete from "../app/api/auth/password-reset/complete/route";
 export * as auth from "../app/chatgpt-auth";
 export * as uploads from "../app/api/uploads/route";
 export * as merchantProducts from "../app/api/merchant/products/route";
