@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { sizeOptionsForCategory } from "../../lib/product-size-options";
 
 export type NewProduct = {
   itemType: "product" | "service";
@@ -19,7 +20,6 @@ export type NewProduct = {
   colours: string[];
   sizes: string[];
 };
-const SIZE_OPTIONS = ["One size", "XXS", "XS", "S", "M", "L", "XL", "XXL", "2XL", "3XL", "4XL"];
 const empty = (): NewProduct => ({
   itemType: "product",
   name: "",
@@ -58,6 +58,7 @@ export default function ProductCreatePanel({
   }, [open]);
   if (!open) return null;
   const service = product.itemType === "service";
+  const sizeOptions = sizeOptionsForCategory(product.category);
   const update = (values: Partial<NewProduct>) =>
     setProduct((current) => ({ ...current, ...values }));
   const priceValid =
@@ -305,7 +306,7 @@ export default function ProductCreatePanel({
                 <legend>Available sizes</legend>
                 <small>Select every size customers can choose. Leave empty for products without sizes.</small>
                 <div>
-                  {SIZE_OPTIONS.map((size) => (
+                  {sizeOptions.map((size) => (
                     <label key={size} className={product.sizes.includes(size) ? "selected" : ""}>
                       <input type="checkbox" checked={product.sizes.includes(size)} onChange={() => toggleSize(size)} />
                       <span>{size}</span>

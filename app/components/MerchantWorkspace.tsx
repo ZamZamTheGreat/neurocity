@@ -536,48 +536,22 @@ export default function MerchantWorkspace({
   async function createVariant(
     product: Product,
     values?: {
-      sku: string;
-      title: string;
-      size: string;
+      sizes: string[];
       color: string;
       price: number;
       salePrice: number | null;
       onHand: number;
     },
   ) {
-    let payload = values;
-    if (!payload) {
-      const size =
-        window.prompt(
-          `Size for ${product.name} (leave blank if not applicable)`,
-        ) ?? "";
-      const color =
-        window.prompt("Colour (leave blank if not applicable)") ?? "";
-      const sku = window.prompt("Unique SKU")?.trim();
-      if (!sku) return;
-      const enteredPrice = window.prompt(
-        "Regular price",
-        String(product.price ?? 0),
-      );
-      if (enteredPrice === null) return;
-      payload = {
-        sku,
-        title: [size, color].filter(Boolean).join(" / ") || "Standard",
-        size,
-        color,
-        price: Number(enteredPrice),
-        salePrice: null,
-        onHand: 0,
-      };
-    }
+    if (!values) return;
     const response = await fetch("/api/merchant/variants", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ productId: product.id, ...payload }),
+      body: JSON.stringify({ productId: product.id, ...values }),
     });
     const data = await response.json();
     if (!response.ok) return setMessage(data.error);
-    setMessage(`${payload.sku.toUpperCase()} created and ready to manage.`);
+    setMessage(`${data.variants.length} size option${data.variants.length === 1 ? "" : "s"} created for ${values.color}. SKU codes were generated automatically.`);
     await load(["variants", "inventory"], true);
   }
   async function replyToConversation(conversationId: number, message: string) {
@@ -1433,9 +1407,7 @@ function CatalogueManager({
   createVariant: (
     product: Product,
     values: {
-      sku: string;
-      title: string;
-      size: string;
+      sizes: string[];
       color: string;
       price: number;
       salePrice: number | null;

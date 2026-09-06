@@ -578,14 +578,25 @@ test("supports product and service catalogue items", async () => {
 
 test("generates product variants from colours and selected sizes", async () => {
   const form = await readFile(new URL("../app/components/ProductCreatePanel.tsx", import.meta.url), "utf8");
+  const optionPanel = await readFile(new URL("../app/components/ProductOptionsPanel.tsx", import.meta.url), "utf8");
   const route = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");
+  const variantRoute = await readFile(new URL("../app/api/merchant/variants/route.ts", import.meta.url), "utf8");
+  const sizeOptions = await readFile(new URL("../lib/product-size-options.ts", import.meta.url), "utf8");
   assert.match(form, /Separate colours with commas/);
-  assert.match(form, /SIZE_OPTIONS\.map/);
+  assert.match(form, /sizeOptionsForCategory/);
   assert.match(form, /variantCount/);
+  assert.match(optionPanel, /Add colourway and sizes/);
+  assert.match(optionPanel, /size-multiselect/);
+  assert.match(optionPanel, /Custom size/);
+  assert.match(sizeOptions, /shoeSizes/);
+  assert.match(sizeOptions, /kidsSizes/);
   assert.match(route, /colourOptions\.flatMap/);
   assert.match(route, /inventoryMode: "generated"/);
   assert.match(route, /combinations > 100/);
   assert.match(route, /db\.transaction/);
+  assert.match(variantRoute, /generated_size_range/);
+  assert.match(variantRoute, /SKU codes were generated automatically|skuPart\(color\)/);
+  assert.match(variantRoute, /already has these sizes/);
 });
 
 test("sends service booking lifecycle notifications", async () => {

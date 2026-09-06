@@ -12,11 +12,27 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const access = await requirePilotMerchant(["owner", "manager"]); if (!access) return Response.json({ error: "Owner or manager access required." }, { status: 403 });
-  const payload = await request.json() as { productId?: number; sku?: string; title?: string; size?: string; color?: string; price?: number; salePrice?: number | null; onHand?: number };
-  if (!Number.isInteger(payload.productId) || !payload.sku?.trim() || !payload.title?.trim() || !Number.isFinite(payload.price) || payload.price! < 0) return Response.json({ error: "Product, SKU, title and a valid price are required." }, { status: 400 });
+  const payload = await request.json() as { productId?: number; sizes?: unknown; color?: string; price?: number; salePrice?: number | null; onHand?: number };
+  const sizes = Array.isArray(payload.sizes) ? [...new Set(payload.sizes.filter((value): value is string => typeof value === "string").map((value) => value.trim()).filter(Boolean))].slice(0, 30) : [];
+  const color = payload.color?.trim();
+  if (!Number.isInteger(payload.productId) || !color || sizes.length < 1 || !Number.isFinite(payload.price) || payload.price! < 0) return Response.json({ error: "Product, colourway, at least one size and a valid price are required." }, { status: 400 });
   if (payload.salePrice != null && (!Number.isFinite(payload.salePrice) || payload.salePrice < 0 || payload.salePrice >= payload.price!)) return Response.json({ error: "Sale price must be lower than the regular price." }, { status: 400 });
   const db = getDb(); const [product] = await db.select().from(products).where(and(eq(products.id, payload.productId!), eq(products.merchantId, access.merchantId))).limit(1); if (!product) return Response.json({ error: "Product not found." }, { status: 404 });
-  try { const [variant] = await db.insert(productVariants).values({ productId: product.id, sku: payload.sku.trim().toUpperCase(), title: payload.title.trim(), size: payload.size?.trim() || null, color: payload.color?.trim() || null, price: payload.price!, salePrice: payload.salePrice ?? null, status: "active", imageUrl: product.imageUrl }).returning(); const [branch] = await db.select().from(storeBranches).where(eq(storeBranches.merchantId, access.merchantId)).limit(1); if (branch) await db.insert(variantInventory).values({ variantId: variant.id, branchId: branch.id, onHand: Math.max(0, Math.floor(payload.onHand ?? 0)), reserved: 0, safetyStock: 0 }); await db.insert(auditEvents).values({ actorRef: access.user.userId, action: "product_variant.created", resourceType: "product_variant", resourceId: String(variant.id), metadata: { productId: product.id, sku: variant.sku } }); return Response.json({ variant }, { status: 201 }); } catch { return Response.json({ error: "SKU already exists or the variant could not be created." }, { status: 409 }); }
+  const skuPart = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 18) || "STD";
+  const existing = await db.select({ size: productVariants.size, color: productVariants.color }).from(productVariants).where(eq(productVariants.productId, product.id));
+  const duplicates = sizes.filter((size) => existing.some((row) => row.size?.toLocaleLowerCase() === size.toLocaleLowerCase() && row.color?.toLocaleLowerCase() === color.toLocaleLowerCase()));
+  if (duplicates.length) return Response.json({ error: `${color} already has these sizes: ${duplicates.join(", ")}.` }, { status: 409 });
+  try {
+    const variants = await db.transaction(async (tx) => {
+      const rows = sizes.map((size, index) => ({ productId: product.id, sku: `M${access.merchantId}-P${product.id}-${skuPart(color)}-${skuPart(size)}-${index + 1}`, title: `${size} / ${color}`, size, color, attributes: { inventoryMode: "generated_size_range" }, price: payload.price!, salePrice: payload.salePrice ?? null, status: "active", imageUrl: product.imageUrl }));
+      const created = await tx.insert(productVariants).values(rows).returning();
+      const [branch] = await tx.select().from(storeBranches).where(eq(storeBranches.merchantId, access.merchantId)).limit(1);
+      if (branch) await tx.insert(variantInventory).values(created.map((variant) => ({ variantId: variant.id, branchId: branch.id, onHand: Math.max(0, Math.floor(payload.onHand ?? 0)), reserved: 0, safetyStock: 0 })));
+      await tx.insert(auditEvents).values(created.map((variant) => ({ actorRef: access.user.userId, action: "product_variant.created", resourceType: "product_variant", resourceId: String(variant.id), metadata: { productId: product.id, sku: variant.sku, generated: true } })));
+      return created;
+    });
+    return Response.json({ variants }, { status: 201 });
+  } catch { return Response.json({ error: "The size options could not be created. Refresh and try again." }, { status: 409 }); }
 }
 
 export async function PATCH(request: Request) {

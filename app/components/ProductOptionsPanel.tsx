@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ImageCropper from "./ImageCropper";
+import { sizeOptionsForCategory } from "../../lib/product-size-options";
 
 type Product = {
   id: number;
@@ -9,6 +10,7 @@ type Product = {
   name: string;
   sku: string;
   price: number | null;
+  category?: string | null;
 };
 type Variant = {
   id: number;
@@ -31,9 +33,7 @@ type Variant = {
   }[];
 };
 type NewVariant = {
-  sku: string;
-  title: string;
-  size: string;
+  sizes: string[];
   color: string;
   price: number;
   salePrice: number | null;
@@ -245,9 +245,7 @@ function NewVariantForm({
   onCreate: (values: NewVariant) => Promise<void>;
 }) {
   const initial = () => ({
-    sku: "",
-    title: "",
-    size: "",
+    sizes: [] as string[],
     color: "",
     price: product.price ?? 0,
     salePrice: null as number | null,
@@ -255,60 +253,45 @@ function NewVariantForm({
   });
   const [values, setValues] = useState(initial);
   const [open, setOpen] = useState(false);
+  const [customSize, setCustomSize] = useState("");
+  const sizeOptions = sizeOptionsForCategory(product.category);
   const update = (next: Partial<NewVariant>) =>
     setValues((current) => ({ ...current, ...next }));
   async function submit() {
-    const title =
-      values.title.trim() ||
-      [values.size, values.color].filter(Boolean).join(" / ") ||
-      "Standard";
-    await onCreate({ ...values, title });
+    await onCreate(values);
     setValues(initial());
+    setCustomSize("");
     setOpen(false);
   }
   if (!open)
     return (
       <button className="add-option-button" onClick={() => setOpen(true)}>
-        + Add size / colour option
+        + Add colourway and sizes
       </button>
     );
   return (
     <div className="new-variant-form">
       <div>
         <label>
-          Size
-          <input
-            value={values.size}
-            placeholder="e.g. Medium"
-            onChange={(event) => update({ size: event.target.value })}
-          />
-        </label>
-        <label>
-          Colour
+          Colourway
           <input
             value={values.color}
-            placeholder="e.g. Black"
+            placeholder="e.g. Maroon"
             onChange={(event) => update({ color: event.target.value })}
           />
         </label>
-        <label>
-          Option title
-          <input
-            value={values.title}
-            placeholder="Generated automatically"
-            onChange={(event) => update({ title: event.target.value })}
-          />
-        </label>
-        <label>
-          Unique SKU
-          <input
-            value={values.sku}
-            placeholder={`${product.sku}-M-BLK`}
-            onChange={(event) =>
-              update({ sku: event.target.value.toUpperCase() })
-            }
-          />
-        </label>
+        <fieldset className="size-multiselect">
+          <legend>Available sizes</legend>
+          <details>
+            <summary>{values.sizes.length ? `${values.sizes.length} size${values.sizes.length === 1 ? "" : "s"} selected` : "Choose sizes"}</summary>
+            <div>
+              {sizeOptions.map((size) => <label key={size}><input type="checkbox" checked={values.sizes.includes(size)} onChange={() => update({ sizes: values.sizes.includes(size) ? values.sizes.filter((item) => item !== size) : [...values.sizes, size] })} />{size}</label>)}
+              {values.sizes.filter((size) => !sizeOptions.includes(size)).map((size) => <label key={size}><input type="checkbox" checked onChange={() => update({ sizes: values.sizes.filter((item) => item !== size) })} />{size}</label>)}
+              <div className="custom-size"><input value={customSize} placeholder="Custom size" onChange={(event) => setCustomSize(event.target.value)} /><button type="button" onClick={() => { const size = customSize.trim(); if (size && !values.sizes.includes(size)) update({ sizes: [...values.sizes, size] }); setCustomSize(""); }}>Add</button></div>
+            </div>
+          </details>
+          <small>{product.category === "Shoes & Accessories" ? "European shoe sizes" : product.category === "Fashion & Clothing" ? "Clothing sizes" : `Suggested for ${product.category ?? "this category"}`}. You can add a custom size.</small>
+        </fieldset>
         <label>
           Regular price (N$)
           <input
@@ -335,7 +318,7 @@ function NewVariantForm({
           />
         </label>
         <label>
-          Stock on hand
+          Starting stock per size
           <input
             type="number"
             min="0"
@@ -344,15 +327,16 @@ function NewVariantForm({
           />
         </label>
       </div>
+      <p className="generated-sku-note">NeuroCity will create one inventory option and a unique SKU for every selected size.</p>
       <footer>
         <button className="secondary" onClick={() => setOpen(false)}>
           Cancel
         </button>
         <button
-          disabled={!values.sku.trim() || !Number.isFinite(values.price)}
+          disabled={!values.color.trim() || values.sizes.length === 0 || !Number.isFinite(values.price)}
           onClick={submit}
         >
-          Create active option
+          Create {values.sizes.length || ""} size option{values.sizes.length === 1 ? "" : "s"}
         </button>
       </footer>
     </div>
