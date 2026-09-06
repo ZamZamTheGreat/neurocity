@@ -228,10 +228,10 @@ function parseCatalogueCsv(source: string) {
   const headers = (records.shift() ?? []).map((value) => value.trim().toLowerCase());
   const required = ["name", "sku", "category", "description", "price"];
   if (!required.every((header) => headers.includes(header))) throw new Error("Missing required columns");
-  const apiFields: Record<string, string> = { sale_price: "salePrice", variant_sku: "variantSku", variant_title: "variantTitle", variant_price: "variantPrice", variant_sale_price: "variantSalePrice" };
+  const apiFields: Record<string, string> = { sale_price: "salePrice", variant_sku: "variantSku", variant_title: "variantTitle", variant_price: "variantPrice", variant_sale_price: "variantSalePrice", stock_by_size: "stockBySize" };
   return records.map((values) => Object.fromEntries(headers.map((header, index) => [apiFields[header] ?? header, values[index]?.trim() ?? ""])));
 }
-const catalogueCsvHeaders = ["name", "sku", "category", "description", "price", "sale_price", "brand", "collection", "variant_sku", "variant_title", "size", "sizes", "color", "variant_price", "variant_sale_price", "stock"] as const;
+const catalogueCsvHeaders = ["name", "sku", "category", "description", "price", "sale_price", "brand", "collection", "variant_sku", "variant_title", "size", "sizes", "color", "variant_price", "variant_sale_price", "stock", "stock_by_size"] as const;
 const csvCell = (value: unknown) => {
   const text = value == null ? "" : String(value);
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
@@ -1422,14 +1422,18 @@ function CatalogueManager({
   const [importBusy, setImportBusy] = useState(false);
   const downloadTemplate = () => {
     downloadCatalogueCsv("neurocity-catalogue-template.csv", [
-      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "Black", variant_price: "299.00", variant_sale_price: "249.00", stock: 12 },
-      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "White", variant_price: "299.00", variant_sale_price: "249.00", stock: 8 },
+      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "Black", variant_price: "299.00", variant_sale_price: "249.00", stock: "", stock_by_size: "S:12|M:10|L:8|XL:5" },
+      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "White", variant_price: "299.00", variant_sale_price: "249.00", stock: "", stock_by_size: "S:8|M:8|L:6|XL:4" },
     ]);
   };
   const exportCatalogue = () => {
     const rows = products.filter((product) => product.itemType === "product").flatMap((product) => {
       const options = variants.filter((variant) => variant.productId === product.id);
-      return (options.length ? options : [null]).map((variant) => ({
+      const colourways = options.length ? [...new Map(options.map((variant) => [variant.color?.trim() || "Standard", options.filter((row) => (row.color?.trim() || "Standard") === (variant.color?.trim() || "Standard"))])).values()] : [[]];
+      return colourways.map((colourway) => {
+        const variant = colourway[0];
+        const sizes = colourway.map((item) => item.size).filter(Boolean) as string[];
+        return {
         name: product.name,
         sku: product.sku,
         category: product.category ?? "",
@@ -1438,19 +1442,20 @@ function CatalogueManager({
         sale_price: product.salePrice?.toFixed(2) ?? "",
         brand: product.brand ?? "",
         collection: product.collection ?? "",
-        variant_sku: variant?.sku ?? "",
-        variant_title: variant?.title ?? "Standard",
-        size: variant?.size ?? "",
-        sizes: "",
+        variant_sku: "",
+        variant_title: "",
+        size: "",
+        sizes: sizes.join("|"),
         color: variant?.color ?? "",
         variant_price: variant?.price.toFixed(2) ?? product.price?.toFixed(2) ?? "",
         variant_sale_price: variant?.salePrice?.toFixed(2) ?? product.salePrice?.toFixed(2) ?? "",
-        stock: variant?.stock.reduce((sum, row) => sum + row.onHand, 0) ?? 0,
-      }));
+        stock: "",
+        stock_by_size: colourway.map((item) => `${item.size ?? "One size"}:${item.stock.reduce((sum, row) => sum + row.onHand, 0)}`).join("|"),
+      }; });
     });
     if (!rows.length) return setMessage("Add a product before exporting your catalogue.");
     downloadCatalogueCsv(`neurocity-catalogue-${new Date().toISOString().slice(0, 10)}.csv`, rows);
-    setMessage(`${products.filter((product) => product.itemType === "product").length} products and ${rows.length} variant rows exported. Stock is totalled across branches for each variant.`);
+    setMessage(`${products.filter((product) => product.itemType === "product").length} products exported in ${rows.length} colourway rows. Stock is totalled across branches for each size.`);
   };
   async function importCatalogue(file?: File) {
     if (!file) return;
@@ -1548,19 +1553,22 @@ function CatalogueManager({
     await reload();
     return true;
   }
-  async function uploadVariantImage(variant: Variant, file?: File) {
+  async function uploadVariantImage(colourway: Variant[], file?: File) {
     if (!file) return false;
-    setMessage(`Uploading image for ${variant.title}...`);
+    const variant = colourway[0];
+    setMessage(`Uploading image for ${variant.color ?? variant.title}...`);
     const ticket = await fetch("/api/merchant/variants/media", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ variantId: variant.id, filename: file.name, mimeType: file.type, sizeBytes: file.size }) });
     const uploadData = await ticket.json();
     if (!ticket.ok) { setMessage(uploadData.error); return false; }
     const upload = await fetch(uploadData.uploadUrl, { method: "PUT", headers: { "content-type": file.type }, body: file });
     if (!upload.ok) { setMessage("Variant image upload failed. Please try again."); return false; }
-    const stock = variant.stock[0];
-    const saved = await fetch("/api/merchant/variants", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: variant.id, title: variant.title, size: variant.size, color: variant.color, price: variant.price, salePrice: variant.salePrice, status: variant.status, onHand: stock?.onHand ?? 0, safetyStock: stock?.safetyStock ?? 0, imageUrl: uploadData.storageValue }) });
-    const savedData = await saved.json();
-    if (!saved.ok) { setMessage(savedData.error); return false; }
-    setMessage(`${variant.title} image updated.`);
+    for (const option of colourway) {
+      const stock = option.stock[0];
+      const saved = await fetch("/api/merchant/variants", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: option.id, title: option.title, size: option.size, color: option.color, price: option.price, salePrice: option.salePrice, status: option.status, onHand: stock?.onHand ?? 0, safetyStock: stock?.safetyStock ?? 0, imageUrl: uploadData.storageValue }) });
+      const savedData = await saved.json();
+      if (!saved.ok) { setMessage(savedData.error); return false; }
+    }
+    setMessage(`${variant.color ?? variant.title} image applied to ${colourway.length} size option${colourway.length === 1 ? "" : "s"}.`);
     await reload();
     return true;
   }
@@ -1604,7 +1612,7 @@ function CatalogueManager({
           <button onClick={() => setCreating(true)}>+ Add product</button>
         </div>
       </div>
-      <p className="catalogue-csv-help"><b>CSV rules:</b> Use one row per colourway and put its sizes in the <b>sizes</b> column separated by |, for example S|M|L|XL. NeuroCity creates every size variant and its SKU automatically; stock is applied to each size. Existing files may still use one row per variant with the size and variant_sku columns. Repeat identical product details and the product SKU across colourways. Use an exact NeuroCity category, plain numbers without N$, and sale prices lower than regular prices. Imports are saved as drafts.</p>
+      <p className="catalogue-csv-help"><b>CSV rules:</b> Use one row per colourway. Put sizes in <b>sizes</b> as S|M|L|XL and stock in <b>stock_by_size</b> as S:4|M:8|L:6|XL:2. NeuroCity creates every size variant and its SKU automatically. Existing files may still use one row per variant with size, stock and variant_sku. Repeat identical product details and the product SKU across colourways. Use an exact NeuroCity category, plain numbers without N$, and sale prices lower than regular prices. Imports are saved as drafts.</p>
       <ProductCreatePanel
         open={creating}
         busy={createBusy}

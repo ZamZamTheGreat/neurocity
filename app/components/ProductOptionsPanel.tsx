@@ -53,7 +53,7 @@ export default function ProductOptionsPanel({
   onVariantChange: (variant: Variant) => void;
   onVariantSave: (variant: Variant) => Promise<void>;
   onVariantCreate: (values: NewVariant) => Promise<void>;
-  onVariantUpload: (variant: Variant, file?: File) => Promise<boolean>;
+  onVariantUpload: (variants: Variant[], file?: File) => Promise<boolean>;
 }) {
   if (product.itemType === "service")
     return (
@@ -75,6 +75,7 @@ export default function ProductOptionsPanel({
   const active = variants.filter(
     (variant) => variant.status === "active",
   ).length;
+  const colourways = [...new Map(variants.map((variant) => [variant.color?.trim() || "Standard", variants.filter((row) => (row.color?.trim() || "Standard") === (variant.color?.trim() || "Standard"))])).values()];
   return (
     <section className="product-options">
       <header>
@@ -93,13 +94,13 @@ export default function ProductOptionsPanel({
       </header>
       {variants.length > 0 && (
         <div className="product-variant-list">
-          {variants.map((variant) => (
-            <VariantRow
-              key={variant.id}
-              variant={variant}
+          {colourways.map((colourway) => (
+            <ColourwayRow
+              key={colourway[0].color ?? "Standard"}
+              variants={colourway}
               onChange={onVariantChange}
-              onSave={() => onVariantSave(variant)}
-              onUpload={(file) => onVariantUpload(variant, file)}
+              onSave={onVariantSave}
+              onUpload={(file) => onVariantUpload(colourway, file)}
             />
           ))}
         </div>
@@ -107,6 +108,28 @@ export default function ProductOptionsPanel({
       <NewVariantForm product={product} onCreate={onVariantCreate} />
     </section>
   );
+}
+
+function ColourwayRow({ variants, onChange, onSave, onUpload }: { variants: Variant[]; onChange: (variant: Variant) => void; onSave: (variant: Variant) => Promise<void>; onUpload: (file?: File) => Promise<boolean> }) {
+  const [crop, setCrop] = useState<File | null>(null);
+  const first = variants[0];
+  const image = variants.find((variant) => variant.imageUrl)?.imageUrl ?? null;
+  const color = first.color?.trim() || "Standard";
+  const updateAll = (values: Partial<Variant>) => variants.forEach((variant) => onChange({ ...variant, ...values }));
+  return <article className="colourway-editor">
+    <header>
+      <div className="variant-image">{image ? <img src={image} alt={`${color} colourway`} /> : <span>No image</span>}<label>{image ? "Change picture" : "Add picture"}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) setCrop(file); event.currentTarget.value = ""; }} /></label></div>
+      <div><small>COLOURWAY</small><h4>{color}</h4><span>{variants.length} size{variants.length === 1 ? "" : "s"}</span></div>
+      <select aria-label={`Status for ${color}`} value={variants.every((variant) => variant.status === first.status) ? first.status : "draft"} onChange={(event) => updateAll({ status: event.target.value })}><option value="active">Active</option><option value="draft">Draft</option><option value="needs_confirmation">Needs confirmation</option><option value="archived">Archived</option></select>
+    </header>
+    <div className="colourway-shared-fields">
+      <label>Regular price<input type="number" min="0" step="0.01" value={first.price} onChange={(event) => updateAll({ price: Number(event.target.value) })} /></label>
+      <label>Sale price<input type="number" min="0" step="0.01" value={first.salePrice ?? ""} onChange={(event) => updateAll({ salePrice: event.target.value === "" ? null : Number(event.target.value) })} /></label>
+    </div>
+    <div className="colourway-size-grid">{variants.map((variant) => { const stock = variant.stock[0] ?? { branchName: "Primary branch", onHand: 0, reserved: 0, safetyStock: 0 }; return <label key={variant.id}><b>{variant.size ?? "One size"}</b><span>{variant.sku}</span><input aria-label={`${color} ${variant.size ?? "One size"} stock`} type="number" min="0" value={stock.onHand} onChange={(event) => onChange({ ...variant, stock: [{ ...stock, onHand: Number(event.target.value) }] })} /><small>{Math.max(0, stock.onHand - stock.reserved - stock.safetyStock)} available</small></label>; })}</div>
+    <footer><button onClick={() => void Promise.all(variants.map(onSave))}>Save colourway</button></footer>
+    {crop && <ImageCropper file={crop} aspect={4 / 5} width={1200} title={`Crop ${color} picture`} onCancel={() => setCrop(null)} onApply={async (file) => { if (await onUpload(file)) setCrop(null); }} />}
+  </article>;
 }
 
 function VariantRow({
