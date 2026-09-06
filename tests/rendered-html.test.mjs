@@ -316,10 +316,15 @@ test("adds guarded bulk catalogue import and WhatsApp order updates", async () =
   assert.match(bulk, /db\.transaction/);
   assert.match(bulk, /variantCount: parsed\.length/);
   assert.match(bulk, /option\.variantSku/);
+  assert.match(bulk, /sizeRange/);
+  assert.match(bulk, /bulk_import_generated/);
+  assert.match(bulk, /generated or supplied variant SKUs/);
   assert.match(workspace, /neurocity-catalogue-template\.csv/);
   assert.match(workspace, /Fashion & Clothing/);
   assert.match(workspace, /Export catalogue/);
   assert.match(workspace, /variant_sale_price/);
+  assert.match(workspace, /S\|M\|L\|XL/);
+  assert.match(workspace, /one row per colourway/);
   assert.match(workspace, /text\/csv;charset=utf-8/);
   assert.match(workspace, /Send WhatsApp update/);
   assert.match(orderRoute, /sendWhatsAppOrderUpdate/);

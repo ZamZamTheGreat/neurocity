@@ -231,7 +231,7 @@ function parseCatalogueCsv(source: string) {
   const apiFields: Record<string, string> = { sale_price: "salePrice", variant_sku: "variantSku", variant_title: "variantTitle", variant_price: "variantPrice", variant_sale_price: "variantSalePrice" };
   return records.map((values) => Object.fromEntries(headers.map((header, index) => [apiFields[header] ?? header, values[index]?.trim() ?? ""])));
 }
-const catalogueCsvHeaders = ["name", "sku", "category", "description", "price", "sale_price", "brand", "collection", "variant_sku", "variant_title", "size", "color", "variant_price", "variant_sale_price", "stock"] as const;
+const catalogueCsvHeaders = ["name", "sku", "category", "description", "price", "sale_price", "brand", "collection", "variant_sku", "variant_title", "size", "sizes", "color", "variant_price", "variant_sale_price", "stock"] as const;
 const csvCell = (value: unknown) => {
   const text = value == null ? "" : String(value);
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
@@ -1422,8 +1422,8 @@ function CatalogueManager({
   const [importBusy, setImportBusy] = useState(false);
   const downloadTemplate = () => {
     downloadCatalogueCsv("neurocity-catalogue-template.csv", [
-      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "TSHIRT-001-BLK-S", variant_title: "Black / Small", size: "S", color: "Black", variant_price: "299.00", variant_sale_price: "249.00", stock: 12 },
-      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "TSHIRT-001-BLK-M", variant_title: "Black / Medium", size: "M", color: "Black", variant_price: "299.00", variant_sale_price: "249.00", stock: 12 },
+      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "Black", variant_price: "299.00", variant_sale_price: "249.00", stock: 12 },
+      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "White", variant_price: "299.00", variant_sale_price: "249.00", stock: 8 },
     ]);
   };
   const exportCatalogue = () => {
@@ -1441,6 +1441,7 @@ function CatalogueManager({
         variant_sku: variant?.sku ?? "",
         variant_title: variant?.title ?? "Standard",
         size: variant?.size ?? "",
+        sizes: "",
         color: variant?.color ?? "",
         variant_price: variant?.price.toFixed(2) ?? product.price?.toFixed(2) ?? "",
         variant_sale_price: variant?.salePrice?.toFixed(2) ?? product.salePrice?.toFixed(2) ?? "",
@@ -1603,7 +1604,7 @@ function CatalogueManager({
           <button onClick={() => setCreating(true)}>+ Add product</button>
         </div>
       </div>
-      <p className="catalogue-csv-help"><b>CSV rules:</b> Use one row per variant and repeat the same product details and product SKU for every variant. Every variant SKU must be unique. Variant title, size and colour describe the option; blank variant prices inherit the product prices. Use an exact NeuroCity category, plain numbers without N$, and sale prices lower than regular prices. Imports are saved as drafts and stock defaults to 0.</p>
+      <p className="catalogue-csv-help"><b>CSV rules:</b> Use one row per colourway and put its sizes in the <b>sizes</b> column separated by |, for example S|M|L|XL. NeuroCity creates every size variant and its SKU automatically; stock is applied to each size. Existing files may still use one row per variant with the size and variant_sku columns. Repeat identical product details and the product SKU across colourways. Use an exact NeuroCity category, plain numbers without N$, and sale prices lower than regular prices. Imports are saved as drafts.</p>
       <ProductCreatePanel
         open={creating}
         busy={createBusy}
