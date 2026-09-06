@@ -341,6 +341,7 @@ test("allows safe permanent catalogue deletion while preserving commerce history
 
 test("supports secure variant pictures in the merchant editor and storefront", async () => {
   const panel = await readFile(new URL("../app/components/ProductOptionsPanel.tsx", import.meta.url), "utf8");
+  const managedImage = await readFile(new URL("../app/components/ManagedImage.tsx", import.meta.url), "utf8");
   const variants = await readFile(new URL("../app/api/merchant/variants/route.ts", import.meta.url), "utf8");
   const media = await readFile(new URL("../app/api/merchant/variants/media/route.ts", import.meta.url), "utf8");
   const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
@@ -349,6 +350,8 @@ test("supports secure variant pictures in the merchant editor and storefront", a
   assert.match(variants, /Invalid variant image/);
   assert.match(media, /createUploadUrl/);
   assert.match(media, /verifiedObject/);
+  assert.match(managedImage, /requiresDirectDelivery/);
+  assert.match(managedImage, /\/api\\\/.*media/);
   assert.match(storefront, /manualImage \?\? variant\?\.imageUrl/);
   assert.match(storefront, /store-variant-picker/);
   assert.match(storefront, /role="radiogroup"/);
