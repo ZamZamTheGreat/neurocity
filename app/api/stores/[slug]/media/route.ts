@@ -1,19 +1,24 @@
 import { verifiedObject } from "../../../../../lib/upload-security";
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../../db";
-import { merchants, products } from "../../../../../db/schema";
+import { merchants, productVariants, products } from "../../../../../db/schema";
 import { createPresignedR2Url } from "../../../../../lib/r2";
 
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params;
   const type = new URL(request.url).searchParams.get("type");
-  if (type !== "logo" && type !== "banner" && type !== "product") return Response.json({ error: "Invalid image type." }, { status: 400 });
+  if (type !== "logo" && type !== "banner" && type !== "product" && type !== "variant") return Response.json({ error: "Invalid image type." }, { status: 400 });
   const [store] = await getDb().select({ id: merchants.id, logoUrl: merchants.logoUrl, bannerUrl: merchants.bannerUrl }).from(merchants).where(and(eq(merchants.slug, slug), eq(merchants.isPublic, true), inArray(merchants.status, ["pilot", "active"]))).limit(1);
   let value = type === "logo" ? store?.logoUrl : store?.bannerUrl;
   if (type === "product" && store) {
     const url = new URL(request.url); const productId = Number(url.searchParams.get("productId")); const slot = Math.max(0, Math.min(2, Number(url.searchParams.get("slot") ?? 0)));
     const [product] = await getDb().select({ imageUrl: products.imageUrl, imageUrls: products.imageUrls }).from(products).where(and(eq(products.id, productId), eq(products.merchantId, store.id), eq(products.status, "published"))).limit(1);
     value = ((product?.imageUrls as string[] | null) ?? [])[slot] ?? (slot === 0 ? product?.imageUrl : null);
+  }
+  if (type === "variant" && store) {
+    const variantId = Number(new URL(request.url).searchParams.get("variantId"));
+    const [variant] = await getDb().select({ imageUrl: productVariants.imageUrl }).from(productVariants).innerJoin(products, eq(products.id, productVariants.productId)).where(and(eq(productVariants.id, variantId), eq(products.merchantId, store.id), eq(products.status, "published"), eq(productVariants.status, "active"))).limit(1);
+    value = variant?.imageUrl;
   }
   if (!store || !value) return Response.json({ error: "Image not found." }, { status: 404 });
   if (!value.startsWith("r2://")) return Response.redirect(new URL(value, request.url), 302);

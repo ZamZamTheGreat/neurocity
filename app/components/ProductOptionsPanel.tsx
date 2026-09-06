@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ImageCropper from "./ImageCropper";
 
 type Product = {
   id: number;
@@ -20,6 +21,8 @@ type Variant = {
   price: number;
   salePrice: number | null;
   status: string;
+  imageUrl: string | null;
+  storageImageUrl: string | null;
   stock: {
     branchName: string;
     onHand: number;
@@ -43,12 +46,14 @@ export default function ProductOptionsPanel({
   onVariantChange,
   onVariantSave,
   onVariantCreate,
+  onVariantUpload,
 }: {
   product: Product;
   variants: Variant[];
   onVariantChange: (variant: Variant) => void;
   onVariantSave: (variant: Variant) => Promise<void>;
   onVariantCreate: (values: NewVariant) => Promise<void>;
+  onVariantUpload: (variant: Variant, file?: File) => Promise<boolean>;
 }) {
   if (product.itemType === "service")
     return (
@@ -94,6 +99,7 @@ export default function ProductOptionsPanel({
               variant={variant}
               onChange={onVariantChange}
               onSave={() => onVariantSave(variant)}
+              onUpload={(file) => onVariantUpload(variant, file)}
             />
           ))}
         </div>
@@ -107,11 +113,14 @@ function VariantRow({
   variant,
   onChange,
   onSave,
+  onUpload,
 }: {
   variant: Variant;
   onChange: (variant: Variant) => void;
   onSave: () => void;
+  onUpload: (file?: File) => Promise<boolean>;
 }) {
+  const [crop, setCrop] = useState<File | null>(null);
   const stock = variant.stock[0] ?? {
     branchName: "Primary branch",
     onHand: 0,
@@ -123,6 +132,10 @@ function VariantRow({
   return (
     <article className="variant-editor compact">
       <header>
+        <div className="variant-image">
+          {variant.imageUrl ? <img src={variant.imageUrl} alt={`${variant.title} variant`} /> : <span>No image</span>}
+          <label>{variant.imageUrl ? "Change picture" : "Add picture"}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) setCrop(file); event.currentTarget.value = ""; }} /></label>
+        </div>
         <div>
           <strong>{variant.title}</strong>
           <span>{variant.sku}</span>
@@ -219,6 +232,7 @@ function VariantRow({
       <footer>
         <button onClick={onSave}>Save option</button>
       </footer>
+      {crop && <ImageCropper file={crop} aspect={4 / 5} width={1200} title={`Crop ${variant.title} picture`} onCancel={() => setCrop(null)} onApply={async (file) => { if (await onUpload(file)) setCrop(null); }} />}
     </article>
   );
 }

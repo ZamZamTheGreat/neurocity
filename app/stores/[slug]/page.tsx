@@ -15,6 +15,7 @@ type Variant = {
   salePrice: number | null;
   status: string;
   available: number | null;
+  imageUrl: string | null;
 };
 type Product = {
   id: number;
@@ -448,8 +449,7 @@ function StoreProduct({
 }) {
   const { slug } = useParams<{ slug: string }>();
   const [imageIndex, setImageIndex] = useState(0);
-  const gallery = product.imageUrls?.length ? product.imageUrls : product.imageUrl ? [product.imageUrl] : [];
-  const activeImage = gallery[imageIndex] ?? gallery[0] ?? null;
+  const [manualImage, setManualImage] = useState<string | null>(null);
   const [variantId, setVariantId] = useState(
     product.variants.find(
       (item) => item.available === null || item.available > 0,
@@ -458,6 +458,8 @@ function StoreProduct({
       0,
   );
   const variant = product.variants.find((item) => item.id === variantId);
+  const gallery = product.imageUrls?.length ? product.imageUrls : product.imageUrl ? [product.imageUrl] : [];
+  const activeImage = manualImage ?? variant?.imageUrl ?? gallery[imageIndex] ?? gallery[0] ?? null;
   const preorder = product.availability === "preorder";
   const purchasable = preorder || product.availability === "available";
   const price = variant?.salePrice ?? variant?.price;
@@ -600,7 +602,7 @@ function StoreProduct({
           ♡
         </button>
       </div>
-      {gallery.length > 1 && <div className="store-product-thumbnails" aria-label={`${product.name} images`}>{gallery.map((image, index) => <button className={index === imageIndex ? "active" : ""} key={image} onClick={() => setImageIndex(index)} aria-label={`View image ${index + 1}`}><ManagedImage src={image} alt="" width={160} height={120} /></button>)}</div>}
+      {gallery.length > 1 && <div className="store-product-thumbnails" aria-label={`${product.name} images`}>{gallery.map((image, index) => <button className={activeImage === image ? "active" : ""} key={image} onClick={() => { setImageIndex(index); setManualImage(image); }} aria-label={`View image ${index + 1}`}><ManagedImage src={image} alt="" width={160} height={120} /></button>)}</div>}
       <div className="store-product-copy">
         <small>
           {product.brand ?? "Local brand"}
@@ -615,23 +617,19 @@ function StoreProduct({
         </div>
         {product.variants.length > 0 ? (
           <>
-            <label>
-              Choose option
-              <select
-                value={variantId}
-                onChange={(event) => setVariantId(Number(event.target.value))}
-              >
-                {product.variants.map((item) => (
-                  <option key={item.id} value={item.id} disabled={!purchasable || (!preorder && item.available !== null && item.available < 1)}>
-                    {[item.size, item.color].filter(Boolean).join(" / ") ||
-                      item.title}
-                    {!preorder && item.available !== null && item.available < 1
-                      ? " — sold out"
-                      : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <fieldset className="store-variant-picker">
+              <legend>Choose an option</legend>
+              <div role="radiogroup" aria-label={`Options for ${product.name}`}>
+                {product.variants.map((item) => {
+                  const soldOut = !preorder && item.available !== null && item.available < 1;
+                  const optionName = [item.size, item.color].filter(Boolean).join(" / ") || item.title;
+                  return <button type="button" role="radio" aria-checked={item.id === variantId} className={item.id === variantId ? "selected" : ""} key={item.id} disabled={!purchasable || soldOut} onClick={() => { setVariantId(item.id); setManualImage(null); }}>
+                    {item.imageUrl ? <ManagedImage src={item.imageUrl} alt="" width={96} height={120} /> : <span className="variant-swatch" style={item.color ? { backgroundColor: item.color } : undefined} />}
+                    <span><b>{optionName}</b><small>{soldOut ? "Sold out" : preorder ? "Preorder" : item.available === null ? "Stock confirmed by store" : `${item.available} available`}</small></span>
+                  </button>;
+                })}
+              </div>
+            </fieldset>
             <div className="store-stock-line">
               <span
                 className={
@@ -647,14 +645,14 @@ function StoreProduct({
                     ? `${variant.available} in stock`
                     : "Currently unavailable"}
               </span>
-              <small>SKU {variant?.sku}</small>
+              <small>{variant ? `${variant.title} · SKU ${variant.sku}` : "Choose an option"}</small>
             </div>
             {preorder && <p className="variant-pending">You can add this item to your bag and place an order. It is not ready for immediate collection or delivery. The merchant will confirm the expected fulfilment date.</p>}
             <div className="store-product-buy">
               <div>
                 {variant?.salePrice !== null &&
                   variant?.salePrice !== undefined && (
-                    <del>N${variant.price.toFixed(2)}</del>
+                    <del>{`N$${variant.price.toFixed(2)}`}</del>
                   )}
                 <strong>
                   {price === undefined

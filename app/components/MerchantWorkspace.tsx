@@ -132,6 +132,8 @@ type Variant = {
   price: number;
   salePrice: number | null;
   status: string;
+  imageUrl: string | null;
+  storageImageUrl: string | null;
   stock: {
     branchName: string;
     onHand: number;
@@ -1573,6 +1575,22 @@ function CatalogueManager({
     await reload();
     return true;
   }
+  async function uploadVariantImage(variant: Variant, file?: File) {
+    if (!file) return false;
+    setMessage(`Uploading image for ${variant.title}...`);
+    const ticket = await fetch("/api/merchant/variants/media", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ variantId: variant.id, filename: file.name, mimeType: file.type, sizeBytes: file.size }) });
+    const uploadData = await ticket.json();
+    if (!ticket.ok) { setMessage(uploadData.error); return false; }
+    const upload = await fetch(uploadData.uploadUrl, { method: "PUT", headers: { "content-type": file.type }, body: file });
+    if (!upload.ok) { setMessage("Variant image upload failed. Please try again."); return false; }
+    const stock = variant.stock[0];
+    const saved = await fetch("/api/merchant/variants", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: variant.id, title: variant.title, size: variant.size, color: variant.color, price: variant.price, salePrice: variant.salePrice, status: variant.status, onHand: stock?.onHand ?? 0, safetyStock: stock?.safetyStock ?? 0, imageUrl: uploadData.storageValue }) });
+    const savedData = await saved.json();
+    if (!saved.ok) { setMessage(savedData.error); return false; }
+    setMessage(`${variant.title} image updated.`);
+    await reload();
+    return true;
+  }
   async function archiveProduct(product: Product) {
     if (
       !window.confirm(
@@ -1656,6 +1674,7 @@ function CatalogueManager({
                   }
                   onVariantSave={saveVariant}
                   onVariantCreate={(values) => createVariant(product, values)}
+                  onVariantUpload={uploadVariantImage}
                 />
               </div>
             );
