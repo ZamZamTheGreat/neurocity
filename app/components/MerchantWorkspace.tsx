@@ -1689,7 +1689,7 @@ function ProductEditor({
         <div className="catalogue-image product-gallery-admin" aria-label="Product image gallery">
           {[0, 1, 2].map((slot) => <label key={slot}>
             {product.imageUrls?.[slot] ? <ManagedImage src={product.imageUrls[slot]} alt={`${product.name} view ${slot + 1}`} /> : <span>{slot === 0 ? "Main image" : `Add view ${slot + 1}`}</span>}
-            <em>{product.imageUrls?.[slot] ? "Replace" : slot === 0 ? "Add main image" : "Add another view"}</em>
+            <em className="product-image-action"><span aria-hidden="true">{product.imageUrls?.[slot] ? "↻" : "+"}</span>{product.imageUrls?.[slot] ? "Replace image" : slot === 0 ? "Add main image" : "Add view"}</em>
             <input type="file" aria-label={`${product.imageUrls?.[slot] ? "Replace" : "Upload"} ${product.name} image ${slot + 1}`} accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) setCrop({ file, slot }); event.target.value = ""; }} />
           </label>)}
         </div>

@@ -348,6 +348,10 @@ test("keeps the merchant dashboard focused and consistent", async () => {
   assert.match(styles, /\.merchant-dashboard-v2 button:focus-visible/);
   assert.match(styles, /@media\(max-width:700px\)/);
   assert.match(styles, /@media\(max-width:430px\)/);
+  assert.match(workspace, /product-image-action/);
+  assert.match(workspace, /Replace image/);
+  assert.match(styles, /grid-template-columns:minmax\(280px,340px\)/);
+  assert.match(styles, /product-gallery-admin label:focus-within/);
 });
 
 test("publishes legal notices and provides a controlled data breach workflow", async () => {
