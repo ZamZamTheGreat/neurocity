@@ -411,6 +411,10 @@ test("publishes legal notices and provides a controlled data breach workflow", a
   assert.match(consent, /Reject analytics/);
   assert.match(consent, /stored === "accepted"/);
   assert.doesNotMatch(layout, /googletagmanager\.com/);
+  const globalStyles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(globalStyles, /\.cookie-preferences\{position:fixed;bottom:12px;left:12px/);
+  assert.match(globalStyles, /\.cookie-preferences\{bottom:calc\(82px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(globalStyles, /width:min\(920px,calc\(100vw - 158px\)\)/);
 });
 
 test("allows safe permanent catalogue deletion while preserving commerce history", async () => {
