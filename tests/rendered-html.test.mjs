@@ -434,7 +434,7 @@ test("supports secure variant pictures in the merchant editor and storefront", a
   const variants = await readFile(new URL("../app/api/merchant/variants/route.ts", import.meta.url), "utf8");
   const media = await readFile(new URL("../app/api/merchant/variants/media/route.ts", import.meta.url), "utf8");
   const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
-  assert.match(panel, /Add picture/);
+  assert.match(panel, /Add image/);
   assert.match(panel, /ImageCropper/);
   assert.match(variants, /Invalid variant image/);
   assert.match(media, /createUploadUrl/);
@@ -444,7 +444,9 @@ test("supports secure variant pictures in the merchant editor and storefront", a
   assert.match(managedImage, /\/api\\\/.*media/);
   assert.match(storefront, /manualImage \?\? variant\?\.imageUrl/);
   assert.match(storefront, /store-variant-picker/);
-  assert.match(storefront, /role="radiogroup"/);
+  assert.match(storefront, /<select/);
+  assert.match(storefront, /Choose an option for \$\{product\.name\}/);
+  assert.match(storefront, /<option key=\{item\.id\}/);
   assert.match(storefront, /setManualImage\(null\)/);
   assert.match(storefront, /SKU \$\{variant\.sku\}/);
 });

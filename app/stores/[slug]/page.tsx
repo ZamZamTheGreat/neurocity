@@ -619,15 +619,23 @@ function StoreProduct({
           <>
             <fieldset className="store-variant-picker">
               <legend>Choose an option</legend>
-              <div role="radiogroup" aria-label={`Options for ${product.name}`}>
+              <div className="store-variant-select">
+                <select
+                  aria-label={`Choose an option for ${product.name}`}
+                  disabled={!purchasable}
+                  value={String(variantId)}
+                  onChange={(event) => {
+                    setVariantId(Number(event.target.value));
+                    setManualImage(null);
+                  }}
+                >
                 {product.variants.map((item) => {
                   const soldOut = !preorder && item.available !== null && item.available < 1;
                   const optionName = [item.size, item.color].filter(Boolean).join(" / ") || item.title;
-                  return <button type="button" role="radio" aria-checked={item.id === variantId} className={item.id === variantId ? "selected" : ""} key={item.id} disabled={!purchasable || soldOut} onClick={() => { setVariantId(item.id); setManualImage(null); }}>
-                    {item.imageUrl ? <ManagedImage src={item.imageUrl} alt="" width={96} height={120} /> : <span className="variant-swatch" style={item.color ? { backgroundColor: item.color } : undefined} />}
-                    <span><b>{optionName}</b><small>{soldOut ? "Sold out" : preorder ? "Preorder" : item.available === null ? "Stock confirmed by store" : `${item.available} available`}</small></span>
-                  </button>;
+                  const availability = soldOut ? "Sold out" : preorder ? "Preorder" : item.available === null ? "Available" : `${item.available} available`;
+                  return <option key={item.id} value={item.id} disabled={soldOut}>{optionName} — {availability}</option>;
                 })}
+                </select>
               </div>
             </fieldset>
             <div className="store-stock-line">
