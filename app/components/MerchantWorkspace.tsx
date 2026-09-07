@@ -271,7 +271,7 @@ const merchantNavGroups: { label: string; items: Tab[] }[] = [
     label: "RUN YOUR STORE",
     items: ["Overview", "Inbox", "Orders", "Bookings"],
   },
-  { label: "CATALOGUE", items: ["Products", "Variants", "Inventory"] },
+  { label: "CATALOGUE", items: ["Products", "Inventory"] },
   { label: "STORE SETTINGS", items: ["Setup"] },
 ];
 const tabGuidance: Record<Tab, string> = {
@@ -725,7 +725,7 @@ export default function MerchantWorkspace({
             </p>
             <h1>
               {tab === "Overview"
-                ? `Good to see you, ${session.user?.displayName?.split(" ")[0]}.`
+                ? "Store overview"
                 : tab}
             </h1>
             <p className="dashboard-guidance">{tabGuidance[tab]}</p>
@@ -943,6 +943,7 @@ export default function MerchantWorkspace({
                 </button>
               </article>
             ))}
+            {stock.length === 0 && <div className="empty-state"><h3>No inventory yet</h3><p>Add a product and its available sizes to start tracking stock.</p><button onClick={() => setTab("Products")}>Go to products</button></div>}
           </div>
         )}
         {tab === "Orders" && (
@@ -1095,7 +1096,7 @@ function SetupPanel({
       <section className="setup-intro">
         <div>
           <p className="eyebrow">Store setup</p>
-          <h1>Get ready to sell in three steps</h1>
+          <h2>Get ready to sell in three steps</h2>
           <p>Start with the essentials. You can save a draft at any time and return later.</p>
         </div>
         <span>About 5 minutes</span>
@@ -1352,8 +1353,8 @@ function SetupPanel({
       </section>
       <section className="publish-panel">
         <div>
-          <h2>{merchant.isPublic ? "Ready to publish?" : "Keep your progress"}</h2>
-          <p>{merchant.isPublic ? "We’ll check that every required item is complete." : "Save now and finish the remaining items whenever you’re ready."}</p>
+          <h2>{merchant.isPublic ? "Your storefront is public" : "Save your progress"}</h2>
+          <p>{merchant.isPublic ? "Save changes to update what customers see." : "Save a draft now, or publish when every required item is complete."}</p>
         </div>
         <label>
           <input

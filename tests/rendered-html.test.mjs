@@ -333,6 +333,23 @@ test("adds guarded bulk catalogue import and WhatsApp order updates", async () =
   assert.match(webhook, /whatsapp\.message_received/);
 });
 
+test("keeps the merchant dashboard focused and consistent", async () => {
+  const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/merchant-dashboard-clean.css", import.meta.url), "utf8");
+
+  assert.match(workspace, /items: \["Products", "Inventory"\]/);
+  assert.doesNotMatch(workspace, /items: \["Products", "Variants", "Inventory"\]/);
+  assert.match(workspace, /"Store overview"/);
+  assert.match(workspace, /<h2>Get ready to sell in three steps<\/h2>/);
+  assert.match(workspace, /Your storefront is public/);
+  assert.match(workspace, /No inventory yet/);
+  assert.match(layout, /import "\.\/merchant-dashboard-clean\.css";/);
+  assert.match(styles, /\.merchant-dashboard-v2 button:focus-visible/);
+  assert.match(styles, /@media\(max-width:700px\)/);
+  assert.match(styles, /@media\(max-width:430px\)/);
+});
+
 test("allows safe permanent catalogue deletion while preserving commerce history", async () => {
   const products = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");
   const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");

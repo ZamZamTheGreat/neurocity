@@ -24,6 +24,7 @@ import "./workspace-drawers.css";
 import "./admin-dashboard-v2.css";
 import "./platform-polish-v2.css";
 import "./shopping-journey-v2.css";
+import "./merchant-dashboard-clean.css";
 import { siteUrl } from "../lib/site-url";
 
 export const viewport: Viewport = {
