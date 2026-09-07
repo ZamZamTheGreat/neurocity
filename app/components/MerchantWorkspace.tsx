@@ -324,6 +324,7 @@ export default function MerchantWorkspace({
   const [menuOpen, setMenuOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [stock, setStock] = useState<Stock[]>([]);
+  const [inventorySearch, setInventorySearch] = useState("");
   const [variants, setVariants] = useState<Variant[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [bookings, setBookings] = useState<ServiceBooking[]>([]);
@@ -358,6 +359,8 @@ export default function MerchantWorkspace({
   const acceptClaimTurnstile = useCallback((token: string | null) => setClaimTurnstileToken(token), []);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const inventoryQuery = inventorySearch.trim().toLowerCase();
+  const visibleStock = inventoryQuery ? stock.filter((row) => [row.productName, row.variantTitle, row.size, row.color, row.sku, row.branch, row.variantStatus].filter(Boolean).join(" ").toLowerCase().includes(inventoryQuery)) : stock;
   const inFlight = useRef(new Map<Resource, Promise<void>>());
   const requestVersions = useRef(new LatestRequestTracker<Resource>());
   const load = useCallback(async (resources: readonly Resource[] = allResources, fresh = false) => {
@@ -865,7 +868,8 @@ export default function MerchantWorkspace({
               <h3>Live option inventory</h3>
               <ul className="info-list"><li>Available stock equals on-hand stock minus reservations and safety stock.</li><li>New orders reserve units immediately.</li><li>Rejected or cancelled orders return units automatically.</li></ul>
             </div>
-            {stock.map((row) => (
+            {stock.length > 0 && <div className="merchant-search inventory-search"><label><span aria-hidden="true">⌕</span><input type="search" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Search products, SKUs, sizes or colourways" aria-label="Search inventory" /></label><small>{visibleStock.length} of {stock.length} stock item{stock.length === 1 ? "" : "s"}</small>{inventorySearch && <button onClick={() => setInventorySearch("")}>Clear</button>}</div>}
+            {visibleStock.map((row) => (
               <article className="ops-row" key={row.variantId}>
                 <div className="ops-title">
                   <b>{row.productName}</b>
@@ -944,6 +948,7 @@ export default function MerchantWorkspace({
               </article>
             ))}
             {stock.length === 0 && <div className="empty-state"><h3>No inventory yet</h3><p>Add a product and its available sizes to start tracking stock.</p><button onClick={() => setTab("Products")}>Go to products</button></div>}
+            {stock.length > 0 && visibleStock.length === 0 && <div className="empty-state search-empty"><h3>No matching inventory</h3><p>Try a product name, SKU, size, colourway or branch.</p><button onClick={() => setInventorySearch("")}>Clear search</button></div>}
           </div>
         )}
         {tab === "Orders" && (
@@ -1421,6 +1426,12 @@ function CatalogueManager({
   const [creating, setCreating] = useState(false);
   const [createBusy, setCreateBusy] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const productQuery = productSearch.trim().toLowerCase();
+  const visibleProducts = productQuery ? products.filter((product) => {
+    const productVariants = variants.filter((variant) => variant.productId === product.id);
+    return [product.name, product.sku, product.category, product.brand, product.collection, product.status, product.availability, ...productVariants.flatMap((variant) => [variant.title, variant.sku, variant.size, variant.color])].filter(Boolean).join(" ").toLowerCase().includes(productQuery);
+  }) : products;
   const downloadTemplate = () => {
     downloadCatalogueCsv("neurocity-catalogue-template.csv", [
       { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "Black", variant_price: "299.00", variant_sale_price: "249.00", stock: "", stock_by_size: "S:12|M:10|L:8|XL:5" },
@@ -1613,6 +1624,7 @@ function CatalogueManager({
           <button onClick={() => setCreating(true)}>+ Add product</button>
         </div>
       </div>
+      {products.length > 0 && <div className="merchant-search product-search"><label><span aria-hidden="true">⌕</span><input type="search" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Search products, SKUs, categories or variants" aria-label="Search products" /></label><small>{visibleProducts.length} of {products.length} product{products.length === 1 ? "" : "s"}</small>{productSearch && <button onClick={() => setProductSearch("")}>Clear</button>}</div>}
       <p className="catalogue-csv-help"><b>CSV rules:</b> Use one row per colourway. Put sizes in <b>sizes</b> as S|M|L|XL and stock in <b>stock_by_size</b> as S:4|M:8|L:6|XL:2. NeuroCity creates every size variant and its SKU automatically. Existing files may still use one row per variant with size, stock and variant_sku. Repeat identical product details and the product SKU across colourways. Use an exact NeuroCity category, plain numbers without N$, and sale prices lower than regular prices. Imports are saved as drafts.</p>
       <ProductCreatePanel
         open={creating}
@@ -1626,9 +1638,11 @@ function CatalogueManager({
           <ul className="info-list centered"><li>Add your first product to begin building the storefront.</li></ul>
           <button onClick={() => setCreating(true)}>Add first product</button>
         </div>
+      ) : visibleProducts.length === 0 ? (
+        <div className="empty-state search-empty"><h3>No matching products</h3><p>Try a product name, SKU, category, brand, colourway or size.</p><button onClick={() => setProductSearch("")}>Clear search</button></div>
       ) : (
         <div className="ops-list">
-          {products.map((product) => {
+          {visibleProducts.map((product) => {
             const productVariants = variants.filter(
               (variant) => variant.productId === product.id,
             );

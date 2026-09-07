@@ -356,6 +356,11 @@ test("keeps the merchant dashboard focused and consistent", async () => {
   assert.match(styles, /colourway-editor>header \.variant-image\{position:relative/);
   assert.doesNotMatch(options, /Change picture/);
   assert.match(options, /colourway image/);
+  assert.match(workspace, /aria-label="Search products"/);
+  assert.match(workspace, /aria-label="Search inventory"/);
+  assert.match(workspace, /No matching products/);
+  assert.match(workspace, /No matching inventory/);
+  assert.match(styles, /\.merchant-search:focus-within/);
 });
 
 test("uses the dashboard colour system across the NeuroCity marketplace", async () => {
