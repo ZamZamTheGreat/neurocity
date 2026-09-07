@@ -261,15 +261,13 @@ export function MarketplaceExperience({
           <details className="account-menu">
             <summary>Account</summary>
             <div>
-              <a href="/account">Customer account</a>
-              <a href="/marketplace?workspace=merchant">Merchant workspace</a>
-              <a href="/mall-manager">Mall management</a>
-              <a href="/admin">Administration</a>
-              <a href="/application-status">Track application</a>
-              <a href="/access">All account options</a>
+              <header><span aria-hidden="true">◎</span><p><b>Your NeuroCity account</b><small>Shopping and business tools</small></p></header>
+              <section><small>SHOPPING</small><a href="/account">Customer account <span>→</span></a><a href="/application-status">Track application <span>→</span></a></section>
+              <section><small>BUSINESS</small><a href="/marketplace?workspace=merchant">Merchant workspace <span>→</span></a><a href="/mall-manager">Mall management <span>→</span></a><a href="/admin">Administration <span>→</span></a></section>
+              <a className="account-menu-all" href="/access">View all account options</a>
             </div>
           </details>
-          <a className="cart-button" href="/account?tab=bag">Bag</a>
+          <a className="cart-button" href="/account?tab=bag"><span>Bag</span><i aria-hidden="true">→</i></a>
         </div>
       </header>
       {platform.kind !== "mall" && (
@@ -673,7 +671,21 @@ export function MarketplaceExperience({
       >
         ✦
       </button>
-      {view !== "merchant" && (
+      {view !== "merchant" && (platform.kind !== "mall" ? (
+        <footer className="public-footer marketplace-footer">
+          <div className="marketplace-footer-lead">
+            <a href="/" className="brand"><span>Neuro</span><strong>City</strong></a>
+            <p>One place to discover and shop from independent Namibian businesses.</p>
+            <span><i /> Built for local commerce</span>
+          </div>
+          <div className="marketplace-footer-links">
+            <section><h3>Explore</h3><button onClick={() => showStores()}>Browse stores</button><a href="#how-it-works">How it works</a><a href="/malls">Digital malls</a></section>
+            <section><h3>Your account</h3><a href="/account">Customer account</a><a href="/account?tab=bag">Shopping bag</a><a href="/application-status">Application status</a></section>
+            <section><h3>For business</h3><a href={applicationHref}>Become a merchant</a><a href="/marketplace?workspace=merchant">Merchant workspace</a><a href="/mall-manager">Mall management</a></section>
+          </div>
+          <div className="marketplace-footer-bottom"><small>© {new Date().getFullYear()} NeuroCity · Namibia</small><nav aria-label="Legal"><a href="/privacy">Privacy</a><a href="/terms">Terms</a><button className="footer-privacy-choice" onClick={() => window.dispatchEvent(new Event("neurocity:privacy-choices"))}>Privacy choices</button></nav></div>
+        </footer>
+      ) : (
         <footer className="public-footer">
           <a href="/" className="brand">
             <span>Neuro</span>
@@ -690,7 +702,7 @@ export function MarketplaceExperience({
           </nav>
           <small>© {new Date().getFullYear()} NeuroCity · Namibia</small>
         </footer>
-      )}
+      ))}
     </main>
   );
 }

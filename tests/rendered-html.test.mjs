@@ -373,6 +373,12 @@ test("uses the dashboard colour system across the NeuroCity marketplace", async 
   assert.match(styles, /\.category-icon\{border:1px solid #e2d1ae;background:#f7eedc/);
   assert.match(styles, /\.concierge,\.neurocity-marketplace\.marketplace-shell \.merchant-public-cta\{background:linear-gradient/);
   assert.doesNotMatch(styles, /#18c98e|#8065f2|#087554|#07111f/);
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /marketplace-footer-lead/);
+  assert.match(page, /Your NeuroCity account/);
+  assert.match(page, /neurocity:privacy-choices/);
+  assert.match(styles, /\.marketplace-footer-links\{display:grid/);
+  assert.match(styles, /\.account-menu>div>header/);
 });
 
 test("publishes legal notices and provides a controlled data breach workflow", async () => {

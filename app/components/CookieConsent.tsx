@@ -33,6 +33,9 @@ export function CookieConsent() {
     const stored = localStorage.getItem(CONSENT_KEY);
     setChoice(stored);
     if (stored === "accepted") enableAnalytics();
+    const openChoices = () => setChoice(null);
+    window.addEventListener("neurocity:privacy-choices", openChoices);
+    return () => window.removeEventListener("neurocity:privacy-choices", openChoices);
   }, []);
   function decide(next: "accepted" | "rejected") {
     localStorage.setItem(CONSENT_KEY, next); setChoice(next);
