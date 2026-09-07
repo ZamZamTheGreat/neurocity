@@ -1506,22 +1506,43 @@ function CatalogueManager({
     return true;
   }
   async function saveProduct(product: Product, confirmed: boolean) {
-    const response = await fetch("/api/merchant/products", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        ...product,
-        imageUrl: product.storageImageUrl,
-        imageUrls: product.storageImageUrls,
-        merchantConfirmed: confirmed,
-      }),
-    });
-    const data = await response.json();
-    if (!response.ok) return setMessage(data.error);
-    setMessage(
-      `${product.name} saved${product.status === "published" ? " and published" : ""}.`,
-    );
-    await reload();
+    try {
+      const response = await fetch("/api/merchant/products", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: product.id,
+          itemType: product.itemType,
+          name: product.name,
+          sku: product.sku,
+          category: product.category,
+          brand: product.brand,
+          collection: product.collection,
+          description: product.description,
+          price: product.price,
+          salePrice: product.salePrice,
+          pricingModel: product.pricingModel,
+          durationMinutes: product.durationMinutes,
+          serviceMode: product.serviceMode,
+          bookingRequired: product.bookingRequired,
+          status: product.status,
+          availability: product.availability,
+          badge: product.badge,
+          imageUrl: product.storageImageUrl,
+          imageUrls: product.storageImageUrls,
+          merchantConfirmed: confirmed,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) { setMessage(data.error ?? "The product could not be saved."); return false; }
+      setProducts((rows) => rows.map((row) => row.id === product.id ? { ...row, ...data.product, storageImageUrl: data.product.imageUrl, storageImageUrls: data.product.imageUrls ?? [], imageUrl: row.imageUrl, imageUrls: row.imageUrls } : row));
+      setMessage(`${product.name} saved${product.status === "published" ? " and published" : ""}.`);
+      try { await reload(); } catch { /* The confirmed save remains valid if refresh is temporarily unavailable. */ }
+      return true;
+    } catch {
+      setMessage("The product could not be saved. Check your connection and try again.");
+      return false;
+    }
   }
   async function uploadImage(product: Product, slot: number, file?: File) {
     if (!file) return false;
@@ -1690,12 +1711,13 @@ function ProductEditor({
 }: {
   product: Product;
   onChange: (product: Product) => void;
-  onSave: (confirmed: boolean) => void;
+  onSave: (confirmed: boolean) => Promise<boolean>;
   onUpload: (slot: number, file?: File) => Promise<boolean>;
   onArchive: () => void;
   onDelete: () => void;
 }) {
   const [confirmed, setConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [crop, setCrop] = useState<{ file: File; slot: number } | null>(null);
   return (
     <article className="catalogue-card">
@@ -1850,7 +1872,7 @@ function ProductEditor({
           <button className="danger-text danger-delete" onClick={onDelete}>
             Delete permanently
           </button>
-          <button onClick={() => onSave(confirmed)}>Save product</button>
+          <button disabled={saving} onClick={async () => { setSaving(true); const saved = await onSave(confirmed); setSaving(false); if (saved) setConfirmed(false); }}>{saving ? "Saving…" : "Save product"}</button>
         </div>
       </footer>
       {crop && <ImageCropper file={crop.file} aspect={4 / 5} width={1200} title={`Crop ${product.name} · image ${crop.slot + 1}`} onCancel={() => setCrop(null)} onApply={async (file) => { if (await onUpload(crop.slot, file)) setCrop(null); }} />}

@@ -361,6 +361,9 @@ test("keeps the merchant dashboard focused and consistent", async () => {
   assert.match(workspace, /No matching products/);
   assert.match(workspace, /No matching inventory/);
   assert.match(styles, /\.merchant-search:focus-within/);
+  assert.match(workspace, /id: product\.id,[\s\S]*imageUrl: product\.storageImageUrl,[\s\S]*imageUrls: product\.storageImageUrls/);
+  assert.match(workspace, /\{saving \? "Saving…" : "Save product"\}/);
+  assert.match(workspace, /row\.id === product\.id/);
 });
 
 test("uses the dashboard colour system across the NeuroCity marketplace", async () => {
