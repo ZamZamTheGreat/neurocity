@@ -118,7 +118,7 @@ function ColourwayRow({ variants, onChange, onSave, onUpload }: { variants: Vari
   const updateAll = (values: Partial<Variant>) => variants.forEach((variant) => onChange({ ...variant, ...values }));
   return <article className="colourway-editor">
     <header>
-      <div className="variant-image">{image ? <img src={image} alt={`${color} colourway`} /> : <span>No image</span>}<label>{image ? "Change picture" : "Add picture"}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) setCrop(file); event.currentTarget.value = ""; }} /></label></div>
+      <div className="variant-image">{image ? <img src={image} alt={`${color} colourway`} /> : <span>No image</span>}<label>{image ? "Replace" : "Add image"}<input aria-label={`${image ? "Replace" : "Add"} ${color} colourway image`} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) setCrop(file); event.currentTarget.value = ""; }} /></label></div>
       <div><small>COLOURWAY</small><h4>{color}</h4><span>{variants.length} size{variants.length === 1 ? "" : "s"}</span></div>
       <select aria-label={`Status for ${color}`} value={variants.every((variant) => variant.status === first.status) ? first.status : "draft"} onChange={(event) => updateAll({ status: event.target.value })}><option value="active">Active</option><option value="draft">Draft</option><option value="needs_confirmation">Needs confirmation</option><option value="archived">Archived</option></select>
     </header>
@@ -158,7 +158,7 @@ function VariantRow({
       <header>
         <div className="variant-image">
           {variant.imageUrl ? <img src={variant.imageUrl} alt={`${variant.title} variant`} /> : <span>No image</span>}
-          <label>{variant.imageUrl ? "Change picture" : "Add picture"}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) setCrop(file); event.currentTarget.value = ""; }} /></label>
+          <label>{variant.imageUrl ? "Replace" : "Add image"}<input aria-label={`${variant.imageUrl ? "Replace" : "Add"} ${variant.title} image`} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) setCrop(file); event.currentTarget.value = ""; }} /></label>
         </div>
         <div>
           <strong>{variant.title}</strong>

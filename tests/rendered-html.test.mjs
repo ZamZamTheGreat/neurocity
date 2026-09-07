@@ -335,6 +335,7 @@ test("adds guarded bulk catalogue import and WhatsApp order updates", async () =
 
 test("keeps the merchant dashboard focused and consistent", async () => {
   const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");
+  const options = await readFile(new URL("../app/components/ProductOptionsPanel.tsx", import.meta.url), "utf8");
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/merchant-dashboard-clean.css", import.meta.url), "utf8");
 
@@ -352,6 +353,9 @@ test("keeps the merchant dashboard focused and consistent", async () => {
   assert.match(workspace, /Replace image/);
   assert.match(styles, /grid-template-columns:minmax\(280px,340px\)/);
   assert.match(styles, /product-gallery-admin label:focus-within/);
+  assert.match(styles, /colourway-editor>header \.variant-image\{position:relative/);
+  assert.doesNotMatch(options, /Change picture/);
+  assert.match(options, /colourway image/);
 });
 
 test("uses the dashboard colour system across the NeuroCity marketplace", async () => {
