@@ -451,6 +451,23 @@ test("supports secure variant pictures in the merchant editor and storefront", a
   assert.match(storefront, /SKU \$\{variant\.sku\}/);
 });
 
+test("shows validated merchant social profiles on the storefront", async () => {
+  const approval = await readFile(new URL("../app/api/admin/applications/route.ts", import.meta.url), "utf8");
+  const setup = await readFile(new URL("../app/api/merchant/setup/route.ts", import.meta.url), "utf8");
+  const route = await readFile(new URL("../app/api/stores/[slug]/route.ts", import.meta.url), "utf8");
+  const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
+  const parser = await readFile(new URL("../lib/social-profiles.ts", import.meta.url), "utf8");
+  assert.match(approval, /socialProfiles: application\.socialProfiles/);
+  assert.match(setup, /\.\.\.existingContacts/);
+  assert.match(route, /parseSocialProfiles/);
+  assert.match(storefront, /store-social-links/);
+  assert.match(storefront, /noopener noreferrer/);
+  assert.match(parser, /instagram\.com/);
+  assert.match(parser, /facebook\.com/);
+  assert.match(parser, /tiktok\.com/);
+  assert.match(parser, /linkedin\.com/);
+});
+
 test("gives administrators a live operations overview", async () => {
   const page = await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8");
   const overview = await readFile(new URL("../app/components/AdminOperationsOverview.tsx", import.meta.url), "utf8");

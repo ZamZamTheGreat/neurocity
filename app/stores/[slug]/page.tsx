@@ -47,6 +47,7 @@ type StoreData = {
     bannerUrl: string | null;
     category: string;
     contactOptions: Record<string, string>;
+    socialProfiles: { platform: "instagram" | "facebook" | "tiktok" | "linkedin"; label: string; url: string }[];
     fulfillmentMethods: string[];
     policies: Record<string, string>;
   };
@@ -77,6 +78,13 @@ const productPrice = (product: Product) =>
           .filter(Number.isFinite),
         Number.POSITIVE_INFINITY,
       );
+
+function SocialIcon({ platform }: { platform: StoreData["store"]["socialProfiles"][number]["platform"] }) {
+  if (platform === "instagram") return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle className="social-icon-fill" cx="17.5" cy="6.5" r="1" /></svg>;
+  if (platform === "facebook") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8h3V4.5c-.6-.1-1.8-.3-3.4-.3-3.3 0-5.6 2-5.6 5.8v3H4v4h4v7h4.5v-7h3.7l.6-4h-4.3v-2.6C12.5 8.9 12.9 8 14 8Z" /></svg>;
+  if (platform === "tiktok") return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3c.4 2.1 1.6 3.4 4 4v4c-1.5 0-2.8-.4-4-1.2V16a6 6 0 1 1-6-6c.4 0 .7 0 1 .1v4.1a2 2 0 1 0 1 1.8V3h4Z" /></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5A2.5 2.5 0 1 1 5 8a2.5 2.5 0 0 1 0-4.5ZM3 9h4v12H3V9Zm6.5 0h3.8v1.7h.1c.5-1 1.8-2.2 3.7-2.2 4 0 4.7 2.6 4.7 6V21h-4v-5.8c0-1.4 0-3.2-2-3.2s-2.3 1.5-2.3 3.1V21h-4V9Z" /></svg>;
+}
 
 export default function StorefrontPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -389,6 +397,16 @@ export default function StorefrontPage() {
               </a>
             )}
           </div>
+          {store.socialProfiles?.length > 0 && (
+            <div className="store-social-links" aria-label={`${store.name} social media`}>
+              {store.socialProfiles.map((profile) => (
+                <a key={profile.platform} href={profile.url} target="_blank" rel="noopener noreferrer" aria-label={`${store.name} on ${profile.label}`} title={profile.label}>
+                  <SocialIcon platform={profile.platform} />
+                  <span>{profile.label}</span>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
         <div className="store-location-list">
           {data.branches.map((branch) => (
