@@ -355,6 +355,7 @@ test("supports secure variant pictures in the merchant editor and storefront", a
   assert.match(variants, /Invalid variant image/);
   assert.match(media, /createUploadUrl/);
   assert.match(media, /verifiedObject/);
+  assert.match(media, /products\/\$\{variant\.productId\}\/variants\//);
   assert.match(managedImage, /requiresDirectDelivery/);
   assert.match(managedImage, /\/api\\\/.*media/);
   assert.match(storefront, /manualImage \?\? variant\?\.imageUrl/);
@@ -592,6 +593,8 @@ test("generates product variants from colours and selected sizes", async () => {
   assert.match(form, /variantCount/);
   assert.match(optionPanel, /Add colourway and sizes/);
   assert.match(optionPanel, /size-multiselect/);
+  assert.match(optionPanel, /colourway-editor/);
+  assert.match(optionPanel, /Advanced settings by size/);
   assert.match(optionPanel, /Custom size/);
   assert.match(sizeOptions, /shoeSizes/);
   assert.match(sizeOptions, /kidsSizes/);

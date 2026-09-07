@@ -127,6 +127,7 @@ function ColourwayRow({ variants, onChange, onSave, onUpload }: { variants: Vari
       <label>Sale price<input type="number" min="0" step="0.01" value={first.salePrice ?? ""} onChange={(event) => updateAll({ salePrice: event.target.value === "" ? null : Number(event.target.value) })} /></label>
     </div>
     <div className="colourway-size-grid">{variants.map((variant) => { const stock = variant.stock[0] ?? { branchName: "Primary branch", onHand: 0, reserved: 0, safetyStock: 0 }; return <label key={variant.id}><b>{variant.size ?? "One size"}</b><span>{variant.sku}</span><input aria-label={`${color} ${variant.size ?? "One size"} stock`} type="number" min="0" value={stock.onHand} onChange={(event) => onChange({ ...variant, stock: [{ ...stock, onHand: Number(event.target.value) }] })} /><small>{Math.max(0, stock.onHand - stock.reserved - stock.safetyStock)} available</small></label>; })}</div>
+    <details className="colourway-advanced"><summary>Advanced settings by size</summary><div>{variants.map((variant) => <VariantRow key={variant.id} variant={variant} onChange={onChange} onSave={() => onSave(variant)} onUpload={onUpload} />)}</div></details>
     <footer><button onClick={() => void Promise.all(variants.map(onSave))}>Save colourway</button></footer>
     {crop && <ImageCropper file={crop} aspect={4 / 5} width={1200} title={`Crop ${color} picture`} onCancel={() => setCrop(null)} onApply={async (file) => { if (await onUpload(file)) setCrop(null); }} />}
   </article>;

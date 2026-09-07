@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   if (!variant?.imageUrl) return Response.json({ error: "Variant image not found." }, { status: 404 });
   if (!variant.imageUrl.startsWith("r2://")) return Response.redirect(new URL(variant.imageUrl, request.url), 302);
   const key = variant.imageUrl.slice(5);
-  if (!key.startsWith(`merchants/${access.merchantId}/products/${variant.productId}/variants/${variantId}/`)) return Response.json({ error: "Image unavailable." }, { status: 403 });
+  if (!key.startsWith(`merchants/${access.merchantId}/products/${variant.productId}/variants/`)) return Response.json({ error: "Image unavailable." }, { status: 403 });
   if (!await verifiedObject(key).catch(() => null)) return Response.json({ error: "Image requires a verified upload." }, { status: 409 });
   return Response.redirect(createPresignedR2Url("GET", key, 300), 302);
 }
