@@ -354,6 +354,18 @@ test("keeps the merchant dashboard focused and consistent", async () => {
   assert.match(styles, /product-gallery-admin label:focus-within/);
 });
 
+test("uses the dashboard colour system across the NeuroCity marketplace", async () => {
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/marketplace-dashboard-theme.css", import.meta.url), "utf8");
+  assert.match(layout, /import "\.\/marketplace-dashboard-theme\.css";/);
+  assert.match(styles, /\.neurocity-marketplace\.marketplace-shell/);
+  assert.match(styles, /--gold:#b88a32/);
+  assert.match(styles, /--ink:#171916/);
+  assert.match(styles, /\.category-icon\{border:1px solid #e2d1ae;background:#f7eedc/);
+  assert.match(styles, /\.concierge,\.neurocity-marketplace\.marketplace-shell \.merchant-public-cta\{background:linear-gradient/);
+  assert.doesNotMatch(styles, /#18c98e|#8065f2|#087554|#07111f/);
+});
+
 test("publishes legal notices and provides a controlled data breach workflow", async () => {
   const privacy = await readFile(new URL("../app/privacy/page.tsx", import.meta.url), "utf8");
   const terms = await readFile(new URL("../app/terms/page.tsx", import.meta.url), "utf8");
