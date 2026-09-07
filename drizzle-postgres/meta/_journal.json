@@ -176,6 +176,13 @@
       "when": 1788620000000,
       "tag": "0024_account_recovery_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788700000000,
+      "tag": "0025_data_breach_incidents",
+      "breakpoints": true
     }
   ]
 }

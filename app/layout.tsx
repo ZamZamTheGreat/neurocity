@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { PwaInstaller } from "./components/PwaInstaller";
 import { MobileDock } from "./components/MobileDock";
+import { CookieConsent } from "./components/CookieConsent";
 import "./globals.css";
 import "./catalogue.css";
 import "./header.css";
@@ -90,22 +90,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-5GWSF5V0R2"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-5GWSF5V0R2');`}
-        </Script>
         <a className="skip-link" href="#main-content">
           Skip to main content
         </a>
         {children}
         <MobileDock />
         <PwaInstaller />
+        <CookieConsent />
       </body>
     </html>
   );

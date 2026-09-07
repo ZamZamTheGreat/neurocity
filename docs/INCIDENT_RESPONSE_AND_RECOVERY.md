@@ -33,6 +33,18 @@
 5. Update `DATABASE_URL` only after validation, redeploy, and monitor health and security alerts.
 6. Document root cause, affected records, notification obligations and preventive changes.
 
+## Personal-data breach procedure
+
+1. Open **Admin → Operations → Data breach response** and create an incident record as soon as an event may involve personal data. Record confidentiality, integrity and availability incidents even when notification is not required.
+2. Identify affected systems, data categories, approximate records and registered users. Keep raw personal data out of audit notes and support tickets.
+3. Record when NeuroCity became aware of the breach. Assess the likely risk to people and document the reasons for the conclusion.
+4. Where GDPR applies and risk is likely, notify the competent supervisory authority without undue delay and, where feasible, within 72 hours. Record the time and authority reference in the incident register. If notification is late, document why.
+5. Where high risk is likely, prepare clear guidance describing the nature of the breach, likely consequences, measures taken and a privacy contact. Review the exact incident and recipient list before using **Notify affected users**. The system records attempts and delivery failures; follow up every failed delivery through another appropriate channel.
+6. Do not treat the application email as the authority filing. The operator remains responsible for filing through the authority's official process and for seeking legal or data-protection advice where the applicable authority is unclear.
+7. Close the incident only after containment, recovery, notification decisions, failed-delivery follow-up and preventive actions are documented.
+
+The register and notification tool support incident response but do not decide whether an incident is reportable. That assessment depends on the facts, the people affected, applicable law and the competent authority.
+
 ## Quarterly checks
 
 - Run `npm audit`, the security suite, `npm run db:verify-runtime`, and a restore drill.

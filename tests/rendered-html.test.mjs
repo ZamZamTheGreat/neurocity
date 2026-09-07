@@ -350,6 +350,35 @@ test("keeps the merchant dashboard focused and consistent", async () => {
   assert.match(styles, /@media\(max-width:430px\)/);
 });
 
+test("publishes legal notices and provides a controlled data breach workflow", async () => {
+  const privacy = await readFile(new URL("../app/privacy/page.tsx", import.meta.url), "utf8");
+  const terms = await readFile(new URL("../app/terms/page.tsx", import.meta.url), "utf8");
+  const route = await readFile(new URL("../app/api/admin/data-breaches/route.ts", import.meta.url), "utf8");
+  const operations = await readFile(new URL("../app/components/AdminOperationsOverview.tsx", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../drizzle-postgres/0025_data_breach_incidents.sql", import.meta.url), "utf8");
+  const consent = await readFile(new URL("../app/components/CookieConsent.tsx", import.meta.url), "utf8");
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+
+  assert.match(privacy, /legal bases/i);
+  assert.match(privacy, /International transfers/);
+  assert.match(privacy, /within 72 hours/);
+  assert.match(privacy, /supervisory authority/);
+  assert.match(terms, /notify NeuroCity without undue delay/);
+  assert.match(route, /platformRole === "administrator"/);
+  assert.match(route, /affected registered-user email/i);
+  assert.match(route, /All affected users were already notified/);
+  assert.match(route, /dataBreachNotifications/);
+  assert.match(route, /isSameOriginMutation/);
+  assert.match(route, /readBoundedBody\(request, 24_000\)/);
+  assert.match(route, /privacy\.breach_users_notified/);
+  assert.match(operations, /Notify affected users/);
+  assert.match(operations, /cannot be recalled/);
+  assert.match(migration, /CREATE TABLE "data_breach_incidents"/);
+  assert.match(consent, /Reject analytics/);
+  assert.match(consent, /stored === "accepted"/);
+  assert.doesNotMatch(layout, /googletagmanager\.com/);
+});
+
 test("allows safe permanent catalogue deletion while preserving commerce history", async () => {
   const products = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");
   const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");

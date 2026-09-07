@@ -294,3 +294,32 @@ export const serviceBookings = pgTable("service_bookings", {
 }, (table) => [index("idx_service_bookings_merchant_status").on(table.merchantId, table.status), index("idx_service_bookings_customer").on(table.customerId, table.createdAt), index("idx_service_bookings_schedule").on(table.merchantId, table.scheduledStart)]);
 export const auditEvents = pgTable("audit_events", { id: serial("id").primaryKey(), actorRef: text("actor_ref").notNull(), action: varchar("action", { length: 120 }).notNull(), resourceType: varchar("resource_type", { length: 80 }).notNull(), resourceId: text("resource_id").notNull(), metadata: jsonb("metadata").notNull().default({}), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [index("idx_audit_resource").on(table.resourceType, table.resourceId)]);
 export const auditEventReviews = pgTable("audit_event_reviews", { id: serial("id").primaryKey(), auditEventId: integer("audit_event_id").notNull().references(() => auditEvents.id, { onDelete: "cascade" }), status: varchar("status", { length: 24 }).notNull().default("acknowledged"), note: text("note"), reviewedBy: text("reviewed_by").notNull(), reviewedAt: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [uniqueIndex("idx_audit_event_review_event").on(table.auditEventId), index("idx_audit_event_review_status").on(table.status)]);
+export const dataBreachIncidents = pgTable("data_breach_incidents", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 180 }).notNull(),
+  detectedAt: timestamp("detected_at", { withTimezone: true }).notNull(),
+  nature: text("nature").notNull(),
+  likelyConsequences: text("likely_consequences").notNull(),
+  measuresTaken: text("measures_taken").notNull(),
+  contactEmail: varchar("contact_email", { length: 320 }).notNull(),
+  affectedUserIds: jsonb("affected_user_ids").$type<number[]>().notNull().default([]),
+  riskLevel: varchar("risk_level", { length: 24 }).notNull().default("under_assessment"),
+  authorityNotifiedAt: timestamp("authority_notified_at", { withTimezone: true }),
+  authorityReference: varchar("authority_reference", { length: 180 }),
+  status: varchar("status", { length: 24 }).notNull().default("draft"),
+  notificationAttempts: integer("notification_attempts").notNull().default(0),
+  notificationFailures: integer("notification_failures").notNull().default(0),
+  notifiedAt: timestamp("notified_at", { withTimezone: true }),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("idx_data_breach_status").on(table.status), index("idx_data_breach_detected_at").on(table.detectedAt)]);
+export const dataBreachNotifications = pgTable("data_breach_notifications", {
+  id: serial("id").primaryKey(),
+  incidentId: integer("incident_id").notNull().references(() => dataBreachIncidents.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  status: varchar("status", { length: 24 }).notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+}, (table) => [uniqueIndex("idx_data_breach_notification_recipient").on(table.incidentId, table.userId), index("idx_data_breach_notification_status").on(table.incidentId, table.status)]);
