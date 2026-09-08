@@ -468,6 +468,21 @@ test("shows validated merchant social profiles on the storefront", async () => {
   assert.match(parser, /linkedin\.com/);
 });
 
+test("includes the Capacitor Android release foundation", async () => {
+  const config = await readFile(new URL("../capacitor.config.ts", import.meta.url), "utf8");
+  const bridge = await readFile(new URL("../app/components/NativeAppBridge.tsx", import.meta.url), "utf8");
+  const concierge = await readFile(new URL("../app/components/NeuroConcierge.tsx", import.meta.url), "utf8");
+  const manifest = await readFile(new URL("../android/app/src/main/AndroidManifest.xml", import.meta.url), "utf8");
+  assert.match(config, /com\.neuroedge\.neurocity/);
+  assert.match(config, /https:\/\/neurocity\.city/);
+  assert.match(config, /cleartext: false/);
+  assert.match(bridge, /appUrlOpen/);
+  assert.match(bridge, /Browser\.open/);
+  assert.match(concierge, /Camera\.getPhoto/);
+  assert.match(manifest, /android:autoVerify="true"/);
+  assert.match(manifest, /android\.permission\.CAMERA/);
+});
+
 test("gives administrators a live operations overview", async () => {
   const page = await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8");
   const overview = await readFile(new URL("../app/components/AdminOperationsOverview.tsx", import.meta.url), "utf8");

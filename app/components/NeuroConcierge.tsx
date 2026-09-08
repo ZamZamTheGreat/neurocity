@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Capacitor } from "@capacitor/core";
 import { ManagedImage } from "./ManagedImage";
 
 type Match = {
@@ -313,6 +315,27 @@ export function NeuroConcierge({
       setCameraConsent(false);
     }
   }
+  async function takePhoto() {
+    if (!Capacitor.isNativePlatform()) {
+      cameraInputRef.current?.click();
+      return;
+    }
+    try {
+      const photo = await Camera.getPhoto({
+        source: CameraSource.Camera,
+        resultType: CameraResultType.Uri,
+        quality: 88,
+        allowEditing: false,
+        correctOrientation: true,
+      });
+      if (!photo.webPath) return;
+      const blob = await fetch(photo.webPath).then((response) => response.blob());
+      await findFromImage(new File([blob], `selma-photo.${photo.format || "jpeg"}`, { type: blob.type || `image/${photo.format || "jpeg"}` }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      if (!message.includes("cancel")) setProfileError("Camera access was not granted. You can still upload an image from your device.");
+    }
+  }
   function submit(event: FormEvent) {
     event.preventDefault();
     void ask(input);
@@ -498,7 +521,7 @@ export function NeuroConcierge({
                 {cameraConsent ? (
                   <div className="selma-photo-actions">
                     <button type="button" onClick={() => setCameraConsent(false)}>Back</button>
-                    <button type="button" onClick={() => cameraInputRef.current?.click()}>Continue to camera</button>
+                    <button type="button" onClick={() => void takePhoto()}>Continue to camera</button>
                   </div>
                 ) : (
                   <div className="selma-photo-actions">
