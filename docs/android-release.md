@@ -4,7 +4,7 @@ The Android client uses Capacitor 8 with package ID `com.neuroedge.neurocity`. I
 
 ## Local requirements
 
-Install Android Studio with its bundled JDK, Android SDK 36 and command-line tools. Open Android Studio once and allow it to install the SDK components. Set `ANDROID_HOME` if Android Studio does not expose the SDK automatically.
+Install Android Studio, JDK 21, Android SDK 36 and the Android command-line tools. Set `JAVA_HOME`, `ANDROID_HOME` and `ANDROID_SDK_ROOT` when the tools are not already available in the shell.
 
 ## Sync and test
 
@@ -28,7 +28,16 @@ In Android Studio, run the `app` configuration on a physical Android device and 
 
 ## Signing and verified links
 
-Create the upload key once and store it outside the repository. Configure the release signing values through an untracked Gradle properties file or CI secrets. Never commit the keystore or passwords.
+Create the upload key once and store it outside the repository. Never commit the keystore or passwords. Set these environment variables in the release environment:
+
+```powershell
+$env:NEUROCITY_UPLOAD_STORE_FILE = 'C:\secure\neurocity-upload.jks'
+$env:NEUROCITY_UPLOAD_STORE_PASSWORD = '<store password>'
+$env:NEUROCITY_UPLOAD_KEY_ALIAS = 'neurocity-upload'
+$env:NEUROCITY_UPLOAD_KEY_PASSWORD = '<key password>'
+```
+
+The Android build signs the release only when all four values are present. Keep the passwords in a password manager or CI secret store rather than a checked-in file.
 
 After Google Play App Signing is enabled, copy the SHA-256 fingerprint for the **app signing certificate** from Play Console. Publish `https://neurocity.city/.well-known/assetlinks.json` with that fingerprint and package name `com.neuroedge.neurocity`. Verified links cannot be completed before the signing fingerprint exists.
 
@@ -40,7 +49,13 @@ Increase `versionCode` for every Play release and update `versionName` for user-
 npm run android:bundle
 ```
 
-The signed bundle is created under `android/app/build/outputs/bundle/release/`. Upload the `.aab` to an internal Play Console test track before production review.
+The bundle is created under `android/app/build/outputs/bundle/release/`. Verify that it is signed before uploading it:
+
+```powershell
+jarsigner -verify -verbose -certs android/app/build/outputs/bundle/release/app-release.aab
+```
+
+An unsigned bundle is useful for build validation but Play Console will reject it. Upload the verified signed `.aab` to an internal Play Console test track before production review.
 
 ## Play Console material still required
 
