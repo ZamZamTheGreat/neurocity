@@ -14,7 +14,7 @@ administrator workflows, PayToday integration, and operational security controls
 
 1. Copy `.env.example` to `.env.local` and configure PostgreSQL and any optional integrations.
 2. Install dependencies with `npm ci`.
-3. Apply migrations with `npm run db:migrate` from a trusted operator environment.
+3. Apply migrations with `npm run db:migrate`. Production uses an isolated trusted operator/CI environment when available; the free Render service runs committed migrations after a successful build because that plan has no separate pre-deploy command.
 4. Start the application with `npm run dev`.
 
 Pilot catalogue provisioning is an explicit administrator or operator action. Run

@@ -1,11 +1,11 @@
 # Security hardening deployment
 
-These changes require a coordinated deployment. From a trusted operator machine or CI job that is separate from the Render web service, run `npm run db:migrate` to apply migration `0022_security_rate_limits` before deploying the application. The application fails closed when its rate-limit database or upload scanner is unavailable.
+These changes require a coordinated deployment. The free Render service runs `npm run db:migrate` after a successful application build and before releasing the new server, because Render reserves its separate pre-deploy command for paid services. The migration command applies all pending committed migrations, including security, account-recovery and data-breach tables. A failed migration fails the deployment so the old release remains active. The application fails closed when its rate-limit database or upload scanner is unavailable.
 
 ## Required configuration
 
 - `DATABASE_URL`: restricted runtime credential. It needs connect, schema usage, application-table CRUD and sequence usage, but must not have schema creation or ownership privileges.
-- `DATABASE_MIGRATION_URL`: database owner/migration credential. Set this only in a separate trusted operator or CI environment. Never add it to the Render web service: its build and runtime share service configuration. `npm run db:migrate` prefers this value and warns if production falls back to `DATABASE_URL`.
+- `DATABASE_MIGRATION_URL`: database owner/migration credential for a separate trusted operator or CI environment. Render's free service cannot isolate a pre-deploy credential because build and runtime share service configuration, so its build migration currently uses `DATABASE_URL`. Keep `DATABASE_MIGRATION_URL` off the web service. Upgrade to a paid service or external CI migration job before enforcing a least-privilege runtime role that cannot create schema objects.
 - `PUBLIC_SITE_URL`: exact HTTPS origin of the primary site.
 - `SECURITY_ALLOWED_ORIGINS`: comma-separated HTTPS origins of any additional public mall domains. Direct and forwarded hosts can only select origins already present in this allowlist; they cannot add trusted origins.
 - `TRUSTED_CLIENT_IP_HEADER`: leave unset until the ingress is confirmed to overwrite it. Unset means requests share a conservative rate-limit bucket. For a proxy that appends to `X-Forwarded-For`, only the last address is used. Do not enable a client-controlled header. Direct ingress must be restricted accordingly.
@@ -42,7 +42,7 @@ Before rollout, confirm scanner connectivity, private storage permissions and tr
 1. Create a second PostgreSQL credential for the application runtime and keep the existing owner credential as the migration credential.
 2. In a controlled administrative environment, set `DATABASE_MIGRATION_URL` to the owner URL and `DATABASE_URL` to the new runtime URL.
 3. Run `npm run db:migrate`, `npm run db:grant-runtime`, and then `npm run db:verify-runtime`.
-4. Configure the Render web service with only the restricted `DATABASE_URL`. Delete `DATABASE_MIGRATION_URL` from that service if it was ever added. Production startup deliberately fails if an owner URL is present.
+4. After upgrading to a paid service or external migration job, configure the Render web service with only the restricted `DATABASE_URL`, move `npm run db:migrate` from the build command into the isolated pre-deploy/CI step, and keep `DATABASE_MIGRATION_URL` out of the web service. Production startup deliberately fails if a migration URL is present.
 5. Redeploy and verify `/api/health`, login, checkout and merchant operations before revoking any superseded runtime credential.
 
 Render-managed rotation credentials can be provider-configured to assume the original database-owner role. If `db:verify-runtime` reports different session and effective users, the application credential is not least privilege even if its explicit table grants are narrow. Do not attempt unsupported role changes or delete the owner. Ask Render support to remove the owner-role inheritance, or defer this defense-in-depth control and record the residual risk.

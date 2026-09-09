@@ -5,9 +5,10 @@ services:
     plan: free
     branch: main
     autoDeploy: true
-    # Database migrations run from a separate trusted operator/CI environment.
-    # The web service must never receive DATABASE_MIGRATION_URL.
-    buildCommand: npm ci --include=dev && npm run build
+    # Free Render web services do not support a pre-deploy command. Build first,
+    # then apply the committed, forward-only migrations before releasing the
+    # new server. A migration failure stops the deploy and keeps the old release.
+    buildCommand: npm ci --include=dev && npm run build && npm run db:migrate
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:

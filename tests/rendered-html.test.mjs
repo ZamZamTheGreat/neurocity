@@ -790,3 +790,11 @@ test("publishes a completed onboarding storefront into the public marketplace", 
   assert.match(stores, /eq\(merchants\.isPublic, true\)/);
   assert.match(stores, /inArray\(merchants\.status, \["pilot", "active"\]\)/);
 });
+
+test("applies database migrations before a free Render release", async () => {
+  const renderConfig = await readFile(new URL("../render.yaml", import.meta.url), "utf8");
+  const buildCommand = renderConfig.match(/buildCommand:\s*(.+)/)?.[1] ?? "";
+  assert.match(buildCommand, /npm run build/);
+  assert.match(buildCommand, /npm run db:migrate/);
+  assert.ok(buildCommand.indexOf("npm run build") < buildCommand.indexOf("npm run db:migrate"));
+});
