@@ -89,6 +89,18 @@
 .digital-malls-home .james-online { border-color:#15130d; background:var(--mall-gold); }
 .digital-malls-home .network-james aside > button:hover,
 .digital-malls-home .network-james aside > button:focus-visible { border-color:rgba(212,175,55,.5); background:rgba(212,175,55,.09); }
+.digital-malls-home .network-language-guide { background:#f8f6ef; color:#17150f; }
+.digital-malls-home .network-language-guide .eyebrow,
+.digital-malls-home .network-local-commerce .eyebrow,
+.digital-malls-home .network-faq .eyebrow { color:#8b6919; }
+.digital-malls-home .network-language-guide .eyebrow span,
+.digital-malls-home .network-local-commerce .eyebrow span,
+.digital-malls-home .network-faq .eyebrow span { background:#b98b1c; }
+.digital-malls-home .network-language-guide > div { border-color:#ddd6c5; background:#ddd6c5; }
+.digital-malls-home .network-language-guide article { background:#fffdfa; }
+.digital-malls-home .network-language-guide article small { background:#f3e8c9; color:#77570c; }
+.digital-malls-home .network-language-guide article a,
+.digital-malls-home .network-language-guide article button { color:#77570c; }
 
 .white-label-mall { background: var(--mall-cream); }
 .white-label-mall .topbar { border-bottom: 1px solid var(--mall-line); background: rgba(8,8,8,.94); color:#fff; box-shadow:0 12px 42px rgba(0,0,0,.16); }

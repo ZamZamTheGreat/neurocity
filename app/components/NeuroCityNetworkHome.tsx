@@ -148,11 +148,17 @@ export default function NeuroCityNetworkHome({
               </div>
             </aside>
           </section>
-          <section className="network-language-guide" aria-label="How NeuroCity is organised">
-            <article><b>NeuroCity</b><span>The connected shopping network and your shared account.</span></article>
-            <article><b>Marketplace</b><span>Browse products and stores across the whole network.</span></article>
-            <article><b>Shop by mall</b><span>Visit the online version of a participating physical mall.</span></article>
-            <article><b>Selma</b><span>Your shopping assistant for finding and comparing local options.</span></article>
+          <section className="network-language-guide" aria-labelledby="network-guide-title">
+            <header>
+              <p className="eyebrow"><span /> ONE CONNECTED NETWORK</p>
+              <h2 id="network-guide-title">One account. Three ways to find what you need.</h2>
+              <p>NeuroCity connects every shopping route, so your account and experience travel with you.</p>
+            </header>
+            <div>
+              <article><small>01</small><b>Browse everything</b><span>Search products, services and stores across the complete NeuroCity marketplace.</span><a href="/marketplace">Open Marketplace →</a></article>
+              <article><small>02</small><b>Shop by place</b><span>Enter the online version of a participating physical mall and browse its tenants.</span><a href="/malls">Choose a mall →</a></article>
+              <article><small>03</small><b>Ask Selma</b><span>Describe your budget, size, colour or occasion and get relevant local options.</span><button onClick={() => askSelma()}>Start a search →</button></article>
+            </div>
           </section>
           {featured?.products.length ? <section className="network-featured-products">
             <header><div><p className="eyebrow"><span /> AVAILABLE NOW</p><h2>Start with what&apos;s in the marketplace.</h2></div><a href="/marketplace">Browse everything →</a></header>

@@ -39,7 +39,7 @@ test("renders the NeuroCity network gateway", async () => {
   assert.match(html, /Shop local Namibian businesses/);
   assert.match(html, /marketplace/i);
   assert.match(html, /Shop by mall/);
-  assert.match(html, /How NeuroCity is organised/);
+  assert.match(html, /One account\. Three ways to find what you need/);
   assert.match(html, /Selma/);
   assert.match(html, /<title>NeuroCity \| Shop Namibian stores online<\/title>/);
   assert.match(html, /<link rel="canonical" href="https:\/\/neurocity\.city\/"/);
