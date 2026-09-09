@@ -29,6 +29,48 @@ export default function NeuroCityNetworkHome({
   const [loading, setLoading] = useState(true);
   const [featured, setFeatured] = useState<{ merchant: FeaturedMerchant; products: FeaturedProduct[] } | null>(null);
   const askSelma = (text = "") => openConcierge({ initialPrompt: text });
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://neurocity.city/#organization",
+        name: "NeuroCity",
+        url: "https://neurocity.city/",
+        logo: "https://neurocity.city/branding/neurocity-logo.png",
+        description: "A connected marketplace for discovering and shopping from Namibian businesses.",
+        areaServed: { "@type": "Country", name: "Namibia" },
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://neurocity.city/#website",
+        url: "https://neurocity.city/",
+        name: "NeuroCity",
+        publisher: { "@id": "https://neurocity.city/#organization" },
+        inLanguage: "en-NA",
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: [
+          {
+            "@type": "Question",
+            name: "What is NeuroCity?",
+            acceptedAnswer: { "@type": "Answer", text: "NeuroCity is a Namibian online marketplace that connects shoppers with approved local stores, products, services and participating malls." },
+          },
+          {
+            "@type": "Question",
+            name: "Can I shop from different Namibian stores in one place?",
+            acceptedAnswer: { "@type": "Answer", text: "Yes. NeuroCity lets shoppers browse participating stores through the main marketplace or enter the online space for a participating mall." },
+          },
+          {
+            "@type": "Question",
+            name: "How can a Namibian business join NeuroCity?",
+            acceptedAnswer: { "@type": "Answer", text: "A local business can submit a merchant application through NeuroCity. Approved merchants receive a storefront and tools for managing products, inventory and orders." },
+          },
+        ],
+      },
+    ],
+  };
   useEffect(() => {
     fetch("/api/malls")
       .then(async (response) => {
@@ -45,6 +87,8 @@ export default function NeuroCityNetworkHome({
   }, [directoryOnly]);
   return (
     <main id="main-content" className="network-home digital-malls-home">
+      {!directoryOnly && <link rel="canonical" href="https://neurocity.city/" />}
+      {!directoryOnly && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replaceAll("<", "\\u003c") }} />}
       <header className="network-header">
         <a href="/" className="network-brand">
           <ManagedImage src="/branding/neurocity-malls-mark.png" alt="" width={180} height={180} />
@@ -145,6 +189,17 @@ export default function NeuroCityNetworkHome({
                 </button>
               </div>
             </article>
+          </section>
+          <section className="network-local-commerce" aria-labelledby="local-commerce-title">
+            <div>
+              <p className="eyebrow"><span /> BUILT FOR NAMIBIAN SHOPPING</p>
+              <h2 id="local-commerce-title">Find local products without searching store by store.</h2>
+            </div>
+            <div className="network-local-copy">
+              <p>NeuroCity brings participating Namibian businesses into one searchable marketplace. Browse fashion, gifts, services and everyday essentials, then check each store&apos;s available collection and delivery options.</p>
+              <p>Shopping for something specific? Tell Selma the item, size, colour, budget or location you have in mind. Results are drawn from live merchant catalogues so you can compare relevant local options.</p>
+              <div><a href="/marketplace">Explore the marketplace →</a><a href="/apply">List your business →</a></div>
+            </div>
           </section>
         </>
       )}
@@ -266,6 +321,15 @@ export default function NeuroCityNetworkHome({
           </aside>
         </section>
       )}
+      {!directoryOnly && <section className="network-faq" aria-labelledby="network-faq-title">
+        <header><p className="eyebrow"><span /> QUESTIONS</p><h2 id="network-faq-title">Shopping on NeuroCity</h2></header>
+        <div>
+          <details><summary>What is NeuroCity?</summary><p>NeuroCity is a Namibian online marketplace that connects shoppers with approved local stores, products, services and participating malls.</p></details>
+          <details><summary>Can I shop from different stores in one place?</summary><p>Yes. Browse the whole NeuroCity marketplace or enter the online space for a participating mall to see its stores together.</p></details>
+          <details><summary>How does Selma help me shop?</summary><p>Describe what you need, including your budget, size, colour or location. Selma searches participating merchants&apos; catalogues for relevant local options.</p></details>
+          <details><summary>How can my business join?</summary><p>Submit a merchant application with your business details. Approved merchants receive a storefront and tools for managing products, inventory and orders.</p></details>
+        </div>
+      </section>}
       <footer className="network-footer">
         <div className="network-brand">
           <ManagedImage src="/branding/neurocity-malls-mark.png" alt="" width={180} height={180} />

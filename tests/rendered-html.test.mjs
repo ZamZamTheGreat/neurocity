@@ -41,6 +41,11 @@ test("renders the NeuroCity network gateway", async () => {
   assert.match(html, /Shop by mall/);
   assert.match(html, /How NeuroCity is organised/);
   assert.match(html, /Selma/);
+  assert.match(html, /<title>NeuroCity \| Shop Namibian stores online<\/title>/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/neurocity\.city\/"/);
+  assert.match(html, /application\/ld\+json/);
+  assert.match(html, /Find local products without searching store by store/);
+  assert.match(html, /Shopping on NeuroCity/);
   const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(source, /merchants are being recruited|: "Recruiting"/);
   assert.doesNotMatch(html, /codex-preview|SkeletonPreview|react-loading-skeleton/);
@@ -54,6 +59,8 @@ test("keeps the commerce experience at the marketplace route", async () => {
   assert.match(html, /How it works/);
   assert.match(html, /What are you looking for/);
   assert.match(html, /href="\/account\?tab=bag"/);
+  assert.match(html, /<title>Marketplace \| NeuroCity<\/title>/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/neurocity\.city\/marketplace"/);
 });
 
 test("keeps digital-mall branding isolated from the marketplace", async () => {

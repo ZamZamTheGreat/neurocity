@@ -1,4 +1,4 @@
-const FALLBACK_SITE_URL = "https://neurocity-fhl1.onrender.com";
+const FALLBACK_SITE_URL = "https://neurocity.city";
 
 export function siteUrl() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.RENDER_EXTERNAL_URL?.trim();

@@ -39,9 +39,32 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   applicationName: "NeuroCity",
-  title: "NeuroCity | Namibia's connected shopping network",
+  title: "NeuroCity | Shop Namibian stores online",
   description:
-    "Explore Namibia's local marketplace, digital malls and live merchant catalogues through one connected shopping network.",
+    "Discover products, services and approved local stores across Namibia. Shop the NeuroCity marketplace, visit digital malls and find local options with Selma.",
+  keywords: [
+    "Namibia online shopping",
+    "Namibian marketplace",
+    "local stores Namibia",
+    "online shopping Windhoek",
+    "Namibia digital mall",
+    "Namibian businesses",
+  ],
+  category: "shopping",
+  creator: "NeuroCity",
+  publisher: "NeuroCity",
+  referrer: "origin-when-cross-origin",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -64,9 +87,12 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: "NeuroCity",
+    title: "NeuroCity | Shop Namibian stores online",
     description:
-      "Namibia's marketplaces, digital malls and local stores—connected.",
+      "Discover products, services and approved local stores across Namibia in one connected marketplace.",
+    url: siteUrl(),
+    siteName: "NeuroCity",
+    locale: "en_NA",
     type: "website",
     images: [
       {
@@ -79,8 +105,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "NeuroCity",
-    description: "Namibia's connected shopping network.",
+    title: "NeuroCity | Shop Namibian stores online",
+    description: "Discover products, services and approved local stores across Namibia.",
     images: ["/branding/neurocity-social.png"],
   },
   verification: process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : undefined,
