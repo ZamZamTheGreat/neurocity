@@ -131,6 +131,8 @@ type Variant = {
   color: string | null;
   price: number;
   salePrice: number | null;
+  usesProductPrice?: boolean;
+  usesProductSalePrice?: boolean;
   status: string;
   imageUrl: string | null;
   storageImageUrl: string | null;
@@ -526,6 +528,8 @@ export default function MerchantWorkspace({
         color: variant.color,
         price: variant.price,
         salePrice: variant.salePrice,
+        usesProductPrice: variant.usesProductPrice,
+        usesProductSalePrice: variant.usesProductSalePrice,
         status: variant.status,
         onHand: inventory?.onHand ?? 0,
         safetyStock: inventory?.safetyStock ?? 0,
@@ -835,7 +839,7 @@ export default function MerchantWorkspace({
             <div className="ops-callout variant-callout">
               <div>
                 <h3>SKU-level availability</h3>
-                <ul className="info-list"><li>Each size and colour combination has its own price and stock.</li><li>Customers select these combinations on the public storefront.</li></ul>
+                <ul className="info-list"><li>Every option inherits the product price unless you set a different colourway price.</li><li>Each size keeps its own stock and customers select the combination on the storefront.</li></ul>
               </div>
               <div>
                 {products.map((product) => (
@@ -1434,8 +1438,8 @@ function CatalogueManager({
   }) : products;
   const downloadTemplate = () => {
     downloadCatalogueCsv("neurocity-catalogue-template.csv", [
-      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "Black", variant_price: "299.00", variant_sale_price: "249.00", stock: "", stock_by_size: "S:12|M:10|L:8|XL:5" },
-      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "White", variant_price: "299.00", variant_sale_price: "249.00", stock: "", stock_by_size: "S:8|M:8|L:6|XL:4" },
+      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "Black", variant_price: "", variant_sale_price: "", stock: "", stock_by_size: "S:12|M:10|L:8|XL:5" },
+      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "White", variant_price: "329.00", variant_sale_price: "279.00", stock: "", stock_by_size: "S:8|M:8|L:6|XL:4" },
     ]);
   };
   const exportCatalogue = () => {
@@ -1459,8 +1463,8 @@ function CatalogueManager({
         size: "",
         sizes: sizes.join("|"),
         color: variant?.color ?? "",
-        variant_price: variant?.price.toFixed(2) ?? product.price?.toFixed(2) ?? "",
-        variant_sale_price: variant?.salePrice?.toFixed(2) ?? product.salePrice?.toFixed(2) ?? "",
+        variant_price: variant?.usesProductPrice === false ? variant.price.toFixed(2) : "",
+        variant_sale_price: variant?.usesProductSalePrice === false ? variant.salePrice?.toFixed(2) ?? "" : "",
         stock: "",
         stock_by_size: colourway.map((item) => `${item.size ?? "One size"}:${item.stock.reduce((sum, row) => sum + row.onHand, 0)}`).join("|"),
       }; });
@@ -1646,7 +1650,7 @@ function CatalogueManager({
         </div>
       </div>
       {products.length > 0 && <div className="merchant-search product-search"><label><span aria-hidden="true">⌕</span><input type="search" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Search products, SKUs, categories or variants" aria-label="Search products" /></label><small>{visibleProducts.length} of {products.length} product{products.length === 1 ? "" : "s"}</small>{productSearch && <button onClick={() => setProductSearch("")}>Clear</button>}</div>}
-      <p className="catalogue-csv-help"><b>CSV rules:</b> Use one row per colourway. Put sizes in <b>sizes</b> as S|M|L|XL and stock in <b>stock_by_size</b> as S:4|M:8|L:6|XL:2. NeuroCity creates every size variant and its SKU automatically. Existing files may still use one row per variant with size, stock and variant_sku. Repeat identical product details and the product SKU across colourways. Use an exact NeuroCity category, plain numbers without N$, and sale prices lower than regular prices. Imports are saved as drafts.</p>
+      <p className="catalogue-csv-help"><b>CSV rules:</b> Use one row per colourway. Put sizes in <b>sizes</b> as S|M|L|XL and stock in <b>stock_by_size</b> as S:4|M:8|L:6|XL:2. NeuroCity creates every size variant and its SKU automatically. Leave <b>variant_price</b> and <b>variant_sale_price</b> blank to inherit the product prices; fill them only when a colourway costs differently. Existing files may still use one row per variant with size, stock and variant_sku. Repeat identical product details and the product SKU across colourways. Use an exact NeuroCity category, plain numbers without N$, and sale prices lower than regular prices. Imports are saved as drafts.</p>
       <ProductCreatePanel
         open={creating}
         busy={createBusy}

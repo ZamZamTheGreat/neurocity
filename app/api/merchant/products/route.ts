@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       if (itemType === "product" && price !== null) {
         const colourOptions: (string | null)[] = colours.length ? colours : [null];
         const sizeOptions: (string | null)[] = sizes.length ? sizes : [null];
-        const rows = colourOptions.flatMap((color) => sizeOptions.map((size, index) => ({ productId: product.id, sku: `M${access.merchantId}-${sku}-${skuPart(size ?? "")}-${skuPart(color ?? "")}-${index + 1}`, title: [size, color].filter(Boolean).join(" / ") || "Standard", size, color, attributes: { inventoryMode: "generated" }, price, salePrice, status: "draft", imageUrl: product.imageUrl })));
+        const rows = colourOptions.flatMap((color) => sizeOptions.map((size, index) => ({ productId: product.id, sku: `M${access.merchantId}-${sku}-${skuPart(size ?? "")}-${skuPart(color ?? "")}-${index + 1}`, title: [size, color].filter(Boolean).join(" / ") || "Standard", size, color, attributes: { inventoryMode: "generated", priceMode: "product", salePriceMode: "product" }, price, salePrice, status: "draft", imageUrl: product.imageUrl })));
         const generated = await tx.insert(productVariants).values(rows).returning({ id: productVariants.id });
         const [branch] = await tx.select({ id: storeBranches.id }).from(storeBranches).where(eq(storeBranches.merchantId, access.merchantId)).limit(1);
         if (branch && generated.length) await tx.insert(variantInventory).values(generated.map((variant) => ({ variantId: variant.id, branchId: branch.id, onHand: 0, reserved: 0, safetyStock: 0 })));
@@ -111,14 +111,34 @@ export async function PATCH(request: Request) {
     if (imageUrl?.startsWith("r2://") && !imageUrl.slice(5).startsWith(`merchants/${access.merchantId}/products/${current.id}/`)) return Response.json({ error: "Invalid product image." }, { status: 403 });
     if ((imageUrls as string[]).some((url) => url.startsWith("r2://") && !url.slice(5).startsWith(`merchants/${access.merchantId}/products/${current.id}/`))) return Response.json({ error: "Invalid product gallery image." }, { status: 403 });
 
-    const [updated] = await db.update(products).set({ itemType, name, sku, collection, category, brand, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, status, availability, imageUrl: (imageUrls as string[])[0] ?? imageUrl, imageUrls, badge }).where(and(eq(products.id, current.id), eq(products.merchantId, access.merchantId))).returning();
     const existingVariants = await db.select().from(productVariants).where(eq(productVariants.productId, current.id));
-    if (itemType === "product" && price !== null && existingVariants.length === 0) {
-      await db.insert(productVariants).values({ productId: current.id, sku: `M${access.merchantId}-${sku}-DEFAULT`, title: "Standard", attributes: { inventoryMode: "merchant_confirmed" }, price, salePrice, status: status === "published" ? "active" : "draft", imageUrl });
-    } else if (existingVariants.length === 1 && existingVariants[0].attributes && (existingVariants[0].attributes as Record<string, unknown>).inventoryMode === "merchant_confirmed") {
-      await db.update(productVariants).set({ sku: `M${access.merchantId}-${sku}-DEFAULT`, price: price ?? existingVariants[0].price, salePrice, status: status === "published" ? "active" : status === "archived" ? "archived" : "draft", imageUrl }).where(eq(productVariants.id, existingVariants[0].id));
-    }
-    await db.insert(auditEvents).values({ actorRef: access.user.userId, action: "product.updated", resourceType: "product", resourceId: String(current.id), metadata: JSON.stringify({ before: current, after: updated }), createdAt: new Date() });
+    const inheritedValues = existingVariants.map((variant) => {
+      const attributes = (variant.attributes as Record<string, unknown> | null) ?? {};
+      const inheritsPrice = attributes.priceMode === "product" || (attributes.priceMode === undefined && variant.price === current.price);
+      const inheritsSalePrice = attributes.salePriceMode === "product" || (attributes.salePriceMode === undefined && variant.salePrice === current.salePrice);
+      const nextPrice = inheritsPrice && price !== null ? price : variant.price;
+      const nextSalePrice = inheritsSalePrice ? salePrice : variant.salePrice;
+      return { variant, attributes, inheritsPrice, inheritsSalePrice, nextPrice, nextSalePrice };
+    });
+    if (inheritedValues.some(({ nextPrice, nextSalePrice }) => nextSalePrice !== null && nextSalePrice >= nextPrice)) return Response.json({ error: "The new product price conflicts with a custom colourway sale price. Update that colourway first." }, { status: 409 });
+    const updated = await db.transaction(async (tx) => {
+      const [saved] = await tx.update(products).set({ itemType, name, sku, collection, category, brand, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, status, availability, imageUrl: (imageUrls as string[])[0] ?? imageUrl, imageUrls, badge }).where(and(eq(products.id, current.id), eq(products.merchantId, access.merchantId))).returning();
+      if (itemType === "product" && price !== null && existingVariants.length === 0) {
+        await tx.insert(productVariants).values({ productId: current.id, sku: `M${access.merchantId}-${sku}-DEFAULT`, title: "Standard", attributes: { inventoryMode: "merchant_confirmed", priceMode: "product", salePriceMode: "product" }, price, salePrice, status: status === "published" ? "active" : "draft", imageUrl });
+      } else {
+        for (const inherited of inheritedValues) {
+          const defaultVariant = existingVariants.length === 1 && inherited.attributes.inventoryMode === "merchant_confirmed";
+          if (!inherited.inheritsPrice && !inherited.inheritsSalePrice && !defaultVariant) continue;
+          await tx.update(productVariants).set({
+            ...(inherited.inheritsPrice ? { price: inherited.nextPrice, attributes: { ...inherited.attributes, priceMode: "product", ...(inherited.inheritsSalePrice ? { salePriceMode: "product" } : {}) } } : inherited.inheritsSalePrice ? { attributes: { ...inherited.attributes, salePriceMode: "product" } } : {}),
+            ...(inherited.inheritsSalePrice ? { salePrice: inherited.nextSalePrice } : {}),
+            ...(defaultVariant ? { sku: `M${access.merchantId}-${sku}-DEFAULT`, status: status === "published" ? "active" : status === "archived" ? "archived" : "draft", imageUrl } : {}),
+          }).where(eq(productVariants.id, inherited.variant.id));
+        }
+      }
+      await tx.insert(auditEvents).values({ actorRef: access.user.userId, action: "product.updated", resourceType: "product", resourceId: String(current.id), metadata: JSON.stringify({ before: current, after: saved }), createdAt: new Date() });
+      return saved;
+    });
     return Response.json({ product: updated });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Product update failed." }, { status: 500 });

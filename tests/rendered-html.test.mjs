@@ -733,6 +733,23 @@ test("generates product variants from colours and selected sizes", async () => {
   assert.match(variantRoute, /already has these sizes/);
 });
 
+test("inherits product prices while preserving merchant colourway overrides", async () => {
+  const productRoute = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");
+  const variantRoute = await readFile(new URL("../app/api/merchant/variants/route.ts", import.meta.url), "utf8");
+  const bulkRoute = await readFile(new URL("../app/api/merchant/products/bulk/route.ts", import.meta.url), "utf8");
+  const options = await readFile(new URL("../app/components/ProductOptionsPanel.tsx", import.meta.url), "utf8");
+  const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");
+  assert.match(productRoute, /priceMode: "product", salePriceMode: "product"/);
+  assert.match(productRoute, /inheritedValues/);
+  assert.match(productRoute, /attributes\.priceMode === "product"/);
+  assert.match(variantRoute, /price === product\.price \? "product" : "custom"/);
+  assert.match(variantRoute, /usesProductPrice/);
+  assert.match(bulkRoute, /hasVariantPrice \? "custom" : "product"/);
+  assert.match(options, /salePrice: product\.salePrice \?\? null/);
+  assert.match(options, /usesProductSalePrice: false/);
+  assert.match(workspace, /Leave <b>variant_price<\/b> and <b>variant_sale_price<\/b> blank to inherit/);
+});
+
 test("sends service booking lifecycle notifications", async () => {
   const customerBookings = await readFile(new URL("../app/api/service-bookings/route.ts", import.meta.url), "utf8");
   const merchantBookings = await readFile(new URL("../app/api/merchant/service-bookings/route.ts", import.meta.url), "utf8");

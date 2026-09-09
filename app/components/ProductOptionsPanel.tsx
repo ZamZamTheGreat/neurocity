@@ -10,6 +10,7 @@ type Product = {
   name: string;
   sku: string;
   price: number | null;
+  salePrice?: number | null;
   category?: string | null;
 };
 type Variant = {
@@ -22,6 +23,8 @@ type Variant = {
   color: string | null;
   price: number;
   salePrice: number | null;
+  usesProductPrice?: boolean;
+  usesProductSalePrice?: boolean;
   status: string;
   imageUrl: string | null;
   storageImageUrl: string | null;
@@ -81,10 +84,10 @@ export default function ProductOptionsPanel({
       <header>
         <div>
           <small>CUSTOMER OPTIONS</small>
-          <h3>Sizes, colours, prices and stock</h3>
+          <h3>Colourways, sizes and stock</h3>
           <p>
             {active
-              ? `${active} active option${active === 1 ? "" : "s"}. Customers can see the price and use Add to bag.`
+              ? `${active} active option${active === 1 ? "" : "s"}. Prices follow the product unless a colourway has its own price.`
               : "Add and activate at least one option to show the price and Add to bag."}
           </p>
         </div>
@@ -123,8 +126,8 @@ function ColourwayRow({ variants, onChange, onSave, onUpload }: { variants: Vari
       <select aria-label={`Status for ${color}`} value={variants.every((variant) => variant.status === first.status) ? first.status : "draft"} onChange={(event) => updateAll({ status: event.target.value })}><option value="active">Active</option><option value="draft">Draft</option><option value="needs_confirmation">Needs confirmation</option><option value="archived">Archived</option></select>
     </header>
     <div className="colourway-shared-fields">
-      <label>Regular price<input type="number" min="0" step="0.01" value={first.price} onChange={(event) => updateAll({ price: Number(event.target.value) })} /></label>
-      <label>Sale price<input type="number" min="0" step="0.01" value={first.salePrice ?? ""} onChange={(event) => updateAll({ salePrice: event.target.value === "" ? null : Number(event.target.value) })} /></label>
+      <label>Regular price<input type="number" min="0" step="0.01" value={first.price} onChange={(event) => updateAll({ price: Number(event.target.value), usesProductPrice: false })} /></label>
+      <label>Sale price<input type="number" min="0" step="0.01" value={first.salePrice ?? ""} onChange={(event) => updateAll({ salePrice: event.target.value === "" ? null : Number(event.target.value), usesProductSalePrice: false })} /></label>
     </div>
     <div className="colourway-size-grid">{variants.map((variant) => { const stock = variant.stock[0] ?? { branchName: "Primary branch", onHand: 0, reserved: 0, safetyStock: 0 }; return <label key={variant.id}><b>{variant.size ?? "One size"}</b><span>{variant.sku}</span><input aria-label={`${color} ${variant.size ?? "One size"} stock`} type="number" min="0" value={stock.onHand} onChange={(event) => onChange({ ...variant, stock: [{ ...stock, onHand: Number(event.target.value) }] })} /><small>{Math.max(0, stock.onHand - stock.reserved - stock.safetyStock)} available</small></label>; })}</div>
     <details className="colourway-advanced"><summary>Advanced settings by size</summary><div>{variants.map((variant) => <VariantRow key={variant.id} variant={variant} onChange={onChange} onSave={() => onSave(variant)} onUpload={onUpload} />)}</div></details>
@@ -204,7 +207,7 @@ function VariantRow({
             step="0.01"
             value={variant.price}
             onChange={(event) =>
-              onChange({ ...variant, price: Number(event.target.value) })
+              onChange({ ...variant, price: Number(event.target.value), usesProductPrice: false })
             }
           />
         </label>
@@ -220,6 +223,7 @@ function VariantRow({
                 ...variant,
                 salePrice:
                   event.target.value === "" ? null : Number(event.target.value),
+                usesProductSalePrice: false,
               })
             }
           />
@@ -272,7 +276,7 @@ function NewVariantForm({
     sizes: [] as string[],
     color: "",
     price: product.price ?? 0,
-    salePrice: null as number | null,
+    salePrice: product.salePrice ?? null,
     onHand: 0,
   });
   const [values, setValues] = useState(initial);
@@ -289,7 +293,7 @@ function NewVariantForm({
   }
   if (!open)
     return (
-      <button className="add-option-button" onClick={() => setOpen(true)}>
+      <button className="add-option-button" onClick={() => { setValues(initial()); setOpen(true); }}>
         + Add colourway and sizes
       </button>
     );
@@ -351,7 +355,7 @@ function NewVariantForm({
           />
         </label>
       </div>
-      <p className="generated-sku-note">NeuroCity will create one inventory option and a unique SKU for every selected size.</p>
+      <p className="generated-sku-note">Prices are prefilled from the product and applied to every selected size. Change them here only when this colourway has a different price. NeuroCity will create one inventory option and a unique SKU for every selected size.</p>
       <footer>
         <button className="secondary" onClick={() => setOpen(false)}>
           Cancel

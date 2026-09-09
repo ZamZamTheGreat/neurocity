@@ -17,7 +17,8 @@ export async function POST(request: Request) {
   const parsed = payload.rows.flatMap((row, index) => {
     const name = clean(row.name), sku = clean(row.sku).toUpperCase(), category = clean(row.category), description = clean(row.description);
     const price = Number(row.price), salePrice = clean(row.salePrice) ? Number(row.salePrice) : null, stock = clean(row.stock) ? Number(row.stock) : 0;
-    const variantPrice = clean(row.variantPrice) ? Number(row.variantPrice) : price, variantSalePrice = clean(row.variantSalePrice) ? Number(row.variantSalePrice) : salePrice;
+    const hasVariantPrice = Boolean(clean(row.variantPrice)), hasVariantSalePrice = Boolean(clean(row.variantSalePrice));
+    const variantPrice = hasVariantPrice ? Number(row.variantPrice) : price, variantSalePrice = hasVariantSalePrice ? Number(row.variantSalePrice) : salePrice;
     const color = clean(row.color) || null, rangedSizes = sizeRange(row.sizes), sizes = rangedSizes.length ? [...new Set(rangedSizes)] : [clean(row.size) || null];
     const stockEntries = clean(row.stockBySize).split("|").filter(Boolean).map((entry) => { const split = entry.lastIndexOf(":"); return { size: entry.slice(0, split).trim().toLocaleLowerCase(), stock: Number(entry.slice(split + 1)) }; });
     const stockMap = new Map(stockEntries.map((entry) => [entry.size, entry.stock]));
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     const errors = [!name && "name", !sku && "sku", !isMerchantCategory(category) && "category", !description && "description", (!Number.isFinite(price) || price < 0) && "price", (salePrice !== null && (!Number.isFinite(salePrice) || salePrice < 0 || salePrice >= price)) && "sale_price", (!Number.isFinite(variantPrice) || variantPrice < 0) && "variant_price", (variantSalePrice !== null && (!Number.isFinite(variantSalePrice) || variantSalePrice < 0 || variantSalePrice >= variantPrice)) && "variant_sale_price", (!Number.isInteger(stock) || stock < 0) && "stock", invalidStockMap && "stock_by_size", (rangedSizes.length > 30) && "sizes"].filter(Boolean);
     return sizes.map((size) => {
       const explicitSku = clean(row.variantSku).toUpperCase();
-      return { row: index + 2, name, sku, category, description, price, salePrice, stock: size ? stockMap.get(size.toLocaleLowerCase()) ?? stock : stock, brand: clean(row.brand) || null, collection: clean(row.collection) || null, variantSku: explicitSku && sizes.length === 1 ? explicitSku : `M${access.merchantId}-${skuPart(sku)}-${skuPart(color ?? "")}-${skuPart(size ?? "")}`, variantTitle: sizes.length === 1 && clean(row.variantTitle) ? clean(row.variantTitle) : [size, color].filter(Boolean).join(" / ") || "Standard", size, color, variantPrice, variantSalePrice, errors };
+      return { row: index + 2, name, sku, category, description, price, salePrice, stock: size ? stockMap.get(size.toLocaleLowerCase()) ?? stock : stock, brand: clean(row.brand) || null, collection: clean(row.collection) || null, variantSku: explicitSku && sizes.length === 1 ? explicitSku : `M${access.merchantId}-${skuPart(sku)}-${skuPart(color ?? "")}-${skuPart(size ?? "")}`, variantTitle: sizes.length === 1 && clean(row.variantTitle) ? clean(row.variantTitle) : [size, color].filter(Boolean).join(" / ") || "Standard", size, color, variantPrice, variantSalePrice, hasVariantPrice, hasVariantSalePrice, errors };
     });
   });
   if (parsed.length > 1000) return Response.json({ error: "The selected size ranges create more than 1,000 variants. Split this import into smaller files." }, { status: 400 });
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     for (const row of productRows) {
       const [product] = await tx.insert(products).values({ merchantId: access.merchantId, itemType: "product", name: row.name, sku: row.sku, category: row.category, description: row.description, brand: row.brand, collection: row.collection, price: row.price, salePrice: row.salePrice, pricingModel: "fixed", status: "draft", availability: "available" }).returning();
       for (const option of parsed.filter((candidate) => candidate.sku === row.sku)) {
-        const [variant] = await tx.insert(productVariants).values({ productId: product.id, sku: option.variantSku, title: option.variantTitle, size: option.size, color: option.color, attributes: { inventoryMode: "bulk_import_generated" }, price: option.variantPrice, salePrice: option.variantSalePrice, status: "draft" }).returning({ id: productVariants.id });
+        const [variant] = await tx.insert(productVariants).values({ productId: product.id, sku: option.variantSku, title: option.variantTitle, size: option.size, color: option.color, attributes: { inventoryMode: "bulk_import_generated", priceMode: option.hasVariantPrice ? "custom" : "product", salePriceMode: option.hasVariantSalePrice ? "custom" : "product" }, price: option.variantPrice, salePrice: option.variantSalePrice, status: "draft" }).returning({ id: productVariants.id });
         if (branch) await tx.insert(variantInventory).values({ variantId: variant.id, branchId: branch.id, onHand: option.stock, reserved: 0, safetyStock: 0 });
       }
       created.push(product);
