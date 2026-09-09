@@ -85,6 +85,7 @@ test("renders the public onboarding routes", async (t) => {
     ["/application-status", /Track your application/],
     ["/reset-password", /Reset your password/],
     ["/malls", /Shop by mall/],
+    ["/account-deletion", /Delete your NeuroCity account/],
   ];
   for (const [path, marker] of routes) {
     await t.test(path, async () => {

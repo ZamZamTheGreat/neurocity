@@ -351,6 +351,7 @@ export default function NeuroCityNetworkHome({
           <a href="/admin">Administration</a>
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
+          <a href="/account-deletion">Delete account</a>
         </nav>
         <small>© {new Date().getFullYear()} NeuroCity · Namibia</small>
       </footer>
