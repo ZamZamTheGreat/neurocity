@@ -400,6 +400,19 @@ test("keeps the merchant dashboard focused and consistent", async () => {
   assert.match(workspace, /row\.id === product\.id/);
 });
 
+test("keeps the complete merchant workspace usable on mobile", async () => {
+  const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");
+  const responsive = await readFile(new URL("../app/merchant-dashboard-clean.css", import.meta.url), "utf8");
+  assert.match(workspace, /merchant-workspace-open/);
+  assert.match(workspace, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(workspace, /event\.key === "Escape"/);
+  assert.match(responsive, /body\.merchant-workspace-open>\.mobile-dock\{display:none\}/);
+  assert.match(responsive, /\.dashboard-head-actions\{grid-column:1\/-1;display:grid!important/);
+  assert.match(responsive, /\.catalogue-card>footer button\{width:100%;min-height:46px/);
+  assert.match(responsive, /\.setup-fields input.*font-size:16px/);
+  assert.match(responsive, /\.merchant-payment-queue article\{grid-template-columns:1fr\}/);
+});
+
 test("uses the dashboard colour system across the NeuroCity marketplace", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/marketplace-dashboard-theme.css", import.meta.url), "utf8");
