@@ -851,7 +851,7 @@ export default function MerchantWorkspace({
             <div className="ops-callout variant-callout">
               <div>
                 <h3>SKU-level availability</h3>
-                <ul className="info-list"><li>Every option inherits the product price unless you set a different colourway price.</li><li>Each size keeps its own stock and customers select the combination on the storefront.</li></ul>
+                <ul className="info-list"><li>Every option inherits the product price unless you set a different option-group price.</li><li>Each size keeps its own stock and customers select the combination on the storefront.</li></ul>
               </div>
               <div>
                 {products.map((product) => (
@@ -884,7 +884,7 @@ export default function MerchantWorkspace({
               <h3>Live option inventory</h3>
               <ul className="info-list"><li>Available stock equals on-hand stock minus reservations and safety stock.</li><li>New orders reserve units immediately.</li><li>Rejected or cancelled orders return units automatically.</li></ul>
             </div>
-            {stock.length > 0 && <div className="merchant-search inventory-search"><label><span aria-hidden="true">⌕</span><input type="search" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Search products, SKUs, sizes or colourways" aria-label="Search inventory" /></label><small>{visibleStock.length} of {stock.length} stock item{stock.length === 1 ? "" : "s"}</small>{inventorySearch && <button onClick={() => setInventorySearch("")}>Clear</button>}</div>}
+            {stock.length > 0 && <div className="merchant-search inventory-search"><label><span aria-hidden="true">⌕</span><input type="search" value={inventorySearch} onChange={(event) => setInventorySearch(event.target.value)} placeholder="Search products, SKUs, choices or option groups" aria-label="Search inventory" /></label><small>{visibleStock.length} of {stock.length} stock item{stock.length === 1 ? "" : "s"}</small>{inventorySearch && <button onClick={() => setInventorySearch("")}>Clear</button>}</div>}
             {visibleStock.map((row) => (
               <article className="ops-row" key={row.variantId}>
                 <div className="ops-title">
@@ -964,7 +964,7 @@ export default function MerchantWorkspace({
               </article>
             ))}
             {stock.length === 0 && <div className="empty-state"><h3>No inventory yet</h3><p>Add a product and its available sizes to start tracking stock.</p><button onClick={() => setTab("Products")}>Go to products</button></div>}
-            {stock.length > 0 && visibleStock.length === 0 && <div className="empty-state search-empty"><h3>No matching inventory</h3><p>Try a product name, SKU, size, colourway or branch.</p><button onClick={() => setInventorySearch("")}>Clear search</button></div>}
+            {stock.length > 0 && visibleStock.length === 0 && <div className="empty-state search-empty"><h3>No matching inventory</h3><p>Try a product name, SKU, choice, option group or branch.</p><button onClick={() => setInventorySearch("")}>Clear search</button></div>}
           </div>
         )}
         {tab === "Orders" && (
@@ -1483,7 +1483,7 @@ function CatalogueManager({
     });
     if (!rows.length) return setMessage("Add a product before exporting your catalogue.");
     downloadCatalogueCsv(`neurocity-catalogue-${new Date().toISOString().slice(0, 10)}.csv`, rows);
-    setMessage(`${products.filter((product) => product.itemType === "product").length} products exported in ${rows.length} colourway rows. Stock is totalled across branches for each size.`);
+    setMessage(`${products.filter((product) => product.itemType === "product").length} products exported in ${rows.length} option-group rows. Stock is totalled across branches for each size.`);
   };
   async function importCatalogue(file?: File) {
     if (!file) return;
@@ -1662,7 +1662,7 @@ function CatalogueManager({
         </div>
       </div>
       {products.length > 0 && <div className="merchant-search product-search"><label><span aria-hidden="true">⌕</span><input type="search" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Search products, SKUs, categories or variants" aria-label="Search products" /></label><small>{visibleProducts.length} of {products.length} product{products.length === 1 ? "" : "s"}</small>{productSearch && <button onClick={() => setProductSearch("")}>Clear</button>}</div>}
-      <p className="catalogue-csv-help"><b>CSV rules:</b> Use one row per colourway. Put sizes in <b>sizes</b> as S|M|L|XL and stock in <b>stock_by_size</b> as S:4|M:8|L:6|XL:2. NeuroCity creates every size variant and its SKU automatically. Leave <b>variant_price</b> and <b>variant_sale_price</b> blank to inherit the product prices; fill them only when a colourway costs differently. Existing files may still use one row per variant with size, stock and variant_sku. Repeat identical product details and the product SKU across colourways. Use an exact NeuroCity category, plain numbers without N$, and sale prices lower than regular prices. Imports are saved as drafts.</p>
+      <p className="catalogue-csv-help"><b>CSV rules:</b> Use one row per option group. For clothing and related categories, this is a colourway. For other categories it can be a model, flavour, format, finish or type, recorded in the <b>color</b> column for compatibility. Put its choices in <b>sizes</b>, such as S|M|L or 64 GB|128 GB, and stock in <b>stock_by_size</b>, such as S:4|M:8 or 64 GB:5|128 GB:3. NeuroCity creates every option and SKU automatically. Leave variant prices blank to inherit the product price. Repeat the product SKU and identical product details across option groups. Imports are saved as drafts.</p>
       <ProductCreatePanel
         open={creating}
         busy={createBusy}
@@ -1676,7 +1676,7 @@ function CatalogueManager({
           <button onClick={() => setCreating(true)}>Add first product</button>
         </div>
       ) : visibleProducts.length === 0 ? (
-        <div className="empty-state search-empty"><h3>No matching products</h3><p>Try a product name, SKU, category, brand, colourway or size.</p><button onClick={() => setProductSearch("")}>Clear search</button></div>
+        <div className="empty-state search-empty"><h3>No matching products</h3><p>Try a product name, SKU, category, brand, option or choice.</p><button onClick={() => setProductSearch("")}>Clear search</button></div>
       ) : (
         <div className="ops-list">
           {visibleProducts.map((product) => {

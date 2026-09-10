@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     if (durationMinutes !== null && (!Number.isInteger(durationMinutes) || durationMinutes < 5 || durationMinutes > 10080)) return Response.json({ error: "Service duration must be between 5 minutes and 7 days." }, { status: 400 });
     if (price !== null && (!Number.isFinite(price) || price < 0)) return Response.json({ error: "Price must be a valid non-negative amount." }, { status: 400 });
     if (salePrice !== null && (!Number.isFinite(salePrice) || salePrice < 0 || price === null || salePrice >= price)) return Response.json({ error: "Sale price must be lower than the regular price." }, { status: 400 });
-    if (combinations > 100) return Response.json({ error: "Choose no more than 100 colour and size combinations per product." }, { status: 400 });
+    if (combinations > 100) return Response.json({ error: "Choose no more than 100 option combinations per product." }, { status: 400 });
     const db = getDb();
     const [duplicate] = await db.select({ id: products.id }).from(products).where(and(eq(products.merchantId, access.merchantId), eq(products.sku, sku))).limit(1);
     if (duplicate) return Response.json({ error: "That SKU is already used in your catalogue." }, { status: 409 });
@@ -120,7 +120,7 @@ export async function PATCH(request: Request) {
       const nextSalePrice = inheritsSalePrice ? salePrice : variant.salePrice;
       return { variant, attributes, inheritsPrice, inheritsSalePrice, nextPrice, nextSalePrice };
     });
-    if (inheritedValues.some(({ nextPrice, nextSalePrice }) => nextSalePrice !== null && nextSalePrice >= nextPrice)) return Response.json({ error: "The new product price conflicts with a custom colourway sale price. Update that colourway first." }, { status: 409 });
+    if (inheritedValues.some(({ nextPrice, nextSalePrice }) => nextSalePrice !== null && nextSalePrice >= nextPrice)) return Response.json({ error: "The new product price conflicts with a custom option-group sale price. Update that option group first." }, { status: 409 });
     const updated = await db.transaction(async (tx) => {
       const [saved] = await tx.update(products).set({ itemType, name, sku, collection, category, brand, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, status, availability, imageUrl: (imageUrls as string[])[0] ?? imageUrl, imageUrls, badge }).where(and(eq(products.id, current.id), eq(products.merchantId, access.merchantId))).returning();
       if (itemType === "product" && price !== null && existingVariants.length === 0) {

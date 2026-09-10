@@ -72,7 +72,7 @@ export default function ProductCreatePanel({ open, busy, onClose, onCreate }: { 
       {step === 3 && <div className="product-create-review product-create-step">
         <div><small>{service ? "SERVICE" : "PRODUCT"}</small><h3>{product.name}</h3><p>{product.sku} · {product.category}</p></div>
         <dl><div><dt>Price</dt><dd>{product.pricingModel === "quote" ? "Quote required" : `N$${Number(product.price).toFixed(2)}`}{product.salePrice !== null ? ` · Sale N$${product.salePrice.toFixed(2)}` : ""}</dd></div><div><dt>{service ? "Delivery" : "Options"}</dt><dd>{service ? product.serviceMode.replaceAll("_", " ") : `${variantCount} variant${variantCount === 1 ? "" : "s"}`}</dd></div><div><dt>Description</dt><dd>{product.description}</dd></div></dl>
-        <aside><b>Created privately as a draft</b><span>After creation, add product and colourway images, confirm stock, review the generated SKUs, and publish when ready.</span></aside>
+        <aside><b>Created privately as a draft</b><span>After creation, add product and option images, confirm stock, review the generated SKUs, and publish when ready.</span></aside>
       </div>}
 
       <footer><button type="button" className="secondary" disabled={busy} onClick={onClose}>Cancel</button>{step > 1 && <button type="button" className="secondary" disabled={busy} onClick={() => setStep(step - 1)}>← Back</button>}{step === 3 && <button type="button" className="secondary" disabled={!valid || busy} onClick={() => void saveAndAddAnother()}>Save & add another</button>}<button type="submit" disabled={!canContinue || busy}>{busy ? "Creating…" : step < 3 ? "Continue →" : `Create ${service ? "service" : "product"} draft`}</button></footer>

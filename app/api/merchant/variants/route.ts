@@ -15,11 +15,11 @@ export async function POST(request: Request) {
   const payload = await request.json() as { productId?: number; sizes?: unknown; color?: string; price?: number; salePrice?: number | null; onHand?: number };
   const sizes = Array.isArray(payload.sizes) ? [...new Set(payload.sizes.filter((value): value is string => typeof value === "string").map((value) => value.trim()).filter(Boolean))].slice(0, 30) : [];
   const color = payload.color?.trim();
-  if (!Number.isInteger(payload.productId) || !color || sizes.length < 1) return Response.json({ error: "Product, colourway and at least one size are required." }, { status: 400 });
+  if (!Number.isInteger(payload.productId) || !color || sizes.length < 1) return Response.json({ error: "Product, option group and at least one choice are required." }, { status: 400 });
   const db = getDb(); const [product] = await db.select().from(products).where(and(eq(products.id, payload.productId!), eq(products.merchantId, access.merchantId))).limit(1); if (!product) return Response.json({ error: "Product not found." }, { status: 404 });
   const price = payload.price === undefined ? product.price : Number(payload.price);
   const salePrice = payload.salePrice === undefined ? product.salePrice : payload.salePrice;
-  if (!Number.isFinite(price) || price! < 0) return Response.json({ error: "A valid colourway price is required." }, { status: 400 });
+  if (!Number.isFinite(price) || price! < 0) return Response.json({ error: "A valid option-group price is required." }, { status: 400 });
   if (salePrice != null && (!Number.isFinite(salePrice) || salePrice < 0 || salePrice >= price!)) return Response.json({ error: "Sale price must be lower than the regular price." }, { status: 400 });
   const skuPart = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 18) || "STD";
   const existing = await db.select({ size: productVariants.size, color: productVariants.color }).from(productVariants).where(eq(productVariants.productId, product.id));

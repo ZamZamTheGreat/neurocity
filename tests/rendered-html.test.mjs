@@ -358,7 +358,7 @@ test("adds guarded bulk catalogue import and WhatsApp order updates", async () =
   assert.match(workspace, /Export catalogue/);
   assert.match(workspace, /variant_sale_price/);
   assert.match(workspace, /S\|M\|L\|XL/);
-  assert.match(workspace, /one row per colourway/);
+  assert.match(workspace, /one row per option group/);
   assert.match(workspace, /text\/csv;charset=utf-8/);
   assert.match(workspace, /Send WhatsApp update/);
   assert.match(orderRoute, /sendWhatsAppOrderUpdate/);
@@ -389,7 +389,7 @@ test("keeps the merchant dashboard focused and consistent", async () => {
   assert.match(styles, /product-gallery-admin label:focus-within/);
   assert.match(styles, /colourway-editor>header \.variant-image\{position:relative/);
   assert.doesNotMatch(options, /Change picture/);
-  assert.match(options, /colourway image/);
+  assert.match(options, /groupLabel.*image/);
   assert.match(workspace, /aria-label="Search products"/);
   assert.match(workspace, /aria-label="Search inventory"/);
   assert.match(workspace, /No matching products/);
@@ -795,15 +795,16 @@ test("generates product variants from colours and selected sizes", async () => {
   assert.match(form, /productTemplateForCategory/);
   assert.match(form, /Choose a product category/);
   assert.match(form, /variantCount/);
-  assert.match(optionPanel, /Add colourway and sizes/);
+  assert.match(optionPanel, /Add \{groupLabel\} and choices/);
   assert.match(optionPanel, /size-multiselect/);
   assert.match(optionPanel, /colourway-editor/);
-  assert.match(optionPanel, /Advanced settings by size/);
-  assert.match(optionPanel, /Custom size/);
+  assert.match(optionPanel, /Advanced settings by choice/);
+  assert.match(optionPanel, /Custom value/);
   assert.match(categoryTemplates, /Shoe sizes/);
   assert.match(categoryTemplates, /Volume or pack size/);
   assert.match(categoryTemplates, /Capacity or specification/);
   assert.match(categoryTemplates, /Fitment or specification/);
+  assert.match(categoryTemplates, /usesColourwayTerminology/);
   assert.match(route, /colourOptions\.flatMap/);
   assert.match(route, /inventoryMode: "generated"/);
   assert.match(route, /combinations > 100/);
@@ -844,7 +845,7 @@ test("inherits product prices while preserving merchant colourway overrides", as
   assert.match(bulkRoute, /hasVariantPrice \? "custom" : "product"/);
   assert.match(options, /salePrice: product\.salePrice \?\? null/);
   assert.match(options, /usesProductSalePrice: false/);
-  assert.match(workspace, /Leave <b>variant_price<\/b> and <b>variant_sale_price<\/b> blank to inherit/);
+  assert.match(workspace, /Leave variant prices blank to inherit the product price/);
 });
 
 test("uses a functional three-step product creation flow", async () => {

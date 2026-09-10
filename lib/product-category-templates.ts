@@ -29,3 +29,7 @@ const fallback: ProductTemplate = { optionLabel: "Option, style or model", optio
 export function productTemplateForCategory(category?: string | null): ProductTemplate {
   return templates.find(([pattern]) => pattern.test(category ?? ""))?.[1] ?? fallback;
 }
+
+export function usesColourwayTerminology(category?: string | null) {
+  return /fashion|clothing|shoes|accessories|jewellery|luxury/i.test(category ?? "");
+}
