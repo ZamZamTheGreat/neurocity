@@ -18,3 +18,9 @@ services:
         value: sergejwitbooi@gmail.com
       - key: DB_POOL_MAX
         value: 10
+      - key: PUBLIC_SITE_URL
+        value: https://neurocity.city
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://neurocity.city
+      - key: SECURITY_ALLOWED_ORIGINS
+        value: https://neurocity-fhl1.onrender.com,https://www.neurocity.city

@@ -20,13 +20,16 @@ export async function verifyTurnstile(request: Request, token: unknown, expected
     const address = clientAddress(request);
     if (address !== "unknown") body.set("remoteip", address);
     const response = await fetch(VERIFY_URL, { method: "POST", body, signal: AbortSignal.timeout(5000) });
-    const result = await response.json() as { success?: boolean; action?: string; hostname?: string };
-    const expectedHost = requestOrigin(request) ? new URL(requestOrigin(request)!).hostname : null;
+    const result = await response.json() as { success?: boolean; action?: string; hostname?: string; "error-codes"?: string[] };
+    const origin = requestOrigin(request);
+    const expectedHost = origin ? new URL(origin).hostname : null;
     if (!response.ok || !result.success || result.action !== expectedAction || !expectedHost || result.hostname !== expectedHost) {
+      console.warn("turnstile verification rejected", { responseOk: response.ok, success: Boolean(result.success), expectedAction, receivedAction: result.action ?? null, expectedHost, receivedHost: result.hostname ?? null, errorCodes: result["error-codes"] ?? [] });
       return { ok: false as const, status: 403, error: "Human verification failed. Please try again." };
     }
     return { ok: true as const };
-  } catch {
+  } catch (error) {
+    console.error("turnstile verification unavailable", { error: error instanceof Error ? error.message : "unknown error" });
     return { ok: false as const, status: 503, error: "Human verification is temporarily unavailable." };
   }
 }

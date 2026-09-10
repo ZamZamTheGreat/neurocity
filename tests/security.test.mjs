@@ -94,6 +94,15 @@ test("origin enforcement rejects forged forwarded hosts, missing origins and sib
   for (const headers of [{}, { origin: "null" }, { origin: "https://evil.example", "x-forwarded-host": "evil.example", "x-forwarded-proto": "https" }, { origin: "https://platform.example", "sec-fetch-site": "same-site" }]) assert.equal(security.isSameOriginMutation(request(headers)), false);
 });
 
+test("origin selection prefers the allowlisted browser origin behind Render", () => {
+  process.env.PUBLIC_SITE_URL = "https://neurocity-fhl1.onrender.com";
+  process.env.SECURITY_ALLOWED_ORIGINS = "https://neurocity.city";
+  const request = new Request("https://neurocity-fhl1.onrender.com/api/auth/login", { method: "POST", headers: { host: "neurocity-fhl1.onrender.com", "x-forwarded-host": "neurocity.city", origin: "https://neurocity.city" } });
+  assert.equal(security.requestOrigin(request), "https://neurocity.city");
+  assert.equal(security.isSameOriginMutation(request), true);
+  delete process.env.SECURITY_ALLOWED_ORIGINS;
+});
+
 test("Turnstile validation is server-side, action-bound and hostname-bound", async () => {
   process.env.TURNSTILE_SECRET_KEY = "test-secret";
   const previousFetch = globalThis.fetch;

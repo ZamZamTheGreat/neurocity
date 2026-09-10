@@ -1,5 +1,5 @@
 export function allowedOrigins() {
-  const configured = [process.env.PUBLIC_SITE_URL, ...(process.env.SECURITY_ALLOWED_ORIGINS ?? "").split(",")].filter(Boolean) as string[];
+  const configured = [process.env.PUBLIC_SITE_URL, process.env.NEXT_PUBLIC_SITE_URL, process.env.RENDER_EXTERNAL_URL, ...(process.env.SECURITY_ALLOWED_ORIGINS ?? "").split(",")].filter(Boolean) as string[];
   return new Set(configured.map((value) => new URL(value.trim()).origin));
 }
 
@@ -7,7 +7,15 @@ export function requestOrigin(request: Request) {
   const url = new URL(request.url);
   if (process.env.NODE_ENV !== "production" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) return url.origin;
   const hosts = [request.headers.get("host") ?? url.host, request.headers.get("x-forwarded-host")?.split(",")[0]?.trim()].filter(Boolean);
-  return [...allowedOrigins()].find((origin) => hosts.includes(new URL(origin).host)) ?? null;
+  const origins = allowedOrigins();
+  const browserOrigin = request.headers.get("origin");
+  if (browserOrigin) {
+    try {
+      const normalized = new URL(browserOrigin).origin;
+      if (origins.has(normalized) && hosts.includes(new URL(normalized).host)) return normalized;
+    } catch { /* Invalid origins are rejected by the fallback below. */ }
+  }
+  return [...origins].find((origin) => hosts.includes(new URL(origin).host)) ?? null;
 }
 
 export function isSameOriginMutation(request: Request) {
