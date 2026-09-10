@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { auditEvents, orderItems, productVariants, products, serviceBookings, storeBranches, variantInventory } from "../../../../db/schema";
 import { createPresignedR2Url } from "../../../../lib/r2";
@@ -126,6 +126,9 @@ export async function PATCH(request: Request) {
       if (itemType === "product" && price !== null && existingVariants.length === 0) {
         await tx.insert(productVariants).values({ productId: current.id, sku: `M${access.merchantId}-${sku}-DEFAULT`, title: "Standard", attributes: { inventoryMode: "merchant_confirmed", priceMode: "product", salePriceMode: "product" }, price, salePrice, status: status === "published" ? "active" : "draft", imageUrl });
       } else {
+        if (itemType === "product" && status === "published" && current.status !== "published") {
+          await tx.update(productVariants).set({ status: "active" }).where(and(eq(productVariants.productId, current.id), inArray(productVariants.status, ["draft", "needs_confirmation"])));
+        }
         for (const inherited of inheritedValues) {
           const defaultVariant = existingVariants.length === 1 && inherited.attributes.inventoryMode === "merchant_confirmed";
           if (!inherited.inheritsPrice && !inherited.inheritsSalePrice && !defaultVariant) continue;

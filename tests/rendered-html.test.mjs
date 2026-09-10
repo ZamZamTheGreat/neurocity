@@ -811,6 +811,19 @@ test("uses a functional three-step product creation flow", async () => {
   assert.match(panel, /await onCreate\(product\)/);
 });
 
+test("makes every published product variant available to the bag", async () => {
+  const productsRoute = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");
+  const accountRoute = await readFile(new URL("../app/api/account/route.ts", import.meta.url), "utf8");
+  const repair = await readFile(new URL("../drizzle-postgres/0026_activate_published_product_variants.sql", import.meta.url), "utf8");
+  assert.match(productsRoute, /status === "published" && current\.status !== "published"/);
+  assert.match(productsRoute, /inArray\(productVariants\.status, \["draft", "needs_confirmation"\]\)/);
+  assert.match(accountRoute, /eq\(productVariants\.status, "active"\)/);
+  assert.match(accountRoute, /eq\(products\.status, "published"\)/);
+  assert.match(accountRoute, /inArray\(products\.availability, \["available", "preorder"\]\)/);
+  assert.match(repair, /WHERE "status" IN \('draft', 'needs_confirmation'\)/);
+  assert.match(repair, /"status" = 'published'/);
+});
+
 test("sends service booking lifecycle notifications", async () => {
   const customerBookings = await readFile(new URL("../app/api/service-bookings/route.ts", import.meta.url), "utf8");
   const merchantBookings = await readFile(new URL("../app/api/merchant/service-bookings/route.ts", import.meta.url), "utf8");

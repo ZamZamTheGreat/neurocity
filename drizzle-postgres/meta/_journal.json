@@ -183,6 +183,13 @@
       "when": 1788700000000,
       "tag": "0025_data_breach_incidents",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1789056000000,
+      "tag": "0026_activate_published_product_variants",
+      "breakpoints": true
     }
   ]
 }
