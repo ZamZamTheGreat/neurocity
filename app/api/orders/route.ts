@@ -8,6 +8,7 @@ import { sendOrderPlacedNotifications } from "../../../lib/order-mail";
 import { createPayTodayPayment, getPayTodayAvailability } from "../../../lib/paytoday";
 import { cancelCheckoutAllocationsAndReleaseStock } from "../../../lib/settlements";
 import { releaseOrderInventory } from "../../../lib/order-inventory";
+import { calculateMerchantAllocation } from "../../../lib/commerce-fees";
 
 const fulfillmentMethods = new Set(["pickup", "merchant_delivery"]);
 const normalized = (value: string | null | undefined) => value?.trim().replace(/\s+/g, " ").toLocaleLowerCase("en") ?? "";
@@ -62,7 +63,8 @@ export async function POST(request: Request) {
       for (const group of prepared) {
         const [order] = await tx.insert(orders).values({ checkoutGroupId: checkout.id, merchantId: group.merchant.id, customerRef: user.userId, customerName: group.address?.recipientName ?? user.displayName, customerEmail: user.email, customerPhone: group.address?.phone ?? null, status: "pending_payment", paymentStatus: "pending", paymentMethod: "paytoday", fulfillmentMethod: group.method, addressSnapshot: group.address ? { label: group.address.label, recipientName: group.address.recipientName, phone: group.address.phone, addressLine1: group.address.addressLine1, addressLine2: group.address.addressLine2, suburb: group.address.suburb, city: group.address.city, deliveryNotes: group.address.deliveryNotes, deliveryZone: group.zone?.area, deliveryEstimate: group.zone?.estimatedTime } : null, customerNotes: notes, subtotal: group.subtotal, deliveryFee: group.deliveryFee, total: group.subtotal + group.deliveryFee }).returning();
         const orderItemRows = await tx.insert(orderItems).values(group.items.map((item) => ({ orderId: order.id, productId: item.productId, variantId: item.variantId, skuSnapshot: item.variantSku, nameSnapshot: item.productName, variantSnapshot: item.availability === "preorder" ? PREORDER_PREFIX + item.variantTitle : item.variantTitle, sizeSnapshot: item.size, colorSnapshot: item.color, unitPrice: Number(item.salePrice ?? item.variantPrice), quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity }))).returning();
-        await tx.insert(merchantPaymentAllocations).values({ checkoutGroupId: checkout.id, orderId: order.id, merchantId: group.merchant.id, grossAmount: order.total, deliveryAmount: group.deliveryFee, netAmount: order.total, settlementStatus: "pending_payment" });
+        const allocation = calculateMerchantAllocation(order.total);
+        await tx.insert(merchantPaymentAllocations).values({ checkoutGroupId: checkout.id, orderId: order.id, merchantId: group.merchant.id, ...allocation, deliveryAmount: group.deliveryFee, settlementStatus: "pending_payment" });
         await tx.insert(orderStatusEvents).values({ orderId: order.id, status: order.status, actorRef: user.userId, note: `Created under combined checkout ${reference}` });
         createdOrders.push({ order, merchant: group.merchant, items: group.items, orderItemRows });
       }
