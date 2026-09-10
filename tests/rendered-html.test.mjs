@@ -790,17 +790,20 @@ test("generates product variants from colours and selected sizes", async () => {
   const optionPanel = await readFile(new URL("../app/components/ProductOptionsPanel.tsx", import.meta.url), "utf8");
   const route = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");
   const variantRoute = await readFile(new URL("../app/api/merchant/variants/route.ts", import.meta.url), "utf8");
-  const sizeOptions = await readFile(new URL("../lib/product-size-options.ts", import.meta.url), "utf8");
-  assert.match(form, /Separate colours with commas/);
-  assert.match(form, /sizeOptionsForCategory/);
+  const categoryTemplates = await readFile(new URL("../lib/product-category-templates.ts", import.meta.url), "utf8");
+  assert.match(form, /Separate entries with commas/);
+  assert.match(form, /productTemplateForCategory/);
+  assert.match(form, /Choose a product category/);
   assert.match(form, /variantCount/);
   assert.match(optionPanel, /Add colourway and sizes/);
   assert.match(optionPanel, /size-multiselect/);
   assert.match(optionPanel, /colourway-editor/);
   assert.match(optionPanel, /Advanced settings by size/);
   assert.match(optionPanel, /Custom size/);
-  assert.match(sizeOptions, /shoeSizes/);
-  assert.match(sizeOptions, /kidsSizes/);
+  assert.match(categoryTemplates, /Shoe sizes/);
+  assert.match(categoryTemplates, /Volume or pack size/);
+  assert.match(categoryTemplates, /Capacity or specification/);
+  assert.match(categoryTemplates, /Fitment or specification/);
   assert.match(route, /colourOptions\.flatMap/);
   assert.match(route, /inventoryMode: "generated"/);
   assert.match(route, /combinations > 100/);
@@ -808,6 +811,23 @@ test("generates product variants from colours and selected sizes", async () => {
   assert.match(variantRoute, /generated_size_range/);
   assert.match(variantRoute, /SKU codes were generated automatically|skuPart\(color\)/);
   assert.match(variantRoute, /already has these sizes/);
+});
+
+test("tracks exact stock allocations and reconciles merchant balances", async () => {
+  const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
+  const checkout = await readFile(new URL("../app/api/orders/route.ts", import.meta.url), "utf8");
+  const inventory = await readFile(new URL("../lib/order-inventory.ts", import.meta.url), "utf8");
+  const merchantOrders = await readFile(new URL("../app/api/merchant/orders/route.ts", import.meta.url), "utf8");
+  const ledger = await readFile(new URL("../app/components/AdminTransactionLedger.tsx", import.meta.url), "utf8");
+  assert.match(schema, /inventoryState: varchar\("inventory_state"/);
+  assert.match(schema, /orderItemInventoryAllocations = pgTable\("order_item_inventory_allocations"/);
+  assert.match(checkout, /orderItemInventoryAllocations/);
+  assert.match(inventory, /eq\(orders\.inventoryState, "reserved"\)/);
+  assert.match(inventory, /allocation\.inventoryId/);
+  assert.match(merchantOrders, /eq\(orders\.merchantId, access\.merchantId\)/);
+  assert.match(ledger, /Merchant balancing sheet/);
+  assert.match(ledger, /Balance difference/);
+  assert.match(ledger, /Download CSV/);
 });
 
 test("inherits product prices while preserving merchant colourway overrides", async () => {

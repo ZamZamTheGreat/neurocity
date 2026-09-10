@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../../../../../db";
-import { auditEvents, checkoutGroups, orders, paymentTransactions } from "../../../../../db/schema";
+import { auditEvents, checkoutGroups, merchantPaymentAllocations, orders, paymentTransactions } from "../../../../../db/schema";
 import { getChatGPTUser } from "../../../../chatgpt-auth";
 import { lookupPayTodayPayment, normalizePayTodayStatus } from "../../../../../lib/paytoday";
 import { cancelCheckoutAllocationsAndReleaseStock, makeCheckoutAllocationsPayable } from "../../../../../lib/settlements";
@@ -35,17 +35,19 @@ export async function GET(request: Request) {
     if (Number.isFinite(intentAmount) && Math.abs(intentAmount - transaction.amount) > 0.005) throw new Error("PayToday returned a different payment amount.");
     const providerStatus = provider.intent?.transaction_status ?? provider.status;
     const status = normalizePayTodayStatus(providerStatus);
+    const paidAfterCancellation = status === "paid" && checkout.paymentStatus === "cancelled";
     await db.transaction(async (tx) => {
       const providerReference = provider.intent?.transaction_data?.payment_reference ?? provider.intent?.reference ?? provider.reference ?? null;
       await tx.update(paymentTransactions).set({ status, providerReference, lastCheckedAt: new Date(), providerMetadata: { status: providerStatus ?? null, reference: providerReference, reason: provider.intent?.transaction_data?.reason ?? null, finalizedAt: provider.intent?.transaction_data?.time_stamp ?? null }, updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));
-      const checkoutStatus = status === "paid" ? "paid" : status === "failed" ? "payment_failed" : status;
+      const checkoutStatus = paidAfterCancellation ? "refund_required" : status === "paid" ? "paid" : status === "failed" ? "payment_failed" : status;
       await tx.update(checkoutGroups).set({ paymentStatus: status, status: checkoutStatus, updatedAt: new Date() }).where(eq(checkoutGroups.id, checkout.id));
-      if (["paid", "failed", "cancelled", "expired"].includes(status)) await tx.update(orders).set({ paymentStatus: status, status: status === "paid" ? "pending_merchant_confirmation" : checkoutStatus, updatedAt: new Date() }).where(eq(orders.checkoutGroupId, checkout.id));
-      if (status === "paid" && checkout.paymentStatus !== "paid") await makeCheckoutAllocationsPayable(tx, checkout.id, new Date());
+      if (["paid", "failed", "cancelled", "expired"].includes(status)) await tx.update(orders).set({ paymentStatus: status, status: paidAfterCancellation ? "cancelled" : status === "paid" ? "pending_merchant_confirmation" : checkoutStatus, updatedAt: new Date() }).where(eq(orders.checkoutGroupId, checkout.id));
+      if (paidAfterCancellation) await tx.update(merchantPaymentAllocations).set({ settlementStatus: "refund_required", updatedAt: new Date() }).where(eq(merchantPaymentAllocations.checkoutGroupId, checkout.id));
+      else if (status === "paid" && checkout.paymentStatus !== "paid") await makeCheckoutAllocationsPayable(tx, checkout.id, new Date());
       if (["failed", "cancelled", "expired"].includes(status) && !["failed", "cancelled", "expired"].includes(checkout.paymentStatus)) await cancelCheckoutAllocationsAndReleaseStock(tx, checkout.id, Number(user.userId), new Date());
-      await tx.insert(auditEvents).values({ actorRef: user.userId, action: `payment.paytoday.${status}`, resourceType: "checkout_group", resourceId: String(checkout.id), metadata: { reference: checkout.reference, transactionId: transaction.id } });
+      await tx.insert(auditEvents).values({ actorRef: user.userId, action: paidAfterCancellation ? "payment.paytoday.paid_after_cancellation" : `payment.paytoday.${status}`, resourceType: "checkout_group", resourceId: String(checkout.id), metadata: { reference: checkout.reference, transactionId: transaction.id } });
     });
-    return accountRedirect(request, status);
+    return accountRedirect(request, paidAfterCancellation ? "refund_required" : status);
   } catch {
     await db.update(paymentTransactions).set({ lastCheckedAt: new Date(), updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));
     return accountRedirect(request, "verification_pending");

@@ -73,7 +73,9 @@ test("payment failure restores a preorder to the bag without releasing other res
     insert: () => ({ values: () => ({ onConflictDoNothing: async () => {} }) }),
     update(target) { assert.notEqual(target.name, "variantInventory"); return { set: () => ({ where: async () => {} }) }; },
   };
-  const settlements = await load("../lib/settlements.ts", { "drizzle-orm": orm, "../db/schema": schema, "./preorders": preorder });
+  const released = [];
+  const settlements = await load("../lib/settlements.ts", { "drizzle-orm": orm, "../db/schema": schema, "./order-inventory": { releaseOrderInventory: async (_tx, orderId) => released.push(orderId) } });
   await settlements.cancelCheckoutAllocationsAndReleaseStock(tx, 1, 1);
   assert.equal(rows.length, 0);
+  assert.deepEqual(released, [1]);
 });

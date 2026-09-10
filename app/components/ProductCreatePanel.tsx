@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { sizeOptionsForCategory } from "../../lib/product-size-options";
+import { merchantCategoryNames } from "../../lib/merchant-categories";
+import { productTemplateForCategory } from "../../lib/product-category-templates";
 
 export type NewProduct = {
   itemType: "product" | "service"; name: string; sku: string; category: string; brand: string; collection: string; description: string;
@@ -13,11 +14,12 @@ export default function ProductCreatePanel({ open, busy, onClose, onCreate }: { 
   const [product, setProduct] = useState(empty);
   const [step, setStep] = useState(1);
   const [colourEntry, setColourEntry] = useState("");
+  const [sizeEntry, setSizeEntry] = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (open) { setStep(1); window.setTimeout(() => nameRef.current?.focus(), 50); } }, [open]);
   if (!open) return null;
   const service = product.itemType === "service";
-  const sizeOptions = sizeOptionsForCategory(product.category);
+  const template = productTemplateForCategory(product.category);
   const update = (values: Partial<NewProduct>) => setProduct((current) => ({ ...current, ...values }));
   const detailsValid = Boolean(product.name.trim() && product.sku.trim() && product.category.trim() && product.description.trim());
   const priceValid = product.pricingModel === "quote" || (product.price !== null && product.price >= 0);
@@ -28,6 +30,7 @@ export default function ProductCreatePanel({ open, busy, onClose, onCreate }: { 
   const canContinue = step === 1 ? detailsValid : step === 2 ? configurationValid : valid;
   function setColours(value: string) { setColourEntry(value); update({ colours: [...new Set(value.split(",").map((colour) => colour.trim()).filter(Boolean))].slice(0, 20) }); }
   function toggleSize(size: string) { update({ sizes: product.sizes.includes(size) ? product.sizes.filter((item) => item !== size) : [...product.sizes, size] }); }
+  function addCustomSize() { const value = sizeEntry.trim(); if (value && !product.sizes.includes(value)) update({ sizes: [...product.sizes, value].slice(0, 20) }); setSizeEntry(""); }
   function changeType(itemType: NewProduct["itemType"]) { update({ itemType, pricingModel: itemType === "service" ? "from" : "fixed", salePrice: null, colours: [], sizes: [] }); setColourEntry(""); }
   async function submit(event: React.FormEvent) { event.preventDefault(); if (step < 3) { if (canContinue) setStep(step + 1); return; } if (valid && await onCreate(product)) { setProduct(empty()); setColourEntry(""); setStep(1); } }
   async function saveAndAddAnother() { if (valid && await onCreate(product, true)) { setProduct(empty()); setColourEntry(""); setStep(1); window.setTimeout(() => nameRef.current?.focus(), 50); } }
@@ -42,7 +45,7 @@ export default function ProductCreatePanel({ open, busy, onClose, onCreate }: { 
         <label className="wide">What are you adding?<select value={product.itemType} onChange={(event) => changeType(event.target.value as NewProduct["itemType"])}><option value="product">Physical or digital product</option><option value="service">Bookable or quoted service</option></select></label>
         <label className="wide">{service ? "Service name" : "Product name"}<input ref={nameRef} required value={product.name} placeholder={service ? "e.g. 60-minute haircut" : "e.g. Crown V1 Cuffed Tracksuit"} onChange={(event) => update({ name: event.target.value })} /></label>
         <label>{service ? "Service reference" : "Product SKU"}<input required value={product.sku} placeholder={service ? "e.g. CUT-60" : "e.g. LW-CROWN-V1"} onChange={(event) => update({ sku: event.target.value.toUpperCase().replace(/\s+/g, "-") })} /></label>
-        <label>Category<input required value={product.category} placeholder={service ? "e.g. Hair services" : "e.g. Fashion & Clothing"} onChange={(event) => update({ category: event.target.value })} /></label>
+        <label>Category{service ? <input required value={product.category} placeholder="e.g. Hair services" onChange={(event) => update({ category: event.target.value })} /> : <select required value={product.category} onChange={(event) => { update({ category: event.target.value, colours: [], sizes: [] }); setColourEntry(""); setSizeEntry(""); }}><option value="">Choose a product category</option>{merchantCategoryNames.filter((name) => name !== "Services").map((name) => <option key={name} value={name}>{name}</option>)}</select>}</label>
         <label>Brand or provider<input value={product.brand} onChange={(event) => update({ brand: event.target.value })} /></label>
         <label>Collection or service group<input value={product.collection} onChange={(event) => update({ collection: event.target.value })} /></label>
         <label className="wide">Description<textarea required value={product.description} placeholder={service ? "Explain what is included, who it is for and anything customers should prepare." : "Describe the product, materials, fit and key details."} onChange={(event) => update({ description: event.target.value })} /></label>
@@ -59,9 +62,9 @@ export default function ProductCreatePanel({ open, busy, onClose, onCreate }: { 
         </> : <>
           <label>Regular price (N$)<input required type="number" min="0" step="0.01" value={product.price ?? ""} onChange={(event) => update({ price: event.target.value === "" ? null : Number(event.target.value) })} /></label>
           <label>Sale price (optional)<input type="number" min="0" step="0.01" value={product.salePrice ?? ""} onChange={(event) => update({ salePrice: event.target.value === "" ? null : Number(event.target.value) })} /><small>Must be lower than the regular price.</small></label>
-          <label className="wide">Available colours<input value={colourEntry} placeholder="e.g. Black, White, Maroon" onChange={(event) => setColours(event.target.value)} /><small>Separate colours with commas. Each colour becomes a customer choice.</small></label>
-          <fieldset className="wide product-size-picker"><legend>Available sizes</legend><small>Select every size customers can choose. Leave empty for products without sizes.</small><div>{sizeOptions.map((size) => <label key={size} className={product.sizes.includes(size) ? "selected" : ""}><input type="checkbox" checked={product.sizes.includes(size)} onChange={() => toggleSize(size)} /><span>{size}</span></label>)}</div></fieldset>
-          <div className={`wide variant-plan ${variantCount > 100 ? "invalid" : ""}`} aria-live="polite"><b>{variantCount} variant{variantCount === 1 ? "" : "s"} will be prepared</b><span>{product.colours.length ? product.colours.join(" · ") : "No colour option"} × {product.sizes.length ? product.sizes.join(" · ") : "No size option"}</span>{variantCount > 100 && <strong>Reduce the choices to 100 variants or fewer.</strong>}</div>
+          <label className="wide">{template.optionLabel}<input value={colourEntry} placeholder={template.optionPlaceholder} onChange={(event) => setColours(event.target.value)} /><small>{template.optionHelp} Separate entries with commas; leave empty for a single product.</small></label>
+          <fieldset className="wide product-size-picker"><legend>{template.choiceLabel}</legend><small>{template.choiceHelp} Leave empty when no second choice is needed.</small><div>{template.choices.map((size) => <label key={size} className={product.sizes.includes(size) ? "selected" : ""}><input type="checkbox" checked={product.sizes.includes(size)} onChange={() => toggleSize(size)} /><span>{size}</span></label>)}</div><label className="product-custom-option"><span>Exact or custom value</span><input value={sizeEntry} placeholder="Type a value" onChange={(event) => setSizeEntry(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addCustomSize(); } }} /><button type="button" onClick={addCustomSize}>Add</button></label></fieldset>
+          <div className={`wide variant-plan ${variantCount > 100 ? "invalid" : ""}`} aria-live="polite"><b>{variantCount} stock item{variantCount === 1 ? "" : "s"} will be prepared</b><span>{product.colours.length ? product.colours.join(" · ") : "Single option"} × {product.sizes.length ? product.sizes.join(" · ") : "No second choice"}</span>{variantCount > 100 && <strong>Reduce the choices to 100 variants or fewer.</strong>}</div>
         </>}
         {!priceValid && <p className="form-error wide" role="alert">Enter a valid non-negative price, or choose quote required.</p>}{!saleValid && <p className="form-error wide" role="alert">The sale price must be lower than the regular price.</p>}
       </div>}

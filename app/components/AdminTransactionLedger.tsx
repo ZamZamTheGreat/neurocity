@@ -22,6 +22,7 @@ export type AdminTransaction = {
   allocations: {
     id: number;
     orderId: number;
+    merchantId: number;
     merchantName: string;
     grossAmount: number;
     platformFee: number;
@@ -63,19 +64,33 @@ export default function AdminTransactionLedger({ transactions, summary }: { tran
     return matchesStatus && matchesMethod && haystack.includes(query.trim().toLowerCase());
   }), [transactions, status, method, query]);
   const merchantBalances = useMemo(() => {
-    const balances = new Map<string, { merchant: string; pendingPayment: number; scheduled: number; dueNow: number; settled: number; refundReview: number }>();
+    const balances = new Map<number, { merchantId: number; merchant: string; pendingPayment: number; scheduled: number; dueNow: number; settled: number; refundReview: number }>();
     for (const allocation of transactions.flatMap((row) => row.allocations)) {
-      const current = balances.get(allocation.merchantName) ?? { merchant: allocation.merchantName, pendingPayment: 0, scheduled: 0, dueNow: 0, settled: 0, refundReview: 0 };
+      const current = balances.get(allocation.merchantId) ?? { merchantId: allocation.merchantId, merchant: allocation.merchantName, pendingPayment: 0, scheduled: 0, dueNow: 0, settled: 0, refundReview: 0 };
       const amount = Number(allocation.netAmount);
       if (allocation.settlementStatus === "pending_payment") current.pendingPayment += amount;
       else if (allocation.settlementStatus === "settled") current.settled += amount;
       else if (allocation.settlementStatus === "refund_required") current.refundReview += amount;
       else if (["unpaid", "due"].includes(allocation.settlementStatus) || (allocation.settlementStatus === "scheduled" && allocation.settlementDueAt && new Date(allocation.settlementDueAt).getTime() <= now)) current.dueNow += amount;
       else if (["scheduled", "processing"].includes(allocation.settlementStatus)) current.scheduled += amount;
-      balances.set(allocation.merchantName, current);
+      balances.set(allocation.merchantId, current);
     }
     return [...balances.values()].sort((a, b) => b.dueNow + b.scheduled - a.dueNow - a.scheduled);
   }, [transactions, now]);
+  const reconciliation = useMemo(() => {
+    const allocations = transactions.filter((row) => row.source === "gateway").flatMap((row) => row.allocations);
+    const gross = allocations.reduce((sum, item) => sum + Number(item.grossAmount), 0);
+    const platformFees = allocations.reduce((sum, item) => sum + Number(item.platformFee), 0);
+    const providerFees = allocations.reduce((sum, item) => sum + Number(item.providerFee), 0);
+    const merchantNet = allocations.reduce((sum, item) => sum + Number(item.netAmount), 0);
+    return { gross, platformFees, providerFees, merchantNet, difference: gross - platformFees - providerFees - merchantNet };
+  }, [transactions]);
+  function downloadReconciliation() {
+    const rows = [["Merchant ID", "Merchant", "Pending customer payment", "Scheduled", "Due now", "Settled", "Refund review"], ...merchantBalances.map((item) => [item.merchantId, item.merchant, item.pendingPayment, item.scheduled, item.dueNow, item.settled, item.refundReview])];
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a"); link.href = url; link.download = `neurocity-merchant-balancing-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url);
+  }
   return <div className="admin-transaction-ledger">
     <section className="transaction-analytics transaction-ledger-summary">
       <article><span>Records</span><strong>{summary.totalRecords}</strong></article>
@@ -87,7 +102,7 @@ export default function AdminTransactionLedger({ transactions, summary }: { tran
       <article><span>Refund review</span><strong>{money(summary.refundRequiredValue ?? 0)}</strong></article>
     </section>
     {notice && <p className="workspace-message">{notice}</p>}
-    <section className="merchant-balance-summary"><div className="account-panel-title"><div><h3>Balances by merchant</h3><small>Reconciled from every customer checkout allocation.</small></div></div><div className="merchant-table"><div className="merchant-table-head"><span>Merchant</span><span>Pending payment</span><span>Scheduled</span><span>Due now</span><span>Settled</span><span>Refund review</span></div>{merchantBalances.map((item) => <article key={item.merchant}><strong>{item.merchant}</strong><span>{money(item.pendingPayment)}</span><span>{money(item.scheduled)}</span><span>{money(item.dueNow)}</span><span>{money(item.settled)}</span><span>{money(item.refundReview)}</span></article>)}</div>{!merchantBalances.length && <p>No merchant allocations have been recorded yet.</p>}</section>
+    <section className="merchant-balance-summary"><div className="account-panel-title"><div><h3>Merchant balancing sheet</h3><small>Every checkout amount is split into fees and the amount owed to each merchant.</small></div><button type="button" onClick={downloadReconciliation} disabled={!merchantBalances.length}>Download CSV</button></div><div className="transaction-analytics"><article><span>Allocated gross</span><strong>{money(reconciliation.gross)}</strong></article><article><span>Platform fees</span><strong>{money(reconciliation.platformFees)}</strong></article><article><span>Provider fees</span><strong>{money(reconciliation.providerFees)}</strong></article><article><span>Merchant net</span><strong>{money(reconciliation.merchantNet)}</strong></article><article><span>Balance difference</span><strong>{money(reconciliation.difference)}</strong></article></div>{Math.abs(reconciliation.difference) > 0.009 && <p className="transaction-failure" role="alert"><b>Reconciliation mismatch:</b> allocated gross does not equal platform fees + provider fees + merchant net.</p>}<div className="merchant-table"><div className="merchant-table-head"><span>Merchant</span><span>Pending payment</span><span>Scheduled</span><span>Due now</span><span>Settled</span><span>Refund review</span></div>{merchantBalances.map((item) => <article key={item.merchantId}><strong>{item.merchant}</strong><span>{money(item.pendingPayment)}</span><span>{money(item.scheduled)}</span><span>{money(item.dueNow)}</span><span>{money(item.settled)}</span><span>{money(item.refundReview)}</span></article>)}</div>{!merchantBalances.length && <p>No merchant allocations have been recorded yet.</p>}</section>
     <section className="transaction-ledger-tools" aria-label="Transaction filters">
       <label><span>Search records</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Reference, customer or merchant…" /></label>
       <label><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All statuses</option><option value="successful">Successful</option><option value="pending">Awaiting payment</option><option value="failed">Failed / cancelled</option><option value="refunded">Refunded</option></select></label>

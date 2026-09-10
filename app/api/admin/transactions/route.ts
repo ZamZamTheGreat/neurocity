@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { auditEvents, checkoutGroups, merchantPaymentAllocations, merchants, orders, paymentTransactions } from "../../../../db/schema";
 import { getChatGPTUser } from "../../../chatgpt-auth";
@@ -33,7 +33,8 @@ export async function PATCH(request: Request) {
   const [current] = await db.select().from(merchantPaymentAllocations).where(eq(merchantPaymentAllocations.id, payload.allocationId!)).limit(1);
   if (!current || !["unpaid", "scheduled", "due", "processing"].includes(current.settlementStatus)) return Response.json({ error: "This merchant allocation is not awaiting settlement." }, { status: 409 });
   const settledAt = new Date();
-  const [allocation] = await db.update(merchantPaymentAllocations).set({ settlementStatus: "settled", settlementReference: payload.reference.trim().slice(0, 160), settledAt, settledBy: user.userId, updatedAt: settledAt }).where(eq(merchantPaymentAllocations.id, current.id)).returning();
+  const [allocation] = await db.update(merchantPaymentAllocations).set({ settlementStatus: "settled", settlementReference: payload.reference.trim().slice(0, 160), settledAt, settledBy: user.userId, updatedAt: settledAt }).where(and(eq(merchantPaymentAllocations.id, current.id), eq(merchantPaymentAllocations.settlementStatus, current.settlementStatus))).returning();
+  if (!allocation) return Response.json({ error: "This allocation changed. Refresh the ledger before recording the payout." }, { status: 409 });
   await db.insert(auditEvents).values({ actorRef: user.userId, action: "merchant_allocation.settled", resourceType: "merchant_payment_allocation", resourceId: String(current.id), metadata: { checkoutGroupId: current.checkoutGroupId, merchantId: current.merchantId, amount: current.netAmount, reference: allocation.settlementReference } });
   return Response.json({ allocation });
 }

@@ -113,6 +113,13 @@ export default function AdminPage() {
   useEffect(() => {
     load();
   }, []);
+  useEffect(() => {
+    if (!['orders', 'transactions', 'operations'].includes(view)) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, [view]);
   const filteredApplications = useMemo(
     () =>
       (items ?? []).filter(

@@ -1,12 +1,13 @@
-import { PREORDER_PREFIX, isPreorderLine } from "../../../lib/preorders";
+import { PREORDER_PREFIX } from "../../../lib/preorders";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
-import { auditEvents, checkoutGroups, customerAddresses, customerCartItems, merchantDeliveryZones, merchantPaymentAllocations, merchants, orderItems, orders, orderStatusEvents, paymentTransactions, productVariants, products, variantInventory } from "../../../db/schema";
+import { auditEvents, checkoutGroups, customerAddresses, customerCartItems, merchantDeliveryZones, merchantPaymentAllocations, merchants, orderItemInventoryAllocations, orderItems, orders, orderStatusEvents, paymentTransactions, productVariants, products, variantInventory } from "../../../db/schema";
 import { sendOrderPlacedNotifications } from "../../../lib/order-mail";
 import { createPayTodayPayment, getPayTodayAvailability } from "../../../lib/paytoday";
 import { cancelCheckoutAllocationsAndReleaseStock } from "../../../lib/settlements";
+import { releaseOrderInventory } from "../../../lib/order-inventory";
 
 const fulfillmentMethods = new Set(["pickup", "merchant_delivery"]);
 const normalized = (value: string | null | undefined) => value?.trim().replace(/\s+/g, " ").toLocaleLowerCase("en") ?? "";
@@ -57,15 +58,15 @@ export async function POST(request: Request) {
       const currentCart = await tx.select({ id: customerCartItems.id }).from(customerCartItems).where(and(eq(customerCartItems.userId, userId), inArray(customerCartItems.id, cart.map((item) => item.cartId))));
       if (currentCart.length !== cart.length) throw new Error("Your shopping bag changed during checkout. Review it and try again.");
       const [checkout] = await tx.insert(checkoutGroups).values({ reference, customerRef: user.userId, subtotal, deliveryFee, total, paymentProvider: "paytoday", status: "awaiting_payment" }).returning();
-      const createdOrders: Array<{ order: typeof orders.$inferSelect; merchant: typeof merchants.$inferSelect; items: typeof cart }> = [];
+      const createdOrders: Array<{ order: typeof orders.$inferSelect; merchant: typeof merchants.$inferSelect; items: typeof cart; orderItemRows: Array<typeof orderItems.$inferSelect> }> = [];
       for (const group of prepared) {
         const [order] = await tx.insert(orders).values({ checkoutGroupId: checkout.id, merchantId: group.merchant.id, customerRef: user.userId, customerName: group.address?.recipientName ?? user.displayName, customerEmail: user.email, customerPhone: group.address?.phone ?? null, status: "pending_payment", paymentStatus: "pending", paymentMethod: "paytoday", fulfillmentMethod: group.method, addressSnapshot: group.address ? { label: group.address.label, recipientName: group.address.recipientName, phone: group.address.phone, addressLine1: group.address.addressLine1, addressLine2: group.address.addressLine2, suburb: group.address.suburb, city: group.address.city, deliveryNotes: group.address.deliveryNotes, deliveryZone: group.zone?.area, deliveryEstimate: group.zone?.estimatedTime } : null, customerNotes: notes, subtotal: group.subtotal, deliveryFee: group.deliveryFee, total: group.subtotal + group.deliveryFee }).returning();
-        await tx.insert(orderItems).values(group.items.map((item) => ({ orderId: order.id, productId: item.productId, variantId: item.variantId, skuSnapshot: item.variantSku, nameSnapshot: item.productName, variantSnapshot: item.availability === "preorder" ? PREORDER_PREFIX + item.variantTitle : item.variantTitle, sizeSnapshot: item.size, colorSnapshot: item.color, unitPrice: Number(item.salePrice ?? item.variantPrice), quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity })));
+        const orderItemRows = await tx.insert(orderItems).values(group.items.map((item) => ({ orderId: order.id, productId: item.productId, variantId: item.variantId, skuSnapshot: item.variantSku, nameSnapshot: item.productName, variantSnapshot: item.availability === "preorder" ? PREORDER_PREFIX + item.variantTitle : item.variantTitle, sizeSnapshot: item.size, colorSnapshot: item.color, unitPrice: Number(item.salePrice ?? item.variantPrice), quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity }))).returning();
         await tx.insert(merchantPaymentAllocations).values({ checkoutGroupId: checkout.id, orderId: order.id, merchantId: group.merchant.id, grossAmount: order.total, deliveryAmount: group.deliveryFee, netAmount: order.total, settlementStatus: "pending_payment" });
         await tx.insert(orderStatusEvents).values({ orderId: order.id, status: order.status, actorRef: user.userId, note: `Created under combined checkout ${reference}` });
-        createdOrders.push({ order, merchant: group.merchant, items: group.items });
+        createdOrders.push({ order, merchant: group.merchant, items: group.items, orderItemRows });
       }
-      for (const item of cart) { if (item.availability === "preorder") continue; let remaining = item.quantity; for (const stock of inventoryRows.filter((row) => row.variantId === item.variantId)) { const allocation = Math.min(remaining, Math.max(0, stock.onHand - stock.reserved - stock.safetyStock)); if (allocation > 0) { const [reserved] = await tx.update(variantInventory).set({ reserved: sql`${variantInventory.reserved} + ${allocation}`, updatedAt: new Date() }).where(and(eq(variantInventory.id, stock.id), sql`${variantInventory.onHand} - ${variantInventory.reserved} - ${variantInventory.safetyStock} >= ${allocation}`)).returning({ id: variantInventory.id }); if (!reserved) throw new Error(`${item.productName} stock changed during checkout. Review your bag and try again.`); } remaining -= allocation; if (!remaining) break; } if (remaining) throw new Error(`${item.productName} no longer has enough available stock.`); }
+      for (const item of cart) { if (item.availability === "preorder") continue; const createdOrder = createdOrders.find((entry) => entry.order.merchantId === item.merchantId)!; const orderItem = createdOrder.orderItemRows.find((entry) => entry.variantId === item.variantId)!; let remaining = item.quantity; for (const stock of inventoryRows.filter((row) => row.variantId === item.variantId)) { const allocation = Math.min(remaining, Math.max(0, stock.onHand - stock.reserved - stock.safetyStock)); if (allocation > 0) { const [reserved] = await tx.update(variantInventory).set({ reserved: sql`${variantInventory.reserved} + ${allocation}`, updatedAt: new Date() }).where(and(eq(variantInventory.id, stock.id), sql`${variantInventory.onHand} - ${variantInventory.reserved} - ${variantInventory.safetyStock} >= ${allocation}`)).returning({ id: variantInventory.id }); if (!reserved) throw new Error(`${item.productName} stock changed during checkout. Review your bag and try again.`); await tx.insert(orderItemInventoryAllocations).values({ orderItemId: orderItem.id, inventoryId: stock.id, quantity: allocation }); } remaining -= allocation; if (!remaining) break; } if (remaining) throw new Error(`${item.productName} no longer has enough available stock.`); }
       await tx.delete(customerCartItems).where(and(eq(customerCartItems.userId, userId), inArray(customerCartItems.id, cart.map((item) => item.cartId))));
       await tx.insert(auditEvents).values({ actorRef: user.userId, action: "checkout.created", resourceType: "checkout_group", resourceId: String(checkout.id), metadata: { reference, merchantCount: createdOrders.length, itemCount: cart.length, subtotal, deliveryFee, total } });
       return { checkout, orders: createdOrders };
@@ -96,11 +97,18 @@ export async function PATCH(request: Request) {
   const db = getDb(); const [order] = await db.select().from(orders).where(and(eq(orders.id, payload.orderId!), eq(orders.customerRef, user.userId))).limit(1);
   if (!order) return Response.json({ error: "Order not found." }, { status: 404 });
   if (order.status !== "pending_payment" || order.paymentStatus === "paid") return Response.json({ error: "Paid or active orders require a support issue so refunds and merchant allocations stay reconciled." }, { status: 409 });
-  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id));
   await db.transaction(async (tx) => {
-    await tx.update(orders).set({ status: "cancelled", updatedAt: new Date() }).where(eq(orders.id, order.id));
-    await tx.update(merchantPaymentAllocations).set({ settlementStatus: "cancelled", updatedAt: new Date() }).where(eq(merchantPaymentAllocations.orderId, order.id));
-    for (const item of items.filter((row) => row.variantId && !isPreorderLine(row))) { const inventory = await tx.select().from(variantInventory).where(eq(variantInventory.variantId, item.variantId!)); let remaining = item.quantity; for (const row of inventory) { const released = Math.min(remaining, row.reserved); if (released > 0) await tx.update(variantInventory).set({ reserved: sql`greatest(0, ${variantInventory.reserved} - ${released})`, updatedAt: new Date() }).where(eq(variantInventory.id, row.id)); remaining -= released; if (!remaining) break; } }
+    const changedAt = new Date();
+    if (order.checkoutGroupId) {
+      await tx.update(orders).set({ status: "cancelled", paymentStatus: "cancelled", updatedAt: changedAt }).where(and(eq(orders.checkoutGroupId, order.checkoutGroupId), eq(orders.paymentStatus, "pending")));
+      await tx.update(checkoutGroups).set({ status: "cancelled", paymentStatus: "cancelled", updatedAt: changedAt }).where(and(eq(checkoutGroups.id, order.checkoutGroupId), eq(checkoutGroups.paymentStatus, "pending")));
+      await tx.update(paymentTransactions).set({ status: "cancelled", failureMessage: `Customer cancelled before payment: ${reason}`, updatedAt: changedAt }).where(and(eq(paymentTransactions.checkoutGroupId, order.checkoutGroupId), inArray(paymentTransactions.status, ["created", "creating", "pending"])));
+      await cancelCheckoutAllocationsAndReleaseStock(tx, order.checkoutGroupId, Number(user.userId), changedAt);
+    } else {
+      await tx.update(orders).set({ status: "cancelled", updatedAt: changedAt }).where(and(eq(orders.id, order.id), eq(orders.status, "pending_payment")));
+      await tx.update(merchantPaymentAllocations).set({ settlementStatus: "cancelled", updatedAt: changedAt }).where(eq(merchantPaymentAllocations.orderId, order.id));
+      await releaseOrderInventory(tx, order.id, changedAt);
+    }
     await tx.insert(orderStatusEvents).values({ orderId: order.id, status: "cancelled", actorRef: user.userId, note: `Customer cancellation: ${reason}` });
     await tx.insert(auditEvents).values({ actorRef: user.userId, action: "order.cancelled_by_customer", resourceType: "order", resourceId: String(order.id), metadata: { reason } });
   });

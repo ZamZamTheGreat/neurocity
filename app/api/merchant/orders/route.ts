@@ -1,10 +1,11 @@
-import { isPreorderLine } from "../../../../lib/preorders";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { auditEvents, merchantPaymentAllocations, merchants, orderItems, orders, orderStatusEvents, paymentProofs, variantInventory } from "../../../../db/schema";
+import { auditEvents, merchantPaymentAllocations, merchants, orderItems, orders, orderStatusEvents, paymentProofs } from "../../../../db/schema";
 import { requirePilotMerchant } from "../auth";
 import { sendOrderStatusNotification } from "../../../../lib/order-mail";
 import { sendWhatsAppOrderUpdate } from "../../../../lib/whatsapp-orders";
+import { commitOrderInventory, releaseOrderInventory } from "../../../../lib/order-inventory";
+import { makeOrderAllocationPayable } from "../../../../lib/settlements";
 
 const transitions: Record<string, string[]> = {
   pending_merchant_confirmation: ["accepted", "rejected"],
@@ -40,22 +41,14 @@ export async function PATCH(request: Request) {
     if (!(transitions[current.status] ?? []).includes(payload.status)) return Response.json({ error: `Cannot move an order from ${current.status} to ${payload.status}.` }, { status: 409 });
     if (["rejected", "cancelled", "delivery_failed"].includes(payload.status) && !payload.note?.trim()) return Response.json({ error: "A reason is required for this order decision." }, { status: 400 });
     if (current.paymentMethod === "eft" && current.paymentStatus !== "paid" && ["preparing", "ready_for_pickup", "dispatched", "collected", "delivered", "completed"].includes(payload.status)) return Response.json({ error: "Verify EFT payment before progressing fulfilment." }, { status: 409 });
-    const items = await db.select().from(orderItems).where(eq(orderItems.orderId, current.id));
     await db.transaction(async (tx) => {
-      await tx.update(orders).set({ status: payload.status!, updatedAt: new Date() }).where(eq(orders.id, current.id));
+      const changedAt = new Date();
+      await tx.update(orders).set({ status: payload.status!, updatedAt: changedAt }).where(and(eq(orders.id, current.id), eq(orders.status, current.status)));
       if (["rejected", "cancelled"].includes(payload.status!)) {
-        await tx.update(merchantPaymentAllocations).set({ settlementStatus: current.paymentStatus === "paid" ? "refund_required" : "cancelled", updatedAt: new Date() }).where(eq(merchantPaymentAllocations.orderId, current.id));
-        for (const item of items.filter((row) => row.variantId && !isPreorderLine(row))) {
-          const inventory = await tx.select().from(variantInventory).where(eq(variantInventory.variantId, item.variantId!)); let remaining = item.quantity;
-          for (const row of inventory) { const released = Math.min(remaining, row.reserved); if (released > 0) await tx.update(variantInventory).set({ reserved: sql`greatest(0, ${variantInventory.reserved} - ${released})`, updatedAt: new Date() }).where(eq(variantInventory.id, row.id)); remaining -= released; if (!remaining) break; }
-        }
+        await tx.update(merchantPaymentAllocations).set({ settlementStatus: current.paymentStatus === "paid" ? "refund_required" : "cancelled", updatedAt: changedAt }).where(eq(merchantPaymentAllocations.orderId, current.id));
+        await releaseOrderInventory(tx, current.id, changedAt);
       }
-      if (payload.status === "completed") {
-        for (const item of items.filter((row) => row.variantId && !isPreorderLine(row))) {
-          const inventory = await tx.select().from(variantInventory).where(eq(variantInventory.variantId, item.variantId!)); let remaining = item.quantity;
-          for (const row of inventory) { const fulfilled = Math.min(remaining, row.reserved); if (fulfilled > 0) await tx.update(variantInventory).set({ reserved: sql`greatest(0, ${variantInventory.reserved} - ${fulfilled})`, onHand: sql`greatest(0, ${variantInventory.onHand} - ${fulfilled})`, updatedAt: new Date() }).where(eq(variantInventory.id, row.id)); remaining -= fulfilled; if (!remaining) break; }
-        }
-      }
+      if (payload.status === "completed") await commitOrderInventory(tx, current.id, changedAt);
       await tx.insert(orderStatusEvents).values({ orderId: current.id, status: payload.status!, actorRef: access.user.userId, note: payload.note?.trim().slice(0, 500) || null });
       await tx.insert(auditEvents).values({ actorRef: access.user.userId, action: "order.status_changed", resourceType: "order", resourceId: String(current.id), metadata: { from: current.status, to: payload.status }, createdAt: new Date() });
     });
@@ -73,4 +66,4 @@ export async function PATCH(request: Request) {
   }
 }
 
-export async function PUT(request: Request) { const access = await requirePilotMerchant(["owner", "manager"]); if (!access) return Response.json({ error: "Owner or manager access required." }, { status: 403 }); const payload = await request.json() as { orderId?: number; paymentStatus?: string; note?: string }; if (!Number.isInteger(payload.orderId) || !["paid", "failed"].includes(payload.paymentStatus ?? "")) return Response.json({ error: "Valid order and payment decision required." }, { status: 400 }); const db = getDb(); const [order] = await db.select().from(orders).where(and(eq(orders.id, payload.orderId!), eq(orders.merchantId, access.merchantId))).limit(1); if (!order) return Response.json({ error: "Order not found." }, { status: 404 }); const [proof] = await db.select().from(paymentProofs).where(eq(paymentProofs.orderId, order.id)).limit(1); if (order.paymentMethod === "eft" && !proof) return Response.json({ error: "No payment proof has been submitted." }, { status: 409 }); await db.transaction(async (tx) => { await tx.update(orders).set({ paymentStatus: payload.paymentStatus!, updatedAt: new Date() }).where(eq(orders.id, order.id)); if (proof) await tx.update(paymentProofs).set({ status: payload.paymentStatus === "paid" ? "verified" : "rejected", reviewNote: payload.note?.trim().slice(0, 500) || null, reviewedBy: access.user.userId, reviewedAt: new Date() }).where(eq(paymentProofs.id, proof.id)); await tx.insert(auditEvents).values({ actorRef: access.user.userId, action: `payment.${payload.paymentStatus}`, resourceType: "order", resourceId: String(order.id), metadata: { previousStatus: order.paymentStatus, note: payload.note?.trim() || null } }); }); return Response.json({ ok: true, paymentStatus: payload.paymentStatus }); }
+export async function PUT(request: Request) { const access = await requirePilotMerchant(["owner", "manager"]); if (!access) return Response.json({ error: "Owner or manager access required." }, { status: 403 }); const payload = await request.json() as { orderId?: number; paymentStatus?: string; note?: string }; if (!Number.isInteger(payload.orderId) || !["paid", "failed"].includes(payload.paymentStatus ?? "")) return Response.json({ error: "Valid order and payment decision required." }, { status: 400 }); const db = getDb(); const [order] = await db.select().from(orders).where(and(eq(orders.id, payload.orderId!), eq(orders.merchantId, access.merchantId))).limit(1); if (!order) return Response.json({ error: "Order not found." }, { status: 404 }); if (order.paymentMethod !== "eft") return Response.json({ error: "Gateway payment status is controlled by PayToday." }, { status: 409 }); if (order.paymentStatus === payload.paymentStatus) return Response.json({ ok: true, unchanged: true, paymentStatus: order.paymentStatus }); const [proof] = await db.select().from(paymentProofs).where(eq(paymentProofs.orderId, order.id)).limit(1); if (!proof) return Response.json({ error: "No payment proof has been submitted." }, { status: 409 }); await db.transaction(async (tx) => { const changedAt = new Date(); const [changed] = await tx.update(orders).set({ paymentStatus: payload.paymentStatus!, updatedAt: changedAt }).where(and(eq(orders.id, order.id), eq(orders.paymentStatus, order.paymentStatus))).returning({ id: orders.id }); if (!changed) throw new Error("Order payment status changed. Refresh and try again."); if (payload.paymentStatus === "paid") await makeOrderAllocationPayable(tx, order.id, changedAt); if (payload.paymentStatus === "failed") { await releaseOrderInventory(tx, order.id, changedAt); await tx.update(merchantPaymentAllocations).set({ settlementStatus: "cancelled", updatedAt: changedAt }).where(eq(merchantPaymentAllocations.orderId, order.id)); } await tx.update(paymentProofs).set({ status: payload.paymentStatus === "paid" ? "verified" : "rejected", reviewNote: payload.note?.trim().slice(0, 500) || null, reviewedBy: access.user.userId, reviewedAt: changedAt }).where(eq(paymentProofs.id, proof.id)); await tx.insert(auditEvents).values({ actorRef: access.user.userId, action: `payment.${payload.paymentStatus}`, resourceType: "order", resourceId: String(order.id), metadata: { previousStatus: order.paymentStatus, note: payload.note?.trim() || null } }); }); return Response.json({ ok: true, paymentStatus: payload.paymentStatus }); }
