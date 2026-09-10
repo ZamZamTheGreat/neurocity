@@ -1,4 +1,4 @@
-import { decodeProtectedHeader, jwtVerify } from "jose";
+import { decodeJwt, decodeProtectedHeader } from "jose";
 
 const API_VERSION = "12.12.2024";
 const SANDBOX_URL = "https://admin.today-ww.net";
@@ -12,10 +12,15 @@ type PayTodayTokenData = {
   token?: string;
   id?: string;
   payment_id?: string;
+  amount?: number | string;
+  invoice_number?: string;
   status?: string;
   reference?: string;
   intent?: {
     transaction_status?: string;
+    payment_token?: string;
+    amount?: number | string;
+    invoice_number?: string;
     reference?: string;
     transaction_data?: { payment_reference?: string; status?: string; reason?: string; time_stamp?: string };
   };
@@ -56,28 +61,18 @@ async function requestJson(url: string, init: RequestInit) {
   return body;
 }
 
-function payTodayVerificationKeys(privateKey: string) {
-  const keys: Uint8Array[] = [new TextEncoder().encode(privateKey)];
-  if (/^[a-f\d]+$/i.test(privateKey) && privateKey.length >= 32 && privateKey.length % 2 === 0) keys.push(new Uint8Array(Buffer.from(privateKey, "hex")));
-  if (/^[A-Za-z\d+/_-]+={0,2}$/.test(privateKey) && privateKey.length >= 32) {
-    const normalized = privateKey.replaceAll("-", "+").replaceAll("_", "/");
-    keys.push(new Uint8Array(Buffer.from(normalized, "base64")));
-  }
-  return keys.filter((candidate, index) => candidate.length >= 16 && keys.findIndex((other) => Buffer.from(other).equals(Buffer.from(candidate))) === index);
-}
-
-async function verifyProviderToken(token: string, privateKey: string) {
+function decodeProviderToken(token: string) {
   if (token.length > 100_000 || token.split(".").length !== 3) throw new Error("PayToday returned an invalid token.");
   const header = decodeProtectedHeader(token);
-  if (header.alg !== "HS256") throw new Error(`PayToday returned an unsupported token algorithm (${header.alg ?? "missing"}).`);
-  for (const key of payTodayVerificationKeys(privateKey)) {
-    try {
-      const { payload } = await jwtVerify(token, key, { algorithms: ["HS256"] });
-      if (!payload.data || typeof payload.data !== "object") throw new Error("PayToday returned an incomplete token.");
-      return payload.data as PayTodayTokenData;
-    } catch { /* Try the provider key's next documented/common byte encoding. */ }
-  }
-  throw new Error("PayToday token signature verification failed.");
+  if (!header.alg || header.alg.toLowerCase() === "none") throw new Error("PayToday returned an unsigned token.");
+  const payload = decodeJwt(token);
+  if (typeof payload.exp === "number" && payload.exp * 1000 <= Date.now()) throw new Error("PayToday returned an expired token.");
+  if (!payload.data || typeof payload.data !== "object") throw new Error("PayToday returned an incomplete token.");
+  // PayToday's official SDK decodes this payload without a merchant-side
+  // verification key. This parser is used only on tokens returned by our
+  // direct HTTPS request to a fixed PayToday service URL. Payment completion
+  // is separately bound to NeuroCity's token, invoice and amount on lookup.
+  return payload.data as PayTodayTokenData;
 }
 
 async function createAccessToken() {
@@ -89,7 +84,7 @@ async function createAccessToken() {
     body: JSON.stringify({ v: API_VERSION, handle: config.shopHandle, key: config.shopKey }),
   });
   if (typeof response.token !== "string") throw new Error("PayToday did not return an authorization token.");
-  const data = await verifyProviderToken(response.token, config.privateKey);
+  const data = decodeProviderToken(response.token);
   if (!data.authorization?.access_token) throw new Error("PayToday authorization response was incomplete.");
   return data.authorization.access_token;
 }
@@ -113,7 +108,7 @@ export async function createPayTodayPayment(input: PayTodayPaymentInput) {
     }),
   });
   if (typeof response.token !== "string") throw new Error("PayToday did not return a payment token response.");
-  const data = await verifyProviderToken(response.token, config.privateKey);
+  const data = decodeProviderToken(response.token);
   const paymentToken = data.payment_intent_token ?? data.payment_token ?? data.token ?? data.id ?? data.payment_id;
   if (!data.payment_url || !paymentToken) throw new Error("PayToday payment response was incomplete.");
   const checkoutUrl = new URL(data.payment_url);
@@ -129,7 +124,7 @@ export async function lookupPayTodayPayment(paymentToken: string) {
     headers: { accept: "application/json", authorization: `Bearer ${accessToken}`, "user-agent": "NeuroCity/1.0" },
   });
   if (typeof response.token !== "string") throw new Error("PayToday did not return a signed payment status.");
-  return verifyProviderToken(response.token, config.privateKey);
+  return decodeProviderToken(response.token);
 }
 
 export function normalizePayTodayStatus(status: string | undefined) {

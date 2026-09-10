@@ -27,6 +27,12 @@ export async function GET(request: Request) {
 
   try {
     const provider = await lookupPayTodayPayment(transaction.providerPaymentToken);
+    const intentToken = provider.intent?.payment_token ?? provider.payment_intent_token ?? provider.payment_token;
+    const intentReference = provider.intent?.invoice_number ?? provider.invoice_number;
+    const intentAmount = Number(provider.intent?.amount ?? provider.amount);
+    if (intentToken && intentToken !== transaction.providerPaymentToken) throw new Error("PayToday returned a different payment token.");
+    if (intentReference && intentReference !== checkout.reference) throw new Error("PayToday returned a different invoice reference.");
+    if (Number.isFinite(intentAmount) && Math.abs(intentAmount - transaction.amount) > 0.005) throw new Error("PayToday returned a different payment amount.");
     const providerStatus = provider.intent?.transaction_status ?? provider.status;
     const status = normalizePayTodayStatus(providerStatus);
     await db.transaction(async (tx) => {
