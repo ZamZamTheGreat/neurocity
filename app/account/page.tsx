@@ -207,6 +207,20 @@ export default function AccountPage() {
     load();
   }, [load]);
   useEffect(() => {
+    if (!["Overview", "Orders", "Bookings"].includes(tab)) return;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    const timer = window.setInterval(refreshWhenVisible, 20000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [load, tab]);
+  useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get("tab");
     const match = accountTabs.find(
       (item) => item.id.toLowerCase() === requested?.toLowerCase(),

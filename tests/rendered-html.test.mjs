@@ -668,6 +668,15 @@ test("reconciles PayToday payments without relying on the customer return", asyn
   assert.match(resultPage, /Return to NeuroCity orders/);
 });
 
+test("keeps customer order tracking current while the account is open", async () => {
+  const account = await readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8");
+  assert.match(account, /\["Overview", "Orders", "Bookings"\]\.includes\(tab\)/);
+  assert.match(account, /window\.setInterval\(refreshWhenVisible, 20000\)/);
+  assert.match(account, /document\.visibilityState === "visible"/);
+  assert.match(account, /window\.addEventListener\("focus", refreshWhenVisible\)/);
+  assert.match(account, /document\.addEventListener\("visibilitychange", refreshWhenVisible\)/);
+});
+
 test("protects checkout and database capacity under concurrent traffic", async () => {
   const database = await readFile(new URL("../db/index.ts", import.meta.url), "utf8");
   const orders = await readFile(new URL("../app/api/orders/route.ts", import.meta.url), "utf8");
