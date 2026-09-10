@@ -470,6 +470,7 @@ test("supports secure variant pictures in the merchant editor and storefront", a
   const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
   assert.match(panel, /Add image/);
   assert.match(panel, /ImageCropper/);
+  assert.match(panel, /ManagedImage/);
   assert.match(variants, /Invalid variant image/);
   assert.match(media, /createUploadUrl/);
   assert.match(media, /verifiedObject/);
@@ -483,6 +484,15 @@ test("supports secure variant pictures in the merchant editor and storefront", a
   assert.match(storefront, /<option key=\{item\.id\}/);
   assert.match(storefront, /setManualImage\(null\)/);
   assert.match(storefront, /SKU \$\{variant\.sku\}/);
+});
+
+test("turns private store media into renderable customer dashboard images", async () => {
+  const account = await readFile(new URL("../app/api/account/route.ts", import.meta.url), "utf8");
+  assert.match(account, /renderableStoreImage/);
+  assert.match(account, /type === "product"/);
+  assert.match(account, /type === "variant"/);
+  assert.match(account, /variantImageUrl \?/);
+  assert.match(account, /publicStoreMedia\(storeSlug/);
 });
 
 test("shows validated merchant social profiles on the storefront", async () => {
