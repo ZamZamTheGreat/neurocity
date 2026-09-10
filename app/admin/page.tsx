@@ -71,6 +71,9 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
   async function load() {
+    const reconciliationRequest = ["operations", "orders", "transactions"].includes(view)
+      ? fetch("/api/admin/transactions/reconcile", { method: "POST" }).catch(() => null)
+      : null;
     const [response, orderResponse, transactionResponse, platformResponse, operationsResponse] = await Promise.all([
       fetch("/api/admin/applications"),
       fetch("/api/admin/orders"),
@@ -109,6 +112,28 @@ export default function AdminPage() {
       setPlatforms(platformData.platforms ?? []);
     }
     if (operationsResponse.ok) setOperations(await operationsResponse.json());
+    const reconciliationResponse = await reconciliationRequest;
+    if (reconciliationResponse?.ok) {
+      const result = await reconciliationResponse.json();
+      if (result.updated > 0) {
+        const [freshOrders, freshTransactions, freshOperations] = await Promise.all([
+          fetch("/api/admin/orders"),
+          fetch("/api/admin/transactions"),
+          fetch("/api/admin/operations"),
+        ]);
+        if (freshOrders.ok) {
+          const orderData = await freshOrders.json();
+          setOrders(orderData.orders ?? []);
+          setOrderAnalytics(orderData.analytics ?? orderAnalytics);
+        }
+        if (freshTransactions.ok) {
+          const transactionData = await freshTransactions.json();
+          setTransactions(transactionData.transactions ?? []);
+          setTransactionSummary(transactionData.summary ?? transactionSummary);
+        }
+        if (freshOperations.ok) setOperations(await freshOperations.json());
+      }
+    }
   }
   useEffect(() => {
     load();

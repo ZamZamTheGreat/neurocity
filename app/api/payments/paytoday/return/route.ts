@@ -1,55 +1,32 @@
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../../../../../db";
-import { auditEvents, checkoutGroups, merchantPaymentAllocations, orders, paymentTransactions } from "../../../../../db/schema";
+import { checkoutGroups, paymentTransactions } from "../../../../../db/schema";
 import { getChatGPTUser } from "../../../../chatgpt-auth";
-import { lookupPayTodayPayment, normalizePayTodayStatus } from "../../../../../lib/paytoday";
-import { cancelCheckoutAllocationsAndReleaseStock, makeCheckoutAllocationsPayable } from "../../../../../lib/settlements";
+import { reconcilePayTodayTransaction } from "../../../../../lib/payment-reconciliation";
 
-function accountRedirect(request: Request, result: string) {
-  const url = new URL("/account", request.url);
-  url.searchParams.set("tab", "Orders");
+function resultRedirect(request: Request, result: string, reference?: string) {
+  const url = new URL("/payment-return", request.url);
   url.searchParams.set("payment", result);
+  if (reference) url.searchParams.set("reference", reference);
   return Response.redirect(url, 303);
 }
 
 export async function GET(request: Request) {
-  const user = await getChatGPTUser();
-  if (!user) return accountRedirect(request, "signin_required");
   const incoming = new URL(request.url).searchParams;
   const reference = incoming.get("invoice_number") ?? incoming.get("reference");
-  if (!reference) return accountRedirect(request, "reference_missing");
-
+  if (!reference || reference.length > 80) return resultRedirect(request, "reference_missing");
   const db = getDb();
-  const [checkout] = await db.select().from(checkoutGroups).where(and(eq(checkoutGroups.reference, reference), eq(checkoutGroups.customerRef, user.userId))).limit(1);
-  if (!checkout) return accountRedirect(request, "not_found");
+  const [checkout] = await db.select().from(checkoutGroups).where(eq(checkoutGroups.reference, reference)).limit(1);
+  if (!checkout) return resultRedirect(request, "not_found");
+  const user = await getChatGPTUser();
+  if (user && checkout.customerRef !== user.userId) return resultRedirect(request, "not_found");
   const [transaction] = await db.select().from(paymentTransactions).where(and(eq(paymentTransactions.checkoutGroupId, checkout.id), eq(paymentTransactions.provider, "paytoday"))).orderBy(desc(paymentTransactions.createdAt)).limit(1);
-  if (!transaction?.providerPaymentToken) return accountRedirect(request, "not_ready");
-
+  if (!transaction?.providerPaymentToken) return resultRedirect(request, "not_ready", reference);
   try {
-    const provider = await lookupPayTodayPayment(transaction.providerPaymentToken);
-    const intentToken = provider.intent?.payment_token ?? provider.payment_intent_token ?? provider.payment_token;
-    const intentReference = provider.intent?.invoice_number ?? provider.invoice_number;
-    const intentAmount = Number(provider.intent?.amount ?? provider.amount);
-    if (intentToken && intentToken !== transaction.providerPaymentToken) throw new Error("PayToday returned a different payment token.");
-    if (intentReference && intentReference !== checkout.reference) throw new Error("PayToday returned a different invoice reference.");
-    if (Number.isFinite(intentAmount) && Math.abs(intentAmount - transaction.amount) > 0.005) throw new Error("PayToday returned a different payment amount.");
-    const providerStatus = provider.intent?.transaction_status ?? provider.status;
-    const status = normalizePayTodayStatus(providerStatus);
-    const paidAfterCancellation = status === "paid" && checkout.paymentStatus === "cancelled";
-    await db.transaction(async (tx) => {
-      const providerReference = provider.intent?.transaction_data?.payment_reference ?? provider.intent?.reference ?? provider.reference ?? null;
-      await tx.update(paymentTransactions).set({ status, providerReference, lastCheckedAt: new Date(), providerMetadata: { status: providerStatus ?? null, reference: providerReference, reason: provider.intent?.transaction_data?.reason ?? null, finalizedAt: provider.intent?.transaction_data?.time_stamp ?? null }, updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));
-      const checkoutStatus = paidAfterCancellation ? "refund_required" : status === "paid" ? "paid" : status === "failed" ? "payment_failed" : status;
-      await tx.update(checkoutGroups).set({ paymentStatus: status, status: checkoutStatus, updatedAt: new Date() }).where(eq(checkoutGroups.id, checkout.id));
-      if (["paid", "failed", "cancelled", "expired"].includes(status)) await tx.update(orders).set({ paymentStatus: status, status: paidAfterCancellation ? "cancelled" : status === "paid" ? "pending_merchant_confirmation" : checkoutStatus, updatedAt: new Date() }).where(eq(orders.checkoutGroupId, checkout.id));
-      if (paidAfterCancellation) await tx.update(merchantPaymentAllocations).set({ settlementStatus: "refund_required", updatedAt: new Date() }).where(eq(merchantPaymentAllocations.checkoutGroupId, checkout.id));
-      else if (status === "paid" && checkout.paymentStatus !== "paid") await makeCheckoutAllocationsPayable(tx, checkout.id, new Date());
-      if (["failed", "cancelled", "expired"].includes(status) && !["failed", "cancelled", "expired"].includes(checkout.paymentStatus)) await cancelCheckoutAllocationsAndReleaseStock(tx, checkout.id, Number(user.userId), new Date());
-      await tx.insert(auditEvents).values({ actorRef: user.userId, action: paidAfterCancellation ? "payment.paytoday.paid_after_cancellation" : `payment.paytoday.${status}`, resourceType: "checkout_group", resourceId: String(checkout.id), metadata: { reference: checkout.reference, transactionId: transaction.id } });
-    });
-    return accountRedirect(request, paidAfterCancellation ? "refund_required" : status);
+    const result = await reconcilePayTodayTransaction(transaction.id, user?.userId ?? "system:paytoday-return");
+    return resultRedirect(request, result.status, result.reference);
   } catch {
     await db.update(paymentTransactions).set({ lastCheckedAt: new Date(), updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));
-    return accountRedirect(request, "verification_pending");
+    return resultRedirect(request, "verification_pending", reference);
   }
 }

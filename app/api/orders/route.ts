@@ -77,7 +77,8 @@ export async function POST(request: Request) {
     const [transaction] = await db.insert(paymentTransactions).values({ checkoutGroupId: created.checkout.id, provider: "paytoday", amount: total, status: "creating", expiresAt, providerMetadata: { invoiceNumber: reference, merchantCount: created.orders.length } }).returning();
     try {
       const names = user.displayName.trim().split(/\s+/);
-      const returnUrl = new URL("/api/payments/paytoday/return", request.url);
+      const publicOrigin = (process.env.PUBLIC_APP_URL ?? new URL(request.url).origin).replace(/\/$/, "");
+      const returnUrl = new URL("/api/payments/paytoday/return", publicOrigin);
       returnUrl.searchParams.set("reference", reference);
       const result = await createPayTodayPayment({ amount: total, invoiceNumber: reference, firstName: names[0] ?? "Customer", lastName: names.slice(1).join(" ") || "NeuroCity", email: paymentEmail, phone: paymentPhone, returnUrl: returnUrl.toString() });
       await db.update(paymentTransactions).set({ providerPaymentToken: result.paymentToken, providerReference: result.providerReference, checkoutUrl: result.checkoutUrl, status: "pending", updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));

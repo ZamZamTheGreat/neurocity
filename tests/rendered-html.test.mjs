@@ -307,12 +307,13 @@ test("protects administration APIs from anonymous access", async (t) => {
     ["/api/admin/merchants", "PATCH"],
     ["/api/admin/orders", "GET"],
     ["/api/admin/transactions", "GET"],
+    ["/api/admin/transactions/reconcile", "POST"],
     ["/api/admin/platforms", "GET"],
     ["/api/admin/operations", "GET"],
   ];
   for (const [path, method] of routes) {
     await t.test(`${method} ${path}`, async () => {
-      const mutation = ["PATCH", "DELETE"].includes(method);
+      const mutation = ["POST", "PATCH", "DELETE"].includes(method);
       await expectJsonError(path, mutation ? 503 : 403, mutation ? "This service is temporarily unavailable." : "Administrator access required.", {
         method,
         ...(["PATCH", "DELETE"].includes(method) ? { headers: { "content-type": "application/json" }, body: "{}" } : {}),
@@ -511,14 +512,16 @@ test("turns private store media into renderable customer dashboard images", asyn
 test("binds provider-compatible PayToday responses to the local checkout", async () => {
   const paytoday = await readFile(new URL("../lib/paytoday.ts", import.meta.url), "utf8");
   const callback = await readFile(new URL("../app/api/payments/paytoday/return/route.ts", import.meta.url), "utf8");
+  const reconciliation = await readFile(new URL("../lib/payment-reconciliation.ts", import.meta.url), "utf8");
   assert.match(paytoday, /decodeProtectedHeader/);
   assert.match(paytoday, /decodeJwt/);
   assert.match(paytoday, /header\.alg\.toLowerCase\(\) === "none"/);
   assert.match(paytoday, /payload\.exp \* 1000 <= Date\.now\(\)/);
   assert.doesNotMatch(paytoday, /jwtVerify/);
-  assert.match(callback, /intentToken !== transaction\.providerPaymentToken/);
-  assert.match(callback, /intentReference !== checkout\.reference/);
-  assert.match(callback, /Math\.abs\(intentAmount - transaction\.amount\)/);
+  assert.match(callback, /reconcilePayTodayTransaction/);
+  assert.match(reconciliation, /intentToken !== transaction\.providerPaymentToken/);
+  assert.match(reconciliation, /intentReference !== checkout\.reference/);
+  assert.match(reconciliation, /Math\.abs\(intentAmount - transaction\.amount\)/);
 });
 
 test("validates PayToday contact details before redirecting the customer", async () => {
@@ -634,7 +637,7 @@ test("preserves critical payment and inventory controls", async () => {
 
 test("supports one PayToday checkout across multiple merchants with T+2 settlement", async () => {
   const orders = await readFile(new URL("../app/api/orders/route.ts", import.meta.url), "utf8");
-  const paymentReturn = await readFile(new URL("../app/api/payments/paytoday/return/route.ts", import.meta.url), "utf8");
+  const paymentReconciliation = await readFile(new URL("../lib/payment-reconciliation.ts", import.meta.url), "utf8");
   const settlements = await readFile(new URL("../lib/settlements.ts", import.meta.url), "utf8");
   const account = await readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8");
   const adminTransactions = await readFile(new URL("../app/api/admin/transactions/route.ts", import.meta.url), "utf8");
@@ -644,9 +647,25 @@ test("supports one PayToday checkout across multiple merchants with T+2 settleme
   assert.match(orders, /merchantPaymentAllocations/);
   assert.doesNotMatch(account.slice(account.indexOf("function CheckoutBag"), account.indexOf("function OrderRow")), /EFT \/ bank transfer/);
   assert.match(account, /Checkout entire bag/);
-  assert.match(paymentReturn, /makeCheckoutAllocationsPayable/);
+  assert.match(paymentReconciliation, /makeCheckoutAllocationsPayable/);
   assert.match(settlements, /addBusinessDays\(paidAt, 2\)/);
   assert.match(adminTransactions, /merchant_allocation\.settled/);
+});
+
+test("reconciles PayToday payments without relying on the customer return", async () => {
+  const reconciliation = await readFile(new URL("../lib/payment-reconciliation.ts", import.meta.url), "utf8");
+  const endpoint = await readFile(new URL("../app/api/admin/transactions/reconcile/route.ts", import.meta.url), "utf8");
+  const callback = await readFile(new URL("../app/api/payments/paytoday/return/route.ts", import.meta.url), "utf8");
+  const resultPage = await readFile(new URL("../app/payment-return/page.tsx", import.meta.url), "utf8");
+  const admin = await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8");
+  assert.match(reconciliation, /reconcilePendingPayTodayTransactions/);
+  assert.match(reconciliation, /\["created", "creating", "pending"\]/);
+  assert.match(endpoint, /platformRole !== "administrator"/);
+  assert.match(admin, /\/api\/admin\/transactions\/reconcile/);
+  assert.doesNotMatch(callback.slice(0, callback.indexOf("const db")), /if \(!user\)/);
+  assert.match(callback, /\/payment-return/);
+  assert.match(resultPage, /Payment successful/);
+  assert.match(resultPage, /Return to NeuroCity orders/);
 });
 
 test("protects checkout and database capacity under concurrent traffic", async () => {

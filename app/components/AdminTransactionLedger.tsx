@@ -47,6 +47,21 @@ export default function AdminTransactionLedger({ transactions, summary }: { tran
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [reconciling, setReconciling] = useState(false);
+  async function reconcile() {
+    setReconciling(true);
+    try {
+      const response = await fetch("/api/admin/transactions/reconcile", { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) return setNotice(result.error ?? "PayToday reconciliation failed.");
+      setNotice(`Checked ${result.checked} pending PayToday payment${result.checked === 1 ? "" : "s"}; ${result.updated} final status${result.updated === 1 ? "" : "es"} recorded.`);
+      if (result.updated) window.setTimeout(() => window.location.reload(), 500);
+    } catch {
+      setNotice("PayToday could not be reached. The automatic status check will try again.");
+    } finally {
+      setReconciling(false);
+    }
+  }
   async function settle(allocationId: number, merchantName: string) {
     const reference = window.prompt(`Enter the bank transfer reference for ${merchantName}:`);
     if (!reference?.trim()) return;
@@ -107,7 +122,7 @@ export default function AdminTransactionLedger({ transactions, summary }: { tran
       <label><span>Search records</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Reference, customer or merchant…" /></label>
       <label><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All statuses</option><option value="successful">Successful</option><option value="pending">Awaiting payment</option><option value="failed">Failed / cancelled</option><option value="refunded">Refunded</option></select></label>
       <label><span>Method</span><select value={method} onChange={(event) => setMethod(event.target.value)}><option value="all">All methods</option>{methods.map((item) => <option value={item} key={item}>{pretty(item)}</option>)}</select></label>
-      <div><span>Showing</span><strong>{visible.length} record{visible.length === 1 ? "" : "s"}</strong></div>
+      <div><span>Showing</span><strong>{visible.length} record{visible.length === 1 ? "" : "s"}</strong></div><button type="button" onClick={() => void reconcile()} disabled={reconciling}>{reconciling ? "Checking PayToday…" : "Sync PayToday now"}</button>
     </section>
     {!visible.length ? <div className="admin-empty"><span>NC</span><h3>No matching transactions</h3><p>Change the filters or search terms to see more records.</p></div> : <div className="transaction-ledger-list">
       {visible.map((row) => <article className="transaction-ledger-row" key={row.recordId}>
