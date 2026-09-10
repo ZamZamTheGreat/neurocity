@@ -42,7 +42,7 @@ async function checkout(availability) {
     "../../../lib/order-mail": { sendOrderPlacedNotifications: async () => {} },
     "../../../lib/paytoday": { getPayTodayAvailability: () => ({ configured: true }), createPayTodayPayment: async () => ({ checkoutUrl: "https://example.com/payment" }) },
   });
-  const response = await route.POST(new Request("http://localhost/api/orders", { method: "POST", body: JSON.stringify({ fulfillment: [{ merchantId: 4, fulfillmentMethod: "pickup" }] }) }));
+  const response = await route.POST(new Request("http://localhost/api/orders", { method: "POST", body: JSON.stringify({ fulfillment: [{ merchantId: 4, fulfillmentMethod: "pickup" }], paymentContact: { email: "test@example.com", phone: "0811234567" } }) }));
   return { response, body: await response.json(), writes };
 }
 

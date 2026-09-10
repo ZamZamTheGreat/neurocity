@@ -751,6 +751,10 @@ function CheckoutBag({
       null,
   );
   const [notes, setNotes] = useState("");
+  const [paymentEmail, setPaymentEmail] = useState(data.user.email);
+  const [paymentPhone, setPaymentPhone] = useState(
+    data.addresses.find((item) => item.isDefault)?.phone ?? data.addresses[0]?.phone ?? "",
+  );
   const [placing, setPlacing] = useState(false);
   const [removingVariantId, setRemovingVariantId] = useState<number | null>(null);
   const [confirmation, setConfirmation] = useState<{
@@ -849,6 +853,7 @@ function CheckoutBag({
       body: JSON.stringify({
         fulfillment: merchants.map((merchant) => ({ merchantId: merchant.id, addressId, fulfillmentMethod: fulfillment })),
         customerNotes: notes,
+        paymentContact: { email: paymentEmail, phone: paymentPhone },
       }),
     });
     const result = await response.json();
@@ -976,6 +981,11 @@ function CheckoutBag({
               <div className="checkout-options">
                 <div className="selected"><span><b>PayToday secure payment</b><small>One payment to NeuroCity for the complete bag</small></span></div>
               </div>
+              <div className="checkout-payment-contact">
+                <label>Payment email<input type="email" required autoComplete="email" value={paymentEmail} onChange={(event) => setPaymentEmail(event.target.value)} /></label>
+                <label>Mobile number<input type="tel" required autoComplete="tel" inputMode="tel" placeholder="e.g. 081 123 4567" value={paymentPhone} onChange={(event) => setPaymentPhone(event.target.value)} /></label>
+                <small>Confirm these details before continuing. PayToday uses them for payment verification.</small>
+              </div>
             </section>
             <section>
               <h3>3. Order note</h3>
@@ -1015,6 +1025,8 @@ function CheckoutBag({
             <button
               disabled={
                 placing ||
+                !paymentEmail.trim() ||
+                !paymentPhone.trim() ||
                 (fulfillment === "merchant_delivery" &&
                   (!addressId ||
                     quoting ||

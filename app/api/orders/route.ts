@@ -17,8 +17,12 @@ export async function POST(request: Request) {
   if (!user) return Response.json({ error: "Sign in is required to check out." }, { status: 401 });
   if (!getPayTodayAvailability().configured) return Response.json({ error: "PayToday is not active yet. Checkout will open as soon as the NeuroCity payment account is enabled." }, { status: 409 });
   try {
-    const payload = await request.json() as { fulfillment?: Choice[]; customerNotes?: string };
+    const payload = await request.json() as { fulfillment?: Choice[]; customerNotes?: string; paymentContact?: { email?: string; phone?: string } };
     const userId = Number(user.userId), db = getDb();
+    const paymentEmail = payload.paymentContact?.email?.trim().toLowerCase() ?? "";
+    const paymentPhone = payload.paymentContact?.phone?.trim().replace(/[\s()-]/g, "") ?? "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(paymentEmail)) return Response.json({ error: "Enter a valid payment email address." }, { status: 400 });
+    if (!/^\+?\d{7,15}$/.test(paymentPhone)) return Response.json({ error: "Enter a valid mobile number for PayToday verification." }, { status: 400 });
     const cart = await db.select({ cartId: customerCartItems.id, quantity: customerCartItems.quantity, variantId: productVariants.id, variantSku: productVariants.sku, variantTitle: productVariants.title, size: productVariants.size, color: productVariants.color, variantPrice: productVariants.price, salePrice: productVariants.salePrice, variantStatus: productVariants.status, productId: products.id, productName: products.name, productStatus: products.status, availability: products.availability, merchantId: products.merchantId }).from(customerCartItems).innerJoin(productVariants, eq(productVariants.id, customerCartItems.variantId)).innerJoin(products, eq(products.id, productVariants.productId)).where(eq(customerCartItems.userId, userId));
     if (!cart.length) return Response.json({ error: "Your shopping bag is empty." }, { status: 400 });
     if (cart.some((item) => !["available", "preorder"].includes(item.availability) || item.productStatus !== "published" || item.variantStatus !== "active" || item.quantity < 1)) return Response.json({ error: "One or more bag items are no longer available." }, { status: 409 });
@@ -69,10 +73,10 @@ export async function POST(request: Request) {
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
     const [transaction] = await db.insert(paymentTransactions).values({ checkoutGroupId: created.checkout.id, provider: "paytoday", amount: total, status: "creating", expiresAt, providerMetadata: { invoiceNumber: reference, merchantCount: created.orders.length } }).returning();
     try {
-      const names = user.displayName.trim().split(/\s+/), primaryPhone = prepared.map((item) => item.address?.phone).find(Boolean) ?? "";
+      const names = user.displayName.trim().split(/\s+/);
       const returnUrl = new URL("/api/payments/paytoday/return", request.url);
       returnUrl.searchParams.set("reference", reference);
-      const result = await createPayTodayPayment({ amount: total, invoiceNumber: reference, firstName: names[0] ?? "Customer", lastName: names.slice(1).join(" ") || "NeuroCity", email: user.email, phone: primaryPhone, returnUrl: returnUrl.toString() });
+      const result = await createPayTodayPayment({ amount: total, invoiceNumber: reference, firstName: names[0] ?? "Customer", lastName: names.slice(1).join(" ") || "NeuroCity", email: paymentEmail, phone: paymentPhone, returnUrl: returnUrl.toString() });
       await db.update(paymentTransactions).set({ providerPaymentToken: result.paymentToken, providerReference: result.providerReference, checkoutUrl: result.checkoutUrl, status: "pending", updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));
       await Promise.allSettled(created.orders.map(({ order, merchant, items }) => sendOrderPlacedNotifications({ reference: `NC-${String(order.id).padStart(6, "0")}`, storeName: merchant.name, customerName: order.customerName ?? user.displayName, customerEmail: user.email, merchantEmail: merchant.contactEmail, status: order.status, total: order.total, fulfillmentMethod: order.fulfillmentMethod ?? "pickup", paymentInstructions: null, lines: items.map((item) => ({ name: item.productName, option: [item.size, item.color].filter(Boolean).join(" / ") || item.variantTitle, quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity })) })));
       return Response.json({ checkout: { reference, total, merchantCount: created.orders.length, orderReferences: created.orders.map(({ order }) => `NC-${String(order.id).padStart(6, "0")}`), paymentUrl: result.checkoutUrl } }, { status: 201 });

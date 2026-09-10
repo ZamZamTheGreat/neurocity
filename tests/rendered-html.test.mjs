@@ -508,6 +508,21 @@ test("binds provider-compatible PayToday responses to the local checkout", async
   assert.match(callback, /Math\.abs\(intentAmount - transaction\.amount\)/);
 });
 
+test("validates PayToday contact details before redirecting the customer", async () => {
+  const checkout = await readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8");
+  const orders = await readFile(new URL("../app/api/orders/route.ts", import.meta.url), "utf8");
+  const paytoday = await readFile(new URL("../lib/paytoday.ts", import.meta.url), "utf8");
+  assert.match(checkout, /Payment email/);
+  assert.match(checkout, /Mobile number/);
+  assert.match(checkout, /paymentContact: \{ email: paymentEmail, phone: paymentPhone \}/);
+  assert.match(orders, /Enter a valid payment email address/);
+  assert.match(orders, /Enter a valid mobile number for PayToday verification/);
+  assert.match(paytoday, /user_email: email/);
+  assert.match(paytoday, /user_phone_number: phone/);
+  assert.match(paytoday, /amount: input\.amount/);
+  assert.doesNotMatch(paytoday.slice(paytoday.indexOf("createPayTodayPayment")), /amount: input\.amount\.toFixed/);
+});
+
 test("shows validated merchant social profiles on the storefront", async () => {
   const approval = await readFile(new URL("../app/api/admin/applications/route.ts", import.meta.url), "utf8");
   const setup = await readFile(new URL("../app/api/merchant/setup/route.ts", import.meta.url), "utf8");

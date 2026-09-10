@@ -91,19 +91,22 @@ async function createAccessToken() {
 
 export async function createPayTodayPayment(input: PayTodayPaymentInput) {
   const config = settings();
+  const email = input.email.trim().toLowerCase();
+  const phone = input.phone.trim().replace(/[\s()-]/g, "");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) throw new Error("PayToday requires a valid customer email address.");
+  if (!/^\+?\d{7,15}$/.test(phone)) throw new Error("PayToday requires a valid customer mobile number.");
   const accessToken = await createAccessToken();
   const response = await requestJson(`${config.baseUrl}/web/create/payment/intent/`, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json", authorization: `Bearer ${accessToken}`, "user-agent": "NeuroCity/1.0" },
     body: JSON.stringify({
-      v: API_VERSION,
       handle: config.shopHandle,
-      amount: input.amount.toFixed(2),
+      amount: input.amount,
       invoice_number: input.invoiceNumber,
       user_first_name: input.firstName,
       user_last_name: input.lastName,
-      user_email: input.email,
-      user_phone_number: input.phone,
+      user_email: email,
+      user_phone_number: phone,
       return_url: input.returnUrl,
     }),
   });
