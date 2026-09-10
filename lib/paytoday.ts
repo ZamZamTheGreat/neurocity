@@ -7,13 +7,18 @@ const LIVE_URL = "https://admin.today.com.na";
 type PayTodayTokenData = {
   authorization?: { access_token?: string };
   payment_url?: string;
+  payment_intent_token?: string;
   payment_token?: string;
   token?: string;
   id?: string;
   payment_id?: string;
   status?: string;
   reference?: string;
-  intent?: { transaction_status?: string; reference?: string };
+  intent?: {
+    transaction_status?: string;
+    reference?: string;
+    transaction_data?: { payment_reference?: string; status?: string; reason?: string; time_stamp?: string };
+  };
 };
 
 export type PayTodayPaymentInput = {
@@ -90,7 +95,7 @@ export async function createPayTodayPayment(input: PayTodayPaymentInput) {
   });
   if (typeof response.token !== "string") throw new Error("PayToday did not return a payment token response.");
   const data = await verifyToken(response.token, config.privateKey);
-  const paymentToken = data.payment_token ?? data.token ?? data.id ?? data.payment_id;
+  const paymentToken = data.payment_intent_token ?? data.payment_token ?? data.token ?? data.id ?? data.payment_id;
   if (!data.payment_url || !paymentToken) throw new Error("PayToday payment response was incomplete.");
   const checkoutUrl = new URL(data.payment_url);
   if (checkoutUrl.protocol !== "https:") throw new Error("PayToday returned an invalid checkout URL.");

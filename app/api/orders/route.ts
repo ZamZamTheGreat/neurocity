@@ -66,10 +66,13 @@ export async function POST(request: Request) {
       await tx.insert(auditEvents).values({ actorRef: user.userId, action: "checkout.created", resourceType: "checkout_group", resourceId: String(checkout.id), metadata: { reference, merchantCount: createdOrders.length, itemCount: cart.length, subtotal, deliveryFee, total } });
       return { checkout, orders: createdOrders };
     });
-    const [transaction] = await db.insert(paymentTransactions).values({ checkoutGroupId: created.checkout.id, provider: "paytoday", amount: total, status: "creating", providerMetadata: { invoiceNumber: reference, merchantCount: created.orders.length } }).returning();
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+    const [transaction] = await db.insert(paymentTransactions).values({ checkoutGroupId: created.checkout.id, provider: "paytoday", amount: total, status: "creating", expiresAt, providerMetadata: { invoiceNumber: reference, merchantCount: created.orders.length } }).returning();
     try {
       const names = user.displayName.trim().split(/\s+/), primaryPhone = prepared.map((item) => item.address?.phone).find(Boolean) ?? "";
-      const result = await createPayTodayPayment({ amount: total, invoiceNumber: reference, firstName: names[0] ?? "Customer", lastName: names.slice(1).join(" ") || "NeuroCity", email: user.email, phone: primaryPhone, returnUrl: new URL("/api/payments/paytoday/return", request.url).toString() });
+      const returnUrl = new URL("/api/payments/paytoday/return", request.url);
+      returnUrl.searchParams.set("reference", reference);
+      const result = await createPayTodayPayment({ amount: total, invoiceNumber: reference, firstName: names[0] ?? "Customer", lastName: names.slice(1).join(" ") || "NeuroCity", email: user.email, phone: primaryPhone, returnUrl: returnUrl.toString() });
       await db.update(paymentTransactions).set({ providerPaymentToken: result.paymentToken, providerReference: result.providerReference, checkoutUrl: result.checkoutUrl, status: "pending", updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));
       await Promise.allSettled(created.orders.map(({ order, merchant, items }) => sendOrderPlacedNotifications({ reference: `NC-${String(order.id).padStart(6, "0")}`, storeName: merchant.name, customerName: order.customerName ?? user.displayName, customerEmail: user.email, merchantEmail: merchant.contactEmail, status: order.status, total: order.total, fulfillmentMethod: order.fulfillmentMethod ?? "pickup", paymentInstructions: null, lines: items.map((item) => ({ name: item.productName, option: [item.size, item.color].filter(Boolean).join(" / ") || item.variantTitle, quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity })) })));
       return Response.json({ checkout: { reference, total, merchantCount: created.orders.length, orderReferences: created.orders.map(({ order }) => `NC-${String(order.id).padStart(6, "0")}`), paymentUrl: result.checkoutUrl } }, { status: 201 });

@@ -39,7 +39,7 @@ The PostgreSQL pool defaults to 10 connections per application instance. `DB_POO
 
 The PayToday checkout adapter remains hidden until all three credentials are configured. Add these as secret environment variables in Render when PayToday activates the NeuroCity account:
 
-- `PAYTODAY_ENVIRONMENT=sandbox` (change to `live` only after production approval)
+- `PAYTODAY_ENVIRONMENT=live` (PayToday's current guide states that payment-intent tests process real currency)
 - `PAYTODAY_SHOP_KEY`
 - `PAYTODAY_SHOP_HANDLE`
 - `PAYTODAY_PRIVATE_KEY`

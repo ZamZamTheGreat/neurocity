@@ -30,7 +30,8 @@ export async function GET(request: Request) {
     const providerStatus = provider.intent?.transaction_status ?? provider.status;
     const status = normalizePayTodayStatus(providerStatus);
     await db.transaction(async (tx) => {
-      await tx.update(paymentTransactions).set({ status, lastCheckedAt: new Date(), providerMetadata: { status: providerStatus ?? null, reference: provider.intent?.reference ?? provider.reference ?? null }, updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));
+      const providerReference = provider.intent?.transaction_data?.payment_reference ?? provider.intent?.reference ?? provider.reference ?? null;
+      await tx.update(paymentTransactions).set({ status, providerReference, lastCheckedAt: new Date(), providerMetadata: { status: providerStatus ?? null, reference: providerReference, reason: provider.intent?.transaction_data?.reason ?? null, finalizedAt: provider.intent?.transaction_data?.time_stamp ?? null }, updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));
       const checkoutStatus = status === "paid" ? "paid" : status === "failed" ? "payment_failed" : status;
       await tx.update(checkoutGroups).set({ paymentStatus: status, status: checkoutStatus, updatedAt: new Date() }).where(eq(checkoutGroups.id, checkout.id));
       if (["paid", "failed", "cancelled", "expired"].includes(status)) await tx.update(orders).set({ paymentStatus: status, status: status === "paid" ? "pending_merchant_confirmation" : checkoutStatus, updatedAt: new Date() }).where(eq(orders.checkoutGroupId, checkout.id));
