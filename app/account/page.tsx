@@ -752,6 +752,7 @@ function CheckoutBag({
   );
   const [notes, setNotes] = useState("");
   const [placing, setPlacing] = useState(false);
+  const [removingVariantId, setRemovingVariantId] = useState<number | null>(null);
   const [confirmation, setConfirmation] = useState<{
     reference: string;
     total: number;
@@ -786,7 +787,15 @@ function CheckoutBag({
   const deliveryFee =
     fulfillment === "merchant_delivery" && deliveryQuote?.supported
       ? Number(deliveryQuote.deliveryFee ?? 0)
-      : 0;
+    : 0;
+  async function removeBagItem(variantId: number) {
+    setRemovingVariantId(variantId);
+    try {
+      await updateCart({ action: "cart", variantId, quantity: 0 });
+    } finally {
+      setRemovingVariantId(null);
+    }
+  }
   useEffect(() => {
     if (
       fulfillment !== "merchant_delivery" ||
@@ -1063,10 +1072,13 @@ function CheckoutBag({
                     · {item.sku}
                   </span>
                 </div>
-                <div className="bag-quantity" aria-label={`Quantity for ${item.productName}`}>
-                  <button aria-label={`Remove one ${item.productName}`} onClick={() => updateCart({ action: "cart", variantId: item.variantId, quantity: Math.max(0, item.quantity - 1) })}>−</button>
-                  <span>{item.quantity}</span>
-                  <button aria-label={`Add one ${item.productName}`} disabled={item.quantity >= 20} onClick={() => updateCart({ action: "cart", variantId: item.variantId, quantity: item.quantity + 1 })}>+</button>
+                <div className="bag-item-actions">
+                  <div className="bag-quantity" aria-label={`Quantity for ${item.productName}`}>
+                    <button aria-label={`Remove one ${item.productName}`} disabled={removingVariantId === item.variantId} onClick={() => updateCart({ action: "cart", variantId: item.variantId, quantity: Math.max(0, item.quantity - 1) })}>−</button>
+                    <span>{item.quantity}</span>
+                    <button aria-label={`Add one ${item.productName}`} disabled={removingVariantId === item.variantId || item.quantity >= 20} onClick={() => updateCart({ action: "cart", variantId: item.variantId, quantity: item.quantity + 1 })}>+</button>
+                  </div>
+                  <button className="bag-remove-item" disabled={removingVariantId === item.variantId} onClick={() => removeBagItem(item.variantId)}>{removingVariantId === item.variantId ? "Removing…" : "Remove"}</button>
                 </div>
                 <b>
                   N$
