@@ -132,6 +132,32 @@ test("offers protected Google account access when configured", async () => {
   assert.match(auth, /!value\.startsWith\("\/\/"\)/);
 });
 
+test("uses the shared recoverable Turnstile challenge on every protected form", async () => {
+  const challenge = await readFile(new URL("../app/components/TurnstileChallenge.tsx", import.meta.url), "utf8");
+  const protectedFlows = [
+    ["../app/login/page.tsx", ["login", "register"]],
+    ["../app/reset-password/page.tsx", ["password_reset"]],
+    ["../app/apply/page.tsx", ["merchant_application"]],
+    ["../app/components/MerchantWorkspace.tsx", ["merchant_claim"]],
+  ];
+  const serverRoutes = [
+    ["../app/api/auth/login/route.ts", "login"],
+    ["../app/api/auth/register/route.ts", "register"],
+    ["../app/api/auth/password-reset/request/route.ts", "password_reset"],
+    ["../app/api/applications/route.ts", "merchant_application"],
+    ["../app/api/merchant/claim/route.ts", "merchant_claim"],
+  ];
+  for (const [path, actions] of protectedFlows) {
+    const source = await readFile(new URL(path, import.meta.url), "utf8");
+    assert.match(source, /TurnstileChallenge/);
+    for (const action of actions) assert.match(source, new RegExp(action));
+  }
+  for (const [path, action] of serverRoutes) assert.match(await readFile(new URL(path, import.meta.url), "utf8"), new RegExp(`verifyTurnstile\\(request, [^,]+, "${action}"\\)`));
+  assert.match(challenge, /Retry verification/);
+  assert.match(challenge, /scriptPromise = null/);
+  assert.match(challenge, /"timeout-callback"/);
+});
+
 test("keeps Account Centre navigation independent of Vinext client links", async () => {
   const access = await readFile(new URL("../app/access/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(access, /from "next\/link"/);

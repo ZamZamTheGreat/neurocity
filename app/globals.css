@@ -2392,6 +2392,17 @@ main {
 .form-error {
   color: #a02f2f;
 }
+.turnstile-challenge .form-error button {
+  margin-left: 7px;
+  padding: 4px 8px;
+  border: 1px solid currentColor;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
 .application-success {
   text-align: center;
 }
