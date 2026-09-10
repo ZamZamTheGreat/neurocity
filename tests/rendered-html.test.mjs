@@ -799,6 +799,18 @@ test("inherits product prices while preserving merchant colourway overrides", as
   assert.match(workspace, /Leave <b>variant_price<\/b> and <b>variant_sale_price<\/b> blank to inherit/);
 });
 
+test("uses a functional three-step product creation flow", async () => {
+  const panel = await readFile(new URL("../app/components/ProductCreatePanel.tsx", import.meta.url), "utf8");
+  assert.match(panel, /const \[step, setStep\] = useState\(1\)/);
+  assert.match(panel, /step === 1 &&/);
+  assert.match(panel, /step === 2 &&/);
+  assert.match(panel, /step === 3 &&/);
+  assert.match(panel, /if \(step < 3\).*setStep\(step \+ 1\)/s);
+  assert.match(panel, /setStep\(step - 1\)/);
+  assert.match(panel, /Review & create/);
+  assert.match(panel, /await onCreate\(product\)/);
+});
+
 test("sends service booking lifecycle notifications", async () => {
   const customerBookings = await readFile(new URL("../app/api/service-bookings/route.ts", import.meta.url), "utf8");
   const merchantBookings = await readFile(new URL("../app/api/merchant/service-bookings/route.ts", import.meta.url), "utf8");
