@@ -690,7 +690,7 @@ export default function MerchantWorkspace({
               : "";
   return (
     <section className="dashboard-shell merchant-dashboard-v2">
-      <aside className={menuOpen ? "workspace-drawer-open" : ""}>
+      <aside id="merchant-navigation-drawer" className={menuOpen ? "workspace-drawer-open" : ""}>
         <button className="workspace-drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close merchant menu">×</button>
         <div className="merchant-mark">
           <ManagedImage src={merchant?.logoUrl ?? "/lightwork-logo.png"} alt="" width={160} height={160} />
@@ -737,7 +737,7 @@ export default function MerchantWorkspace({
       {menuOpen && <button className="workspace-drawer-backdrop" onClick={() => setMenuOpen(false)} aria-label="Close merchant menu" />}
       <div className="dashboard-main">
         <div className="dashboard-head">
-          <button className="workspace-menu-toggle" onClick={() => setMenuOpen(true)} aria-label="Open merchant menu" aria-expanded={menuOpen}><i aria-hidden="true"><span /><span /><span /></i><span>Menu</span></button>
+          <button type="button" className="workspace-menu-toggle" onClick={() => setMenuOpen(true)} aria-label={menuOpen ? "Merchant menu open" : "Open merchant menu"} aria-controls="merchant-navigation-drawer" aria-expanded={menuOpen}><i className="hamburger-lines" aria-hidden="true"><span /><span /><span /></i><span>Menu</span></button>
           <div>
             <p className="eyebrow">
               Merchant workspace · {session.memberships[0].role}

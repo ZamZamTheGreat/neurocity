@@ -426,6 +426,16 @@ test("opens merchant access on overview and allows incomplete setup drafts", asy
   assert.match(readiness, /hour\.closed \|\| Boolean\(hour\.opensAt && hour\.closesAt\)/);
 });
 
+test("provides an accessible three-line merchant navigation button on mobile", async () => {
+  const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");
+  const drawers = await readFile(new URL("../app/workspace-drawers.css", import.meta.url), "utf8");
+  assert.match(workspace, /id="merchant-navigation-drawer"/);
+  assert.match(workspace, /aria-controls="merchant-navigation-drawer"/);
+  assert.match(workspace, /className="hamburger-lines"/);
+  assert.match(workspace, /<span \/><span \/><span \/>/);
+  assert.match(drawers, /\.hamburger-lines span\{display:block;width:19px;height:2px/);
+});
+
 test("uses the dashboard colour system across the NeuroCity marketplace", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/marketplace-dashboard-theme.css", import.meta.url), "utf8");
