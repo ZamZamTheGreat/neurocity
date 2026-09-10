@@ -414,6 +414,18 @@ test("keeps the complete merchant workspace usable on mobile", async () => {
   assert.match(responsive, /\.merchant-payment-queue article\{grid-template-columns:1fr\}/);
 });
 
+test("opens merchant access on overview and allows incomplete setup drafts", async () => {
+  const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");
+  const setup = await readFile(new URL("../app/api/merchant/setup/route.ts", import.meta.url), "utf8");
+  const readiness = await readFile(new URL("../lib/merchant-readiness.ts", import.meta.url), "utf8");
+  assert.match(workspace, /useState<Tab>\("Overview"\)/);
+  assert.match(workspace, /disabled=\{!merchant\.isPublic && completion < 100\}/);
+  assert.match(workspace, /Your draft can still be saved/);
+  assert.match(setup, /leave it empty while saving a draft/);
+  assert.match(setup, /if \(branchAddress\)/);
+  assert.match(readiness, /hour\.closed \|\| Boolean\(hour\.opensAt && hour\.closesAt\)/);
+});
+
 test("uses the dashboard colour system across the NeuroCity marketplace", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/marketplace-dashboard-theme.css", import.meta.url), "utf8");

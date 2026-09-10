@@ -326,7 +326,7 @@ export default function MerchantWorkspace({
     document.body.classList.add("merchant-workspace-open");
     return () => document.body.classList.remove("merchant-workspace-open");
   }, []);
-  const [tab, setTab] = useState<Tab>("Setup");
+  const [tab, setTab] = useState<Tab>("Overview");
   const [menuOpen, setMenuOpen] = useState(false);
   useEffect(() => {
     if (!menuOpen) return;
@@ -519,10 +519,10 @@ export default function MerchantWorkspace({
       );
       return false;
     }
-    setMerchant({
-      ...merchant,
+    setMerchant((current) => current ? {
+      ...current,
       [type === "logo" ? "logoUrl" : "bannerUrl"]: data.storageValue,
-    });
+    } : current);
     setMessage(
       `${type === "logo" ? "Logo" : "Banner"} uploaded. Save the storefront to publish this image.`,
     );
@@ -1111,6 +1111,7 @@ function SetupPanel({
     { key: "policies", label: "Returns policy", target: "setup-selling", done: Boolean(merchant.returnsPolicy) },
   ];
   const completion = Math.round(setupChecks.filter((check) => check.done).length / setupChecks.length * 100);
+  const missingChecks = setupChecks.filter((check) => !check.done);
   const goToSetupSection = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   return (
     <div className="setup-workflow">
@@ -1154,6 +1155,8 @@ function SetupPanel({
             Business name
             <input
               required
+              maxLength={180}
+              autoComplete="organization"
               value={merchant.name}
               onChange={(e) =>
                 setMerchant({ ...merchant, name: e.target.value })
@@ -1185,6 +1188,8 @@ function SetupPanel({
             Store tagline
             <input
               required
+              maxLength={220}
+              placeholder="A short promise customers will remember"
               value={merchant.tagline ?? ""}
               onChange={(e) =>
                 setMerchant({ ...merchant, tagline: e.target.value })
@@ -1195,6 +1200,8 @@ function SetupPanel({
             Store description
             <textarea
               required
+              maxLength={2000}
+              placeholder="What you sell, who you serve, and what makes your store useful"
               value={merchant.description ?? ""}
               onChange={(e) =>
                 setMerchant({ ...merchant, description: e.target.value })
@@ -1233,6 +1240,8 @@ function SetupPanel({
             <input
               required
               type="email"
+              autoComplete="email"
+              placeholder="orders@yourbusiness.com"
               value={merchant.contactEmail ?? ""}
               onChange={(e) =>
                 setMerchant({ ...merchant, contactEmail: e.target.value })
@@ -1243,6 +1252,9 @@ function SetupPanel({
             Phone
             <input
               required
+              type="tel"
+              autoComplete="tel"
+              placeholder="081 234 5678"
               value={merchant.contactPhone ?? ""}
               onChange={(e) =>
                 setMerchant({ ...merchant, contactPhone: e.target.value })
@@ -1253,6 +1265,8 @@ function SetupPanel({
             Pickup address
             <input
               required
+              autoComplete="street-address"
+              placeholder="Building, street, suburb and town"
               value={merchant.branchAddress}
               onChange={(e) =>
                 setMerchant({
@@ -1381,6 +1395,7 @@ function SetupPanel({
           <input
             type="checkbox"
             checked={merchant.isPublic}
+            disabled={!merchant.isPublic && completion < 100}
             onChange={(e) =>
               setMerchant({ ...merchant, isPublic: e.target.checked })
             }
@@ -1392,7 +1407,7 @@ function SetupPanel({
             ? "Save and publish storefront"
             : "Save setup draft"}
         </button>
-        {merchant.isPublic && completion < 100 && <small className="publish-blocked">Complete the unchecked items to publish.</small>}
+        {!merchant.isPublic && missingChecks.length > 0 && <small className="publish-blocked">Complete {missingChecks.map((check) => check.label.toLowerCase()).join(", ")} before publishing. Your draft can still be saved.</small>}
       </section>
       {canInvite && (
         <section className="invite-panel">
