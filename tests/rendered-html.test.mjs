@@ -495,6 +495,15 @@ test("turns private store media into renderable customer dashboard images", asyn
   assert.match(account, /publicStoreMedia\(storeSlug/);
 });
 
+test("cryptographically verifies PayToday response tokens across provider key encodings", async () => {
+  const paytoday = await readFile(new URL("../lib/paytoday.ts", import.meta.url), "utf8");
+  assert.match(paytoday, /decodeProtectedHeader/);
+  assert.match(paytoday, /jwtVerify/);
+  assert.match(paytoday, /header\.alg !== "HS256"/);
+  assert.match(paytoday, /Buffer\.from\(privateKey, "hex"\)/);
+  assert.match(paytoday, /Buffer\.from\(normalized, "base64"\)/);
+});
+
 test("shows validated merchant social profiles on the storefront", async () => {
   const approval = await readFile(new URL("../app/api/admin/applications/route.ts", import.meta.url), "utf8");
   const setup = await readFile(new URL("../app/api/merchant/setup/route.ts", import.meta.url), "utf8");
