@@ -534,7 +534,7 @@ export function MarketplaceExperience({
 
           <section className="concierge">
             <div>
-                <p className="eyebrow light">Selma · Local shopping assistant</p>
+                <p className="eyebrow light">Selma-AI · Local shopping assistant</p>
                 <h2>
                 Describe what you need.
                 <br />
@@ -545,7 +545,7 @@ export function MarketplaceExperience({
             <button onClick={() => askConcierge()}>
               <span>✦</span>
               <div>
-                <small>Ask Selma</small>
+                <small>Ask Selma-AI</small>
                 <b>“I need a local streetwear look under N$1,500.”</b>
               </div>
               <i>→</i>

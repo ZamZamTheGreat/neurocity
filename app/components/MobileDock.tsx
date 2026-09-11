@@ -15,7 +15,7 @@ export function MobileDock() {
   const [path, setPath] = useState("");
   const [request, setRequest] = useState<ConciergeRequest & { promptKey: number }>({ promptKey: 0 });
   const [selmaOpen, setSelmaOpen] = useState(false);
-  const [companionName, setCompanionName] = useState("Selma");
+  const [companionName, setCompanionName] = useState("Selma-AI");
   useEffect(() => {
     setPath(window.location.pathname);
     const openSelma = (event: Event) => {
@@ -47,7 +47,7 @@ export function MobileDock() {
           );
         })}
         <button className={`mobile-selma${selmaOpen ? " active" : ""}`} onClick={() => openConcierge()} aria-label={`Ask ${companionName}`} aria-expanded={selmaOpen}>
-          <i aria-hidden="true">✦</i><span>{companionName}</span>
+          <i aria-hidden="true"><img src="/selma-ai-avatar.webp" alt="" /></i><span>{companionName}</span>
         </button>
         {items.slice(2).map((item) => {
           const active = item.href === "/access"

@@ -103,7 +103,7 @@ export default function LoginPage() {
             <li>
               <span>01</span>
               <div>
-                <b>Discover with Selma</b>
+                <b>Discover with Selma-AI</b>
                 <small>
                   Search live local catalogues by product, colour, size or
                   budget.

@@ -5,9 +5,13 @@ import { getChatGPTUser } from "../../../chatgpt-auth";
 
 async function profileFor(userId: number) {
   const db = getDb();
-  const [profile] = await db.insert(customerCompanionProfiles).values({ userId, companionName: "Selma" }).onConflictDoNothing().returning();
+  const [profile] = await db.insert(customerCompanionProfiles).values({ userId, companionName: "Selma-AI" }).onConflictDoNothing().returning();
   if (profile) return profile;
   const [existing] = await db.select().from(customerCompanionProfiles).where(eq(customerCompanionProfiles.userId, userId)).limit(1);
+  if (existing?.companionName === "Selma") {
+    const [updated] = await db.update(customerCompanionProfiles).set({ companionName: "Selma-AI", updatedAt: new Date() }).where(eq(customerCompanionProfiles.id, existing.id)).returning();
+    return updated;
+  }
   return existing;
 }
 

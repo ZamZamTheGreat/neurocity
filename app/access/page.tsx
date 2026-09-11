@@ -16,7 +16,7 @@ const accountTypes = [
     icon: "◎",
     eyebrow: "Personal",
     title: "Customer account",
-    description: "Shop, book services, track orders, save stores and chat with Selma.",
+    description: "Shop, book services, track orders, save stores and chat with Selma-AI.",
     destination: "/account",
   },
   {

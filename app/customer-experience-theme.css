@@ -1,4 +1,4 @@
-/* Customer navigation and Selma share the platform's black-and-gold identity. */
+/* Customer navigation and Selma-AI share the platform's black-and-gold identity. */
 @media (max-width: 760px) {
   body {
     padding-bottom: calc(78px + env(safe-area-inset-bottom));
@@ -66,6 +66,7 @@
     color: #17120a;
     box-shadow: 0 8px 24px #0008, 0 0 0 1px #f0ce8052;
   }
+  .mobile-dock .mobile-selma i img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 
   .mobile-dock .mobile-selma span { margin-top: -2px; }
   .mobile-dock .mobile-selma.active i { transform: scale(.94); }
@@ -133,6 +134,8 @@
   color: #e0bb6b;
   box-shadow: inset 0 0 0 1px #d4aa5438;
 }
+.neuro-message > div > .selma-message-avatar { overflow: hidden; padding: 0; }
+.neuro-message > div > .selma-message-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 .neuro-message p {
   border-color: #e3dbce;

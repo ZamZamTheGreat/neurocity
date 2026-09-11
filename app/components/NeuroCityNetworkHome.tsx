@@ -108,7 +108,7 @@ export default function NeuroCityNetworkHome({
           <a href="/marketplace#stores">Stores</a>
         </nav>
         <div>
-          <button onClick={() => askSelma()}>✦ Ask Selma</button>
+          <button onClick={() => askSelma()}>✦ Ask Selma-AI</button>
           <a href="/access">Account</a>
         </div>
       </header>
@@ -127,7 +127,7 @@ export default function NeuroCityNetworkHome({
                 <a className="primary" href="/marketplace">
                   Browse products and stores <span>→</span>
                 </a>
-                <button className="network-selma-link" onClick={() => askSelma()}>Ask Selma</button>
+                <button className="network-selma-link" onClick={() => askSelma()}>Ask Selma-AI</button>
               </div>
               <ul>
                 <li>Approved local stores</li>
@@ -157,7 +157,7 @@ export default function NeuroCityNetworkHome({
             <div>
               <article><small>01</small><b>Browse everything</b><span>Search products, services and stores across the complete NeuroCity marketplace.</span><a href="/marketplace">Open Marketplace →</a></article>
               <article><small>02</small><b>Shop by place</b><span>Enter the online version of a participating physical mall and browse its tenants.</span><a href="/malls">Choose a mall →</a></article>
-              <article><small>03</small><b>Ask Selma</b><span>Describe your budget, size, colour or occasion and get relevant local options.</span><button onClick={() => askSelma()}>Start a search →</button></article>
+              <article><small>03</small><b>Ask Selma-AI</b><span>Describe your budget, size, colour or occasion and get relevant local options.</span><button onClick={() => askSelma()}>Start a search →</button></article>
             </div>
           </section>
           {featured?.products.length ? <section className="network-featured-products">
@@ -188,7 +188,7 @@ export default function NeuroCityNetworkHome({
               <span>03</span>
               <div>
                 <small>NEED A HAND?</small>
-                <h2>Ask Selma</h2>
+                <h2>Ask Selma-AI</h2>
                 <ul className="info-list"><li>Describe your budget, size, colour, location or occasion.</li></ul>
                 <button onClick={() => askSelma()}>
                   Start a conversation →
@@ -203,7 +203,7 @@ export default function NeuroCityNetworkHome({
             </div>
             <div className="network-local-copy">
               <p>NeuroCity brings participating Namibian businesses into one searchable marketplace. Browse fashion, gifts, services and everyday essentials, then check each store&apos;s available collection and delivery options.</p>
-              <p>Shopping for something specific? Tell Selma the item, size, colour, budget or location you have in mind. Results are drawn from live merchant catalogues so you can compare relevant local options.</p>
+              <p>Shopping for something specific? Tell Selma-AI the item, size, colour, budget or location you have in mind. Results are drawn from live merchant catalogues so you can compare relevant local options.</p>
               <div><a href="/marketplace">Explore the marketplace →</a><a href="/apply">List your business →</a></div>
             </div>
           </section>
@@ -311,7 +311,7 @@ export default function NeuroCityNetworkHome({
             </h2>
             <ul className="info-list"><li>Search live Namibian stores.</li><li>Compare local options and prices in N$.</li><li>Focus on stores from a specific mall.</li></ul>
             <button onClick={() => askSelma()}>
-              Ask Selma what you need →
+              Ask Selma-AI what you need →
             </button>
           </article>
           <aside>
@@ -332,7 +332,7 @@ export default function NeuroCityNetworkHome({
         <div>
           <details><summary>What is NeuroCity?</summary><p>NeuroCity is a Namibian online marketplace that connects shoppers with approved local stores, products, services and participating malls.</p></details>
           <details><summary>Can I shop from different stores in one place?</summary><p>Yes. Browse the whole NeuroCity marketplace or enter the online space for a participating mall to see its stores together.</p></details>
-          <details><summary>How does Selma help me shop?</summary><p>Describe what you need, including your budget, size, colour or location. Selma searches participating merchants&apos; catalogues for relevant local options.</p></details>
+          <details><summary>How does Selma-AI help me shop?</summary><p>Describe what you need, including your budget, size, colour or location. Selma-AI searches participating merchants&apos; catalogues for relevant local options.</p></details>
           <details><summary>How can my business join?</summary><p>Submit a merchant application with your business details. Approved merchants receive a storefront and tools for managing products, inventory and orders.</p></details>
         </div>
       </section>}
@@ -358,7 +358,7 @@ export default function NeuroCityNetworkHome({
       <button
         className="network-james-fab"
         onClick={() => askSelma()}
-        aria-label="Open Selma"
+        aria-label="Open Selma-AI"
       >
         ✦
       </button>

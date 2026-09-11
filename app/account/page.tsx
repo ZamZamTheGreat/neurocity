@@ -389,13 +389,13 @@ export default function AccountPage() {
                 <p className="eyebrow">Your shopping space</p>
                 <h2>What would you like to do?</h2>
                 <p>
-                  Discover local stores, ask Selma for help, or pick up where
+                  Discover local stores, ask Selma-AI for help, or pick up where
                   you left off.
                 </p>
               </div>
               <div className="customer-quick-actions">
                 <a href="/marketplace"><span aria-hidden="true">⌕</span> Browse stores</a>
-                <button onClick={() => window.dispatchEvent(new Event("neurocity:open-selma"))}><span aria-hidden="true">✦</span> Ask Selma</button>
+                <button onClick={() => window.dispatchEvent(new Event("neurocity:open-selma"))}><span aria-hidden="true">✦</span> Ask Selma-AI</button>
                 <button onClick={() => setTab("Bag")}><span aria-hidden="true">▱</span> Open bag</button>
               </div>
             </section>

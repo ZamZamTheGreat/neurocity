@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     if (!ALLOWED_IMAGE_TYPES.has(image.type)) return Response.json({ error: "Use a JPG, PNG or WebP image." }, { status: 415 });
     if (!image.size || image.size > MAX_IMAGE_BYTES) return Response.json({ error: "The image must be smaller than 5 MB." }, { status: 413 });
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return Response.json({ error: "Visual search is being connected. For now, describe the item to Selma in the message box." }, { status: 503 });
+    if (!apiKey) return Response.json({ error: "Visual search is being connected. For now, describe the item to Selma-AI in the message box." }, { status: 503 });
 
     const bytes = Buffer.from(await image.arrayBuffer());
     const dataUrl = `data:${image.type};base64,${bytes.toString("base64")}`;
@@ -44,16 +44,16 @@ export async function POST(request: Request) {
     const result = await aiResponse.json() as { output?: { content?: { type?: string; text?: string }[] }[]; error?: { message?: string } };
     if (!aiResponse.ok) {
       console.error("visual search analysis failed", { status: aiResponse.status, error: result.error?.message });
-      return Response.json({ error: "Selma could not analyse this image right now. Try again or describe the item." }, { status: 502 });
+      return Response.json({ error: "Selma-AI could not analyse this image right now. Try again or describe the item." }, { status: 502 });
     }
     const raw = outputText(result)?.trim();
-    if (!raw) return Response.json({ error: "Selma could not identify a clear item. Try a closer screenshot or describe it." }, { status: 422 });
+    if (!raw) return Response.json({ error: "Selma-AI could not identify a clear item. Try a closer screenshot or describe it." }, { status: 422 });
     const analysis = JSON.parse(raw) as { summary?: string; query?: string; category?: string; colours?: string[]; attributes?: string[] };
     const query = [analysis.query, analysis.category, ...(analysis.colours ?? []), ...(analysis.attributes ?? [])].filter(Boolean).join(" ").slice(0, 300);
-    if (query.length < 2) return Response.json({ error: "Selma could not identify a searchable item. Try a clearer image." }, { status: 422 });
+    if (query.length < 2) return Response.json({ error: "Selma-AI could not identify a searchable item. Try a clearer image." }, { status: 422 });
     return Response.json({ summary: analysis.summary ?? "I identified the main item in your image.", query }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     console.error("visual search failed", error);
-    return Response.json({ error: "Selma could not analyse this image. Try a JPG, PNG or WebP screenshot." }, { status: 500 });
+    return Response.json({ error: "Selma-AI could not analyse this image. Try a JPG, PNG or WebP screenshot." }, { status: 500 });
   }
 }

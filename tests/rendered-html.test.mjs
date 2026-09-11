@@ -40,7 +40,7 @@ test("renders the NeuroCity network gateway", async () => {
   assert.match(html, /marketplace/i);
   assert.match(html, /Shop by mall/);
   assert.match(html, /One account\. Three ways to find what you need/);
-  assert.match(html, /Selma/);
+  assert.match(html, /Selma-AI/);
   assert.match(html, /<title>NeuroCity \| Shop Namibian stores online<\/title>/);
   assert.match(html, /<link rel="canonical" href="https:\/\/neurocity\.city\/"/);
   assert.match(html, /application\/ld\+json/);
@@ -756,7 +756,7 @@ test("keeps the customer journey connected from storefront to multi-store checko
   assert.doesNotMatch(account, /href="\/concierge"/);
 });
 
-test("supports private screenshot-led catalogue search in Selma", async () => {
+test("supports private screenshot-led catalogue search in Selma-AI", async () => {
   const route = await readFile(new URL("../app/api/concierge/visual-search/route.ts", import.meta.url), "utf8");
   const companion = await readFile(new URL("../app/components/NeuroConcierge.tsx", import.meta.url), "utf8");
   assert.match(route, /input_image/);
@@ -775,7 +775,7 @@ test("supports private screenshot-led catalogue search in Selma", async () => {
   assert.match(companion, /not saved to your NeuroCity account or chat history/);
 });
 
-test("grounds Selma's OpenAI reasoning in live catalogue results", async () => {
+test("grounds Selma-AI's OpenAI reasoning in live catalogue results", async () => {
   const route = await readFile(new URL("../app/api/concierge/route.ts", import.meta.url), "utf8");
   assert.match(route, /OPENAI_CONCIERGE_MODEL/);
   assert.match(route, /reasoning: \{ effort: "low" \}/);
@@ -797,7 +797,7 @@ test("grounds Selma's OpenAI reasoning in live catalogue results", async () => {
   assert.match(route, /eligibleBranchIds\.has\(item\.branchId\)/);
 });
 
-test("lets Selma distinguish preorder catalogue items from live stock", async () => {
+test("lets Selma-AI distinguish preorder catalogue items from live stock", async () => {
   const route = await readFile(new URL("../app/api/concierge/route.ts", import.meta.url), "utf8");
   const concierge = await readFile(new URL("../app/components/NeuroConcierge.tsx", import.meta.url), "utf8");
   assert.match(route, /\["available", "preorder", "out_of_stock"\]/);
@@ -807,7 +807,7 @@ test("lets Selma distinguish preorder catalogue items from live stock", async ()
   assert.doesNotMatch(route, /does not have any in-stock published products yet/);
 });
 
-test("protects Selma costs and keeps signed-in memory opt-in", async () => {
+test("protects Selma-AI costs and keeps signed-in memory opt-in", async () => {
   const search = await readFile(new URL("../app/api/concierge/route.ts", import.meta.url), "utf8");
   const visual = await readFile(new URL("../app/api/concierge/visual-search/route.ts", import.meta.url), "utf8");
   const limiter = await readFile(new URL("../lib/concierge-rate-limit.ts", import.meta.url), "utf8");
@@ -822,6 +822,18 @@ test("protects Selma costs and keeps signed-in memory opt-in", async () => {
   assert.match(companion, /Memory off/);
   assert.match(companion, /Clear chat/);
   assert.match(companion, /messages\.slice\(-40\)/);
+});
+
+test("brands the default companion as Selma-AI and uses her dedicated avatar", async () => {
+  const concierge = await readFile(new URL("../app/components/NeuroConcierge.tsx", import.meta.url), "utf8");
+  const dock = await readFile(new URL("../app/components/MobileDock.tsx", import.meta.url), "utf8");
+  const profile = await readFile(new URL("../app/api/concierge/profile/route.ts", import.meta.url), "utf8");
+  assert.match(concierge, /companionName: "Selma-AI"/);
+  assert.match(concierge, /\/selma-ai-avatar\.webp/);
+  assert.match(dock, /useState\("Selma-AI"\)/);
+  assert.match(dock, /\/selma-ai-avatar\.webp/);
+  assert.match(profile, /existing\?\.companionName === "Selma"/);
+  assert.match(profile, /companionName: "Selma-AI"/);
 });
 
 test("supports product and service catalogue items", async () => {

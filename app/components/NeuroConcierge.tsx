@@ -65,7 +65,7 @@ export function NeuroConcierge({
   const [profileLoading, setProfileLoading] = useState(false);
   const [guest, setGuest] = useState(false);
   const [renaming, setRenaming] = useState(false);
-  const [newName, setNewName] = useState("Selma");
+  const [newName, setNewName] = useState("Selma-AI");
   const [profileError, setProfileError] = useState("");
   const [photoMenu, setPhotoMenu] = useState(false);
   const [cameraConsent, setCameraConsent] = useState(false);
@@ -86,13 +86,13 @@ export function NeuroConcierge({
         if (cancelled) return;
         if (response.status === 401) {
           const guestProfile = {
-            companionName: "Selma",
+            companionName: "Selma-AI",
             customerName: "there",
             memoryEnabled: false,
           };
           setGuest(true);
           setProfile(guestProfile);
-          setNewName("Selma");
+          setNewName("Selma-AI");
           const stored = sessionStorage.getItem(GUEST_CHAT_KEY);
           const history = stored ? (JSON.parse(stored) as Message[]) : [];
           setMessages(
@@ -102,7 +102,7 @@ export function NeuroConcierge({
                   {
                     id: "welcome",
                     role: "companion",
-                    text: "Hello! I’m Selma, your local NeuroCity shopping companion. I search live Namibian catalogues and prices in N$. This guest chat stays only in this browser session. What can I help you find?",
+                    text: "Hello! I’m Selma-AI, your local NeuroCity shopping companion. I search live Namibian catalogues and prices in N$. This guest chat stays only in this browser session. What can I help you find?",
                   },
                 ],
           );
@@ -365,10 +365,10 @@ export function NeuroConcierge({
       >
         <header>
           <div>
-            <ManagedImage src="/branding/neurocity-mark.png" alt="" width={160} height={160} />
+            <ManagedImage src="/selma-ai-avatar.webp" alt="Selma-AI avatar" width={160} height={160} />
             <div>
               <span>SHOPPING ASSISTANT</span>
-              <b id="selma-title">{profile?.companionName ?? "Selma"}</b>
+              <b id="selma-title">{profile?.companionName ?? "Selma-AI"}</b>
               <small>
                 <i />{" "}
                 {guest
@@ -413,7 +413,7 @@ export function NeuroConcierge({
           </div>
         ) : profileError && !profile ? (
           <div className="companion-gate">
-            <h2>Selma is unavailable</h2>
+            <h2>Selma-AI is unavailable</h2>
             <p>{profileError}</p>
             <button
               onClick={() => {
@@ -434,8 +434,8 @@ export function NeuroConcierge({
                 >
                   <div>
                     {message.role === "companion" && (
-                      <span>
-                        {profile?.companionName.slice(0, 1).toUpperCase()}
+                      <span className="selma-message-avatar">
+                        <ManagedImage src="/selma-ai-avatar.webp" alt="" width={60} height={60} />
                       </span>
                     )}
                     <div className="neuro-message-content">
@@ -568,7 +568,7 @@ export function NeuroConcierge({
                   <span>This chat is stored only in this browser session.</span>
                   <a href="/login?return_to=%2F">
                     {" "}
-                    Sign in to personalise Selma
+                    Sign in to personalise Selma-AI
                   </a>
                 </>
               ) : (

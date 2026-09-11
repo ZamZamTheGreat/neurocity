@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   applicationName: "NeuroCity",
   title: "NeuroCity | Shop Namibian stores online",
   description:
-    "Discover products, services and approved local stores across Namibia. Shop the NeuroCity marketplace, visit digital malls and find local options with Selma.",
+    "Discover products, services and approved local stores across Namibia. Shop the NeuroCity marketplace, visit digital malls and find local options with Selma-AI.",
   keywords: [
     "Namibia online shopping",
     "Namibian marketplace",

@@ -44,7 +44,7 @@ export default function AccountDeletionPage() {
       </section>
 
       <section className="deletion-details">
-        <article><span>01</span><h2>What is deleted</h2><p>Your account profile, saved addresses, shopping preferences, cart, wishlist, saved stores and optional Selma profile are deleted or de-identified after the request is approved.</p></article>
+        <article><span>01</span><h2>What is deleted</h2><p>Your account profile, saved addresses, shopping preferences, cart, wishlist, saved stores and optional Selma-AI profile are deleted or de-identified after the request is approved.</p></article>
         <article><span>02</span><h2>What may be retained</h2><p>Order, payment, refund, fraud-prevention, dispute, tax or security records may be retained only where a legal or operational obligation requires it.</p></article>
         <article><span>03</span><h2>What happens next</h2><p>NeuroCity reviews the request, completes the permitted deletion, and records the outcome. Privacy support will contact you if identity or retention details need clarification.</p></article>
       </section>
