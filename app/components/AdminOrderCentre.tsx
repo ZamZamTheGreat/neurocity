@@ -7,6 +7,9 @@ export type AdminOrder = {
   customerName: string | null;
   customerEmail: string | null;
   status: string;
+  workflow: string;
+  confirmationExpiresAt: string | null;
+  paymentExpiresAt: string | null;
   paymentStatus: string;
   paymentMethod: string | null;
   fulfillmentMethod: string | null;
@@ -39,6 +42,10 @@ type Analytics = {
   activeOrders: number;
   openIssues: number;
   completedOrders: number;
+  awaitingConfirmation: number;
+  deadlinesApproaching: number;
+  expiredRequests: number;
+  notificationFailures: number;
 };
 
 export default function AdminOrderCentre({
@@ -67,6 +74,10 @@ export default function AdminOrderCentre({
           <span>Active orders</span>
           <strong>{analytics.activeOrders}</strong>
         </article>
+        <article><span>Awaiting confirmation</span><strong>{analytics.awaitingConfirmation}</strong></article>
+        <article><span>Due within 10 min</span><strong>{analytics.deadlinesApproaching}</strong></article>
+        <article><span>Expired requests</span><strong>{analytics.expiredRequests}</strong></article>
+        <article><span>Alert failures</span><strong>{analytics.notificationFailures}</strong></article>
         <article>
           <span>Open issues</span>
           <strong>{analytics.openIssues}</strong>
@@ -100,6 +111,7 @@ export default function AdminOrderCentre({
                 <small>
                   {new Date(order.createdAt).toLocaleString("en-NA")}
                 </small>
+                {(order.status === "pending_merchant_confirmation" ? order.confirmationExpiresAt : order.status === "accepted" ? order.paymentExpiresAt : null) && <small>Deadline {new Date((order.status === "pending_merchant_confirmation" ? order.confirmationExpiresAt : order.paymentExpiresAt)!).toLocaleString("en-NA")}</small>}
               </div>
             </header>
             {order.issues?.map((issue) => (

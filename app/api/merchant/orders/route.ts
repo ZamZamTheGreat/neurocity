@@ -1,8 +1,8 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { auditEvents, checkoutGroups, merchantPaymentAllocations, merchants, orderItems, orders, orderStatusEvents, paymentProofs } from "../../../../db/schema";
 import { requirePilotMerchant } from "../auth";
-import { sendOrderStatusNotification } from "../../../../lib/order-mail";
+import { sendOrderDeadlineNotification, sendOrderStatusNotification } from "../../../../lib/order-mail";
 import { sendWhatsAppOrderUpdate } from "../../../../lib/whatsapp-orders";
 import { commitOrderInventory, releaseOrderInventory } from "../../../../lib/order-inventory";
 import { cancelCheckoutAllocationsAndReleaseStock, makeOrderAllocationPayable } from "../../../../lib/settlements";
@@ -45,16 +45,20 @@ export async function PATCH(request: Request) {
     if (current.workflow === ORDER_WORKFLOW && current.status === "pending_merchant_confirmation" && current.confirmationExpiresAt && current.confirmationExpiresAt <= new Date()) return Response.json({ error: "The 30-minute confirmation window has expired." }, { status: 409 });
     if (["rejected", "cancelled", "delivery_failed"].includes(payload.status) && !payload.note?.trim()) return Response.json({ error: "A reason is required for this order decision." }, { status: 400 });
     if (current.paymentMethod === "eft" && current.paymentStatus !== "paid" && ["preparing", "ready_for_pickup", "dispatched", "collected", "delivered", "completed"].includes(payload.status)) return Response.json({ error: "Verify EFT payment before progressing fulfilment." }, { status: 409 });
+    let paymentOpened = false;
     await db.transaction(async (tx) => {
       const changedAt = new Date();
+      if (current.workflow === ORDER_WORKFLOW && current.checkoutGroupId) await tx.execute(sql`select pg_advisory_xact_lock(${current.checkoutGroupId}, 72)`);
       const workflowUpdate = current.workflow === ORDER_WORKFLOW && payload.status === "accepted" ? { confirmedAt: changedAt, paymentStatus: "not_started", orderVersion: current.orderVersion + 1 } : {};
-      await tx.update(orders).set({ status: payload.status!, ...workflowUpdate, updatedAt: changedAt }).where(and(eq(orders.id, current.id), eq(orders.status, current.status)));
+      const [changed] = await tx.update(orders).set({ status: payload.status!, ...workflowUpdate, updatedAt: changedAt }).where(and(eq(orders.id, current.id), eq(orders.status, current.status))).returning({ id: orders.id });
+      if (!changed) throw new Error("Order status changed. Refresh and try again.");
       if (current.workflow === ORDER_WORKFLOW && current.checkoutGroupId && payload.status === "accepted") {
         const groupOrders = await tx.select({ status: orders.status }).from(orders).where(eq(orders.checkoutGroupId, current.checkoutGroupId));
         if (groupOrders.every((order) => order.status === "accepted")) {
           const paymentExpiresAt = deadlineFrom(changedAt, CUSTOMER_PAYMENT_MINUTES);
           await tx.update(orders).set({ paymentExpiresAt, updatedAt: changedAt }).where(and(eq(orders.checkoutGroupId, current.checkoutGroupId), eq(orders.status, "accepted")));
           await tx.update(checkoutGroups).set({ status: "awaiting_payment", updatedAt: changedAt }).where(eq(checkoutGroups.id, current.checkoutGroupId));
+          paymentOpened = true;
         }
       }
       if (current.workflow === ORDER_WORKFLOW && current.checkoutGroupId && payload.status === "rejected" && current.paymentStatus !== "paid") {
@@ -76,6 +80,7 @@ export async function PATCH(request: Request) {
       current.customerEmail ? sendOrderStatusNotification({ reference, storeName: merchant?.name ?? "The store", customerName: current.customerName ?? "Customer", customerEmail: current.customerEmail, status: payload.status, total: current.total, fulfillmentMethod: current.fulfillmentMethod ?? "pickup", note: payload.note }) : Promise.resolve(),
       sendWhatsAppOrderUpdate({ phone: current.customerPhone ?? "", reference, storeName: merchant?.name ?? "The store", status: payload.status, note: payload.note }),
     ]);
+    if (paymentOpened && current.customerEmail && current.checkoutGroupId) await sendOrderDeadlineNotification({ to: current.customerEmail, reference: `NC-CHECKOUT-${current.checkoutGroupId}`, storeName: "Confirmed NeuroCity checkout", kind: "customer_payment_open" }).catch((error) => console.error("payment-ready email failed", error));
     const whatsapp = whatsappResult.status === "fulfilled" ? whatsappResult.value : { delivered: false as const, reason: whatsappResult.reason instanceof Error ? whatsappResult.reason.message : "delivery_failed" };
     await db.insert(auditEvents).values({ actorRef: access.user.userId, action: whatsapp.delivered ? "order.whatsapp_sent" : "order.whatsapp_skipped", resourceType: "order", resourceId: String(current.id), metadata: { status: payload.status, reason: "reason" in whatsapp ? whatsapp.reason : null } }).catch((error) => console.error("order notification audit failed", error));
     return Response.json({ order: { ...current, status: payload.status, allowedTransitions: current.workflow === ORDER_WORKFLOW ? allowedOrderTransitions(payload.status, "merchant") : transitions[payload.status] ?? [] }, whatsapp });

@@ -62,6 +62,10 @@ export default function AdminPage() {
     activeOrders: 0,
     openIssues: 0,
     completedOrders: 0,
+    awaitingConfirmation: 0,
+    deadlinesApproaching: 0,
+    expiredRequests: 0,
+    notificationFailures: 0,
   });
   const [platforms, setPlatforms] = useState<MallPlatform[]>([]);
   const [campaigns, setCampaigns] = useState<AdvertisingCampaign[]>([]);
@@ -103,6 +107,10 @@ export default function AdminPage() {
           activeOrders: 0,
           openIssues: 0,
           completedOrders: 0,
+          awaitingConfirmation: 0,
+          deadlinesApproaching: 0,
+          expiredRequests: 0,
+          notificationFailures: 0,
         },
       );
     }

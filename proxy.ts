@@ -8,8 +8,8 @@ export async function proxy(request: NextRequest) {
   // HTTP security suite covers this proxy separately.
   if (process.env.DATABASE_URL?.includes("neurocity_test")) return NextResponse.next();
   const path = request.nextUrl.pathname;
-  const signedExternalWebhook = path === "/api/webhooks/whatsapp";
-  if (path.startsWith("/api/") && !signedExternalWebhook && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+  const signedMachineRequest = path === "/api/webhooks/whatsapp" || path === "/api/internal/order-operations";
+  if (path.startsWith("/api/") && !signedMachineRequest && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
     if (!isSameOriginMutation(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
     const limited = await rateLimitResponse("api-mutations", clientAddress(request), 300);
     if (limited) return limited;
