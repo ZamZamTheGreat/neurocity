@@ -92,6 +92,7 @@ test("lets administrators schedule store advertising across public entry points"
   const publicApi = await readFile(new URL("../app/api/advertisements/route.ts", import.meta.url), "utf8");
   const adminApi = await readFile(new URL("../app/api/admin/advertisements/route.ts", import.meta.url), "utf8");
   const admin = await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8");
+  const advertisingManager = await readFile(new URL("../app/components/AdminAdvertisingManager.tsx", import.meta.url), "utf8");
   const home = await readFile(new URL("../app/components/NeuroCityNetworkHome.tsx", import.meta.url), "utf8");
   const marketplace = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(schema, /advertisingCampaigns = pgTable\("advertising_campaigns"/);
@@ -100,6 +101,8 @@ test("lets administrators schedule store advertising across public entry points"
   assert.match(publicApi, /gt\(advertisingCampaigns\.endsAt, now\)/);
   assert.match(adminApi, /platformRole === "administrator"/);
   assert.match(adminApi, /Only a public, active store with a banner can be advertised/);
+  assert.match(advertisingManager, /scheduledDate\(form\.startsAt\)/);
+  assert.match(advertisingManager, /Starts immediately/);
   assert.match(admin, />Advertising</);
   assert.match(home, /AdvertisingBanner placement="home"/);
   assert.match(marketplace, /AdvertisingBanner placement="marketplace"/);
