@@ -63,6 +63,16 @@ test("keeps the commerce experience at the marketplace route", async () => {
   assert.match(html, /<link rel="canonical" href="https:\/\/neurocity\.city\/marketplace"/);
 });
 
+test("uses a compact category dropdown in the marketplace", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/marketplace-dashboard-theme.css", import.meta.url), "utf8");
+  assert.match(page, /className="marketplace-category-select"/);
+  assert.match(page, /<option value="">All categories/);
+  assert.match(page, /onChange=\{\(event\) => showStores\(event\.target\.value\)\}/);
+  assert.doesNotMatch(page, /className="category-grid"/);
+  assert.match(styles, /\.marketplace-category-select select/);
+});
+
 test("keeps digital-mall branding isolated from the marketplace", async () => {
   const networkHome = await readFile(new URL("../app/components/NeuroCityNetworkHome.tsx", import.meta.url), "utf8");
   const marketplace = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");

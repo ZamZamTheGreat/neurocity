@@ -386,38 +386,30 @@ export function MarketplaceExperience({
           </section>
 
           {activeCategories.length > 0 && (
-            <section className="section">
-              <div className="section-heading">
+            <section className="section marketplace-category-filter" aria-labelledby="marketplace-category-title">
+              <div className="marketplace-category-copy">
+                <span className="category-filter-icon" aria-hidden="true">⌑</span>
                 <div>
                   <p className="eyebrow">Shop by category</p>
-                  <h2>Browse what is available now.</h2>
+                  <h2 id="marketplace-category-title">What are you shopping for?</h2>
+                  <p>Choose a category to see matching stores.</p>
                 </div>
-                <ul className="info-list">
-                  <li>Only categories with active stores are shown.</li>
-                </ul>
               </div>
-              <div className="category-grid">
-                {activeCategories.map((category) => {
-                  const count = categoryCounts[category.name] ?? 0;
-                  return (
-                    <button
-                      className="category-card"
-                      key={category.name}
-                      onClick={() => showStores(category.name)}
-                    >
-                      <span className="category-icon">{category.icon}</span>
-                      <div>
-                        <small>
-                          {count} {count === 1 ? "store" : "stores"}
-                        </small>
-                        <h3>{category.name}</h3>
-                        <p>{category.detail}</p>
-                      </div>
-                      <b>↗</b>
-                    </button>
-                  );
-                })}
-              </div>
+              <label className="marketplace-category-select">
+                <span>Category</span>
+                <select
+                  value={selectedCategory}
+                  onChange={(event) => showStores(event.target.value)}
+                  aria-describedby="marketplace-category-help"
+                >
+                  <option value="">All categories ({stores.length} {stores.length === 1 ? "store" : "stores"})</option>
+                  {activeCategories.map((category) => {
+                    const count = categoryCounts[category.name] ?? 0;
+                    return <option key={category.name} value={category.name}>{category.name} ({count})</option>;
+                  })}
+                </select>
+                <small id="marketplace-category-help">Only categories with active stores are listed.</small>
+              </label>
             </section>
           )}
 
