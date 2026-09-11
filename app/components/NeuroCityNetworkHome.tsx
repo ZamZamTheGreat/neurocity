@@ -3,6 +3,7 @@
 import { type CSSProperties, useEffect, useState } from "react";
 import { openConcierge } from "../../lib/concierge-events";
 import { ManagedImage } from "./ManagedImage";
+import AdvertisingBanner from "./AdvertisingBanner";
 
 type Mall = {
   id: number;
@@ -148,6 +149,7 @@ export default function NeuroCityNetworkHome({
               </div>
             </aside>
           </section>
+          <AdvertisingBanner placement="home" />
           <section className="network-language-guide" aria-labelledby="network-guide-title">
             <header>
               <p className="eyebrow"><span /> ONE CONNECTED NETWORK</p>

@@ -6,6 +6,7 @@ import { openConcierge } from "../lib/concierge-events";
 import { merchantCategories } from "../lib/merchant-categories";
 import NeuroCityNetworkHome from "./components/NeuroCityNetworkHome";
 import { ManagedImage } from "./components/ManagedImage";
+import AdvertisingBanner from "./components/AdvertisingBanner";
 
 type Product = {
   id: number;
@@ -384,6 +385,8 @@ export function MarketplaceExperience({
               </div>
             </div>
           </section>
+
+          {platform.kind !== "mall" && <AdvertisingBanner placement="marketplace" />}
 
           {activeCategories.length > 0 && (
             <section className="section marketplace-category-filter" aria-labelledby="marketplace-category-title">

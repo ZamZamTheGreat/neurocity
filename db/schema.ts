@@ -122,7 +122,7 @@ export const dataSubjectRequests = pgTable("data_subject_requests", {
 export const customerCompanionProfiles = pgTable("customer_companion_profiles", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  companionName: varchar("companion_name", { length: 40 }).notNull().default("Selma"),
+  companionName: varchar("companion_name", { length: 40 }).notNull().default("Selma-AI"),
   memoryEnabled: boolean("memory_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -258,6 +258,21 @@ export const storeBranches = pgTable("store_branches", { id: serial("id").primar
 export const merchantDeliveryZones = pgTable("merchant_delivery_zones", { id: serial("id").primaryKey(), merchantId: integer("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }), area: varchar("area", { length: 160 }).notNull(), fee: doublePrecision("fee").notNull().default(0), estimatedTime: varchar("estimated_time", { length: 120 }).notNull(), active: boolean("active").notNull().default(true), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [uniqueIndex("idx_delivery_zones_merchant_area").on(table.merchantId, table.area), index("idx_delivery_zones_merchant_active").on(table.merchantId, table.active)]);
 export const storeHours = pgTable("store_hours", { id: serial("id").primaryKey(), branchId: integer("branch_id").notNull().references(() => storeBranches.id, { onDelete: "cascade" }), dayOfWeek: integer("day_of_week").notNull(), opensAt: varchar("opens_at", { length: 8 }), closesAt: varchar("closes_at", { length: 8 }), closed: boolean("closed").notNull().default(false) }, (table) => [uniqueIndex("idx_store_hours_branch_day").on(table.branchId, table.dayOfWeek)]);
 export const storePromotions = pgTable("store_promotions", { id: serial("id").primaryKey(), merchantId: integer("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }), title: varchar("title", { length: 180 }).notNull(), description: text("description"), startsAt: timestamp("starts_at", { withTimezone: true }), endsAt: timestamp("ends_at", { withTimezone: true }), status: varchar("status", { length: 32 }).notNull().default("draft") }, (table) => [index("idx_store_promotions_merchant").on(table.merchantId)]);
+export const advertisingCampaigns = pgTable("advertising_campaigns", {
+  id: serial("id").primaryKey(),
+  merchantId: integer("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
+  placement: varchar("placement", { length: 32 }).notNull(),
+  headline: varchar("headline", { length: 180 }).notNull(),
+  description: text("description"),
+  callToAction: varchar("call_to_action", { length: 60 }).notNull().default("Visit store"),
+  status: varchar("status", { length: 24 }).notNull().default("draft"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  startsAt: timestamp("starts_at", { withTimezone: true }),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  createdBy: integer("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("idx_advertising_campaigns_placement_status").on(table.placement, table.status), index("idx_advertising_campaigns_merchant").on(table.merchantId)]);
 export const productVariants = pgTable("product_variants", { id: serial("id").primaryKey(), productId: integer("product_id").notNull().references(() => products.id, { onDelete: "cascade" }), sku: varchar("sku", { length: 120 }).notNull(), title: varchar("title", { length: 180 }).notNull(), size: varchar("size", { length: 80 }), color: varchar("color", { length: 80 }), attributes: jsonb("attributes").notNull().default({}), price: doublePrecision("price").notNull(), salePrice: doublePrecision("sale_price"), status: varchar("status", { length: 32 }).notNull().default("active"), imageUrl: text("image_url"), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [uniqueIndex("idx_product_variants_sku").on(table.sku), index("idx_product_variants_product").on(table.productId)]);
 export const variantInventory = pgTable("variant_inventory", { id: serial("id").primaryKey(), variantId: integer("variant_id").notNull().references(() => productVariants.id, { onDelete: "cascade" }), branchId: integer("branch_id").notNull().references(() => storeBranches.id, { onDelete: "cascade" }), onHand: integer("on_hand").notNull().default(0), reserved: integer("reserved").notNull().default(0), safetyStock: integer("safety_stock").notNull().default(0), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [uniqueIndex("idx_variant_inventory_variant_branch").on(table.variantId, table.branchId)]);
 export const customerAddresses = pgTable("customer_addresses", { id: serial("id").primaryKey(), userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), label: varchar("label", { length: 80 }).notNull(), recipientName: varchar("recipient_name", { length: 160 }).notNull(), phone: varchar("phone", { length: 80 }).notNull(), addressLine1: text("address_line_1").notNull(), addressLine2: text("address_line_2"), suburb: varchar("suburb", { length: 160 }), city: varchar("city", { length: 120 }).notNull().default("Windhoek"), deliveryNotes: text("delivery_notes"), isDefault: boolean("is_default").notNull().default(false), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [index("idx_customer_addresses_user").on(table.userId)]);

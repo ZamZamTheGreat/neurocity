@@ -10,6 +10,7 @@ import MallPlatformManager, {
 } from "../components/MallPlatformManager";
 import AdminTransactionLedger, { type AdminTransaction, type TransactionSummary } from "../components/AdminTransactionLedger";
 import AdminOperationsOverview, { type OperationsData } from "../components/AdminOperationsOverview";
+import AdminAdvertisingManager, { type AdvertisingCampaign, type AdvertisingMerchant } from "../components/AdminAdvertisingManager";
 
 type Document = {
   id: number;
@@ -47,7 +48,7 @@ type Merchant = {
   contactEmail: string | null;
   createdAt: string;
 };
-type View = "operations" | "applications" | "merchants" | "orders" | "transactions" | "malls";
+type View = "operations" | "applications" | "merchants" | "orders" | "transactions" | "advertising" | "malls";
 
 export default function AdminPage() {
   const [items, setItems] = useState<Application[] | null>(null);
@@ -63,6 +64,8 @@ export default function AdminPage() {
     completedOrders: 0,
   });
   const [platforms, setPlatforms] = useState<MallPlatform[]>([]);
+  const [campaigns, setCampaigns] = useState<AdvertisingCampaign[]>([]);
+  const [advertisingMerchants, setAdvertisingMerchants] = useState<AdvertisingMerchant[]>([]);
   const [message, setMessage] = useState("");
   const [view, setView] = useState<View>("operations");
   const [operations, setOperations] = useState<OperationsData | null>(null);
@@ -74,12 +77,13 @@ export default function AdminPage() {
     const reconciliationRequest = ["operations", "orders", "transactions"].includes(view)
       ? fetch("/api/admin/transactions/reconcile", { method: "POST" }).catch(() => null)
       : null;
-    const [response, orderResponse, transactionResponse, platformResponse, operationsResponse] = await Promise.all([
+    const [response, orderResponse, transactionResponse, platformResponse, operationsResponse, advertisingResponse] = await Promise.all([
       fetch("/api/admin/applications"),
       fetch("/api/admin/orders"),
       fetch("/api/admin/transactions"),
       fetch("/api/admin/platforms"),
       fetch("/api/admin/operations"),
+      fetch("/api/admin/advertisements"),
     ]);
     if (response.status === 401 || response.status === 403) {
       window.location.replace("/login?account_type=administrator&return_to=%2Fadmin");
@@ -112,6 +116,7 @@ export default function AdminPage() {
       setPlatforms(platformData.platforms ?? []);
     }
     if (operationsResponse.ok) setOperations(await operationsResponse.json());
+    if (advertisingResponse.ok) { const advertisingData = await advertisingResponse.json(); setCampaigns(advertisingData.campaigns ?? []); setAdvertisingMerchants(advertisingData.merchants ?? []); }
     const reconciliationResponse = await reconciliationRequest;
     if (reconciliationResponse?.ok) {
       const result = await reconciliationResponse.json();
@@ -414,6 +419,7 @@ export default function AdminPage() {
           <span>Transactions</span>
           <b>{transactions.length}</b>
         </button>
+        <button className={view === "advertising" ? "active" : ""} onClick={() => switchView("advertising")}><span>Advertising</span><b>{campaigns.filter((campaign) => campaign.status === "active").length}</b></button>
         <button
           className={view === "malls" ? "active" : ""}
           onClick={() => switchView("malls")}
@@ -439,6 +445,8 @@ export default function AdminPage() {
                     ? "Marketplace orders"
                     : view === "transactions"
                       ? "Transaction ledger"
+                    : view === "advertising"
+                      ? "Advertising banners"
                     : "Digital mall network"}
             </h2>
             <p>
@@ -452,6 +460,8 @@ export default function AdminPage() {
                     ? "Monitor every transaction, payment proof and refund across NeuroCity."
                     : view === "transactions"
                       ? "Reconcile every payment record, provider result and merchant allocation from one ledger."
+                    : view === "advertising"
+                      ? "Choose which approved stores appear on the homepage and marketplace, and control their campaign schedule."
                     : "Create and operate branded digital destinations from the shared NeuroCity commerce engine."}
             </p>
           </div>
@@ -519,6 +529,8 @@ export default function AdminPage() {
           />
         ) : view === "transactions" ? (
           <AdminTransactionLedger transactions={transactions} summary={transactionSummary} />
+        ) : view === "advertising" ? (
+          <AdminAdvertisingManager campaigns={campaigns} merchants={advertisingMerchants} reload={load} notify={setMessage} />
         ) : (
           <MallPlatformManager
             platforms={platforms}

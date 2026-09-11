@@ -73,6 +73,24 @@ test("uses a compact category dropdown in the marketplace", async () => {
   assert.match(styles, /\.marketplace-category-select select/);
 });
 
+test("lets administrators schedule store advertising across public entry points", async () => {
+  const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
+  const publicApi = await readFile(new URL("../app/api/advertisements/route.ts", import.meta.url), "utf8");
+  const adminApi = await readFile(new URL("../app/api/admin/advertisements/route.ts", import.meta.url), "utf8");
+  const admin = await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8");
+  const home = await readFile(new URL("../app/components/NeuroCityNetworkHome.tsx", import.meta.url), "utf8");
+  const marketplace = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(schema, /advertisingCampaigns = pgTable\("advertising_campaigns"/);
+  assert.match(publicApi, /eq\(advertisingCampaigns\.status, "active"\)/);
+  assert.match(publicApi, /lte\(advertisingCampaigns\.startsAt, now\)/);
+  assert.match(publicApi, /gt\(advertisingCampaigns\.endsAt, now\)/);
+  assert.match(adminApi, /platformRole === "administrator"/);
+  assert.match(adminApi, /Only a public, active store with a banner can be advertised/);
+  assert.match(admin, />Advertising</);
+  assert.match(home, /AdvertisingBanner placement="home"/);
+  assert.match(marketplace, /AdvertisingBanner placement="marketplace"/);
+});
+
 test("keeps digital-mall branding isolated from the marketplace", async () => {
   const networkHome = await readFile(new URL("../app/components/NeuroCityNetworkHome.tsx", import.meta.url), "utf8");
   const marketplace = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
