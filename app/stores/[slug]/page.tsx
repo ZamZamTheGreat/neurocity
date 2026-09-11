@@ -408,7 +408,7 @@ export default function StorefrontPage() {
             </div>
           )}
         </div>
-        <div className="store-location-list">
+        <div className="store-location-list" id="locations">
           {data.branches.map((branch) => (
             <article key={branch.id}>
               <span>⌖</span>

@@ -235,6 +235,7 @@ export function MarketplaceExperience({
         </button>
         <nav className="desktop-nav" aria-label="Primary navigation">
           {platform.kind !== "mall" && <a href="/">NeuroCity network</a>}
+          {platform.kind !== "mall" && <a href="/chains">Chain stores</a>}
           <button
             className={view === "mall" ? "active" : ""}
             onClick={() => setView("mall")}
@@ -674,7 +675,7 @@ export function MarketplaceExperience({
             <span><i /> Built for local commerce</span>
           </div>
           <div className="marketplace-footer-links">
-            <section><h3>Explore</h3><button onClick={() => showStores()}>Browse stores</button><a href="#how-it-works">How it works</a><a href="/malls">Digital malls</a></section>
+            <section><h3>Explore</h3><button onClick={() => showStores()}>Browse stores</button><a href="/chains">Chain stores</a><a href="/malls">Digital malls</a></section>
             <section><h3>Your account</h3><a href="/account">Customer account</a><a href="/account?tab=bag">Shopping bag</a><a href="/application-status">Application status</a></section>
             <section><h3>For business</h3><a href={applicationHref}>Become a merchant</a><a href="/marketplace?workspace=merchant">Merchant workspace</a><a href="/mall-manager">Mall management</a></section>
           </div>

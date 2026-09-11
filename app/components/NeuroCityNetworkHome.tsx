@@ -106,6 +106,7 @@ export default function NeuroCityNetworkHome({
           <a className={directoryOnly ? "active" : ""} href="/malls">
             Shop by mall
           </a>
+          <a href="/chains">Chain stores</a>
           <a href="/marketplace#stores">Stores</a>
         </nav>
         <div>
@@ -349,6 +350,7 @@ export default function NeuroCityNetworkHome({
         <nav>
           <a href="/marketplace">Marketplace</a>
           <a href="/malls">Shop by mall</a>
+          <a href="/chains">Chain stores</a>
           <a href="/apply">Become a merchant</a>
           <a href="/admin">Administration</a>
           <a href="/privacy">Privacy</a>

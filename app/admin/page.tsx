@@ -320,6 +320,7 @@ export default function AdminPage() {
           <a href="/">Network</a>
           <a href="/marketplace">Marketplace</a>
           <a href="/malls">Digital malls</a>
+          <a href="/chains">Chain stores</a>
         </nav>
         <div>
           <span className="admin-indicator">Administrator</span>

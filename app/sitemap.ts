@@ -7,7 +7,7 @@ import { siteUrl } from "../lib/site-url";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();
   const staticPages: MetadataRoute.Sitemap = [
-    ["", "weekly", 1], ["/marketplace", "daily", 0.9], ["/malls", "weekly", 0.8],
+    ["", "weekly", 1], ["/marketplace", "daily", 0.9], ["/malls", "weekly", 0.8], ["/chains", "weekly", 0.8],
     ["/apply", "monthly", 0.5], ["/join", "monthly", 0.5], ["/privacy", "yearly", 0.2], ["/terms", "yearly", 0.2], ["/account-deletion", "yearly", 0.2],
   ].map(([path, changeFrequency, priority]) => ({ url: `${base}${path}`, lastModified: new Date(), changeFrequency, priority })) as MetadataRoute.Sitemap;
 

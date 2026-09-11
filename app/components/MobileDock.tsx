@@ -7,6 +7,7 @@ import { NeuroConcierge } from "./NeuroConcierge";
 const items = [
   { href: "/", icon: "⌂", label: "Home" },
   { href: "/marketplace", icon: "▦", label: "Shop" },
+  { href: "/chains", icon: "◫", label: "Chains" },
   { href: "/malls", icon: "◇", label: "Malls" },
   { href: "/access", icon: "◎", label: "Account" },
 ];

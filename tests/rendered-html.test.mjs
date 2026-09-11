@@ -73,6 +73,20 @@ test("uses a compact category dropdown in the marketplace", async () => {
   assert.match(styles, /\.marketplace-category-select select/);
 });
 
+test("provides a chain-store directory backed by multi-branch inventory", async () => {
+  const page = await readFile(new URL("../app/chains/page.tsx", import.meta.url), "utf8");
+  const api = await readFile(new URL("../app/api/chains/route.ts", import.meta.url), "utf8");
+  const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
+  const mobileDock = await readFile(new URL("../app/components/MobileDock.tsx", import.meta.url), "utf8");
+  assert.match(api, /having\(sql`count\(\$\{storeBranches\.id\}\) > 1`\)/);
+  assert.match(api, /eq\(merchants\.isPublic, true\)/);
+  assert.match(page, /One chain/);
+  assert.match(page, /View all \{chain\.branchCount\} locations/);
+  assert.match(page, /\/stores\/\$\{chain\.slug\}#locations/);
+  assert.match(storefront, /className="store-location-list" id="locations"/);
+  assert.match(mobileDock, /href: "\/chains"/);
+});
+
 test("lets administrators schedule store advertising across public entry points", async () => {
   const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
   const publicApi = await readFile(new URL("../app/api/advertisements/route.ts", import.meta.url), "utf8");
