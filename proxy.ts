@@ -32,7 +32,8 @@ export async function proxy(request: NextRequest) {
   }
   if (path.startsWith("/api/")) {
     const response = NextResponse.next();
-    response.headers.set("Cache-Control", "private, no-store");
+    const publicRead = request.method === "GET" && (path === "/api/catalogue" || path === "/api/stores" || path.startsWith("/api/stores/") || path === "/api/malls" || path === "/api/chains" || path === "/api/advertisements" || path === "/api/platform");
+    if (!publicRead) response.headers.set("Cache-Control", "private, no-store");
     return response;
   }
   const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(24))));

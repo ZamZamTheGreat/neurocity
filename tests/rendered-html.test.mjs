@@ -914,7 +914,7 @@ test("generates product variants from colours and selected sizes", async () => {
   const categoryTemplates = await readFile(new URL("../lib/product-category-templates.ts", import.meta.url), "utf8");
   assert.match(form, /Separate entries with commas/);
   assert.match(form, /productTemplateForCategory/);
-  assert.match(form, /Choose a product category/);
+  assert.match(form, /Choose where customers find it/);
   assert.match(form, /variantCount/);
   assert.match(optionPanel, /Add \{groupLabel\} and choices/);
   assert.match(optionPanel, /size-multiselect/);
