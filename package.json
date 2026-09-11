@@ -20,6 +20,7 @@
     "db:grant-runtime": "node scripts/grant-runtime-db-role.mjs",
     "db:verify-runtime": "node scripts/verify-runtime-db-role.mjs",
     "db:verify-restore": "node scripts/verify-restored-database.mjs",
+    "db:reset-commerce": "node scripts/reset-commerce-records.mjs",
     "android:sync": "cap sync android",
     "android:assets": "node scripts/generate-android-assets.mjs",
     "android:open": "cap open android",

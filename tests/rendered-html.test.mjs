@@ -664,7 +664,8 @@ test("supports one PayToday checkout across multiple merchants with T+2 settleme
   const account = await readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8");
   const adminTransactions = await readFile(new URL("../app/api/admin/transactions/route.ts", import.meta.url), "utf8");
   assert.match(orders, /merchantIds = \[\.\.\.new Set/);
-  assert.match(orders, /for \(const group of prepared\)/);
+  assert.match(orders, /for \(const \[groupIndex, group\] of prepared\.entries\(\)\)/);
+  assert.match(orders, /calculateMerchantAllocations/);
   assert.match(orders, /paymentMethod: "paytoday"/);
   assert.match(orders, /merchantPaymentAllocations/);
   assert.doesNotMatch(account.slice(account.indexOf("function CheckoutBag"), account.indexOf("function OrderRow")), /EFT \/ bank transfer/);
@@ -879,6 +880,16 @@ test("tracks exact stock allocations and reconciles merchant balances", async ()
   assert.match(ledger, /Merchant balancing sheet/);
   assert.match(ledger, /Balance difference/);
   assert.match(ledger, /Download CSV/);
+});
+
+test("guards the commerce reset and releases active stock reservations atomically", async () => {
+  const reset = await readFile(new URL("../scripts/reset-commerce-records.mjs", import.meta.url), "utf8");
+  assert.match(reset, /process\.argv\.includes\("--execute"\)/);
+  assert.match(reset, /RESET_COMMERCE_CONFIRM/);
+  assert.match(reset, /await client\.query\("begin"\)/);
+  assert.match(reset, /where state = 'reserved'/);
+  assert.match(reset, /set reserved = greatest\(0, vi\.reserved - released\.quantity\)/);
+  assert.match(reset, /await client\.query\("rollback"\)/);
 });
 
 test("inherits product prices while preserving merchant colourway overrides", async () => {

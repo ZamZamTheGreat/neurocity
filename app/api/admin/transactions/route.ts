@@ -2,6 +2,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { auditEvents, checkoutGroups, merchantPaymentAllocations, merchants, orders, paymentTransactions } from "../../../../db/schema";
 import { getChatGPTUser } from "../../../chatgpt-auth";
+import { sumMoney } from "../../../../lib/commerce-fees";
 
 export async function GET() {
   const user = await getChatGPTUser();
@@ -21,7 +22,9 @@ export async function GET() {
   const successful = transactions.filter((row) => row.status === "paid");
   const unsettled = transactions.flatMap((row): Array<(typeof gatewayTransactions)[number]["allocations"][number] | (typeof manualTransactions)[number]["allocations"][number]> => row.allocations).filter((allocation) => ["unpaid", "scheduled", "due", "processing"].includes(allocation.settlementStatus));
   const now = Date.now();
-  return Response.json({ transactions, summary: { totalRecords: transactions.length, successfulValue: successful.reduce((sum, row) => sum + Number(row.amount), 0), pendingCount: transactions.filter((row) => ["created", "creating", "pending"].includes(row.status)).length, failedCount: transactions.filter((row) => ["failed", "cancelled", "expired"].includes(row.status)).length, unsettledValue: unsettled.reduce((sum, allocation) => sum + Number(allocation.netAmount), 0), dueNowValue: unsettled.filter((item) => item.settlementDueAt && new Date(item.settlementDueAt).getTime() <= now).reduce((sum, item) => sum + Number(item.netAmount), 0), refundRequiredValue: transactions.flatMap((row): Array<(typeof gatewayTransactions)[number]["allocations"][number] | (typeof manualTransactions)[number]["allocations"][number]> => row.allocations).filter((item) => item.settlementStatus === "refund_required").reduce((sum, item) => sum + Number(item.netAmount), 0) } }, { headers: { "cache-control": "no-store" } });
+  const dueNow = unsettled.filter((item) => ["unpaid", "due"].includes(item.settlementStatus) || (item.settlementStatus === "scheduled" && item.settlementDueAt && new Date(item.settlementDueAt).getTime() <= now));
+  const refundRequired = transactions.flatMap((row): Array<(typeof gatewayTransactions)[number]["allocations"][number] | (typeof manualTransactions)[number]["allocations"][number]> => row.allocations).filter((item) => item.settlementStatus === "refund_required");
+  return Response.json({ transactions, summary: { totalRecords: transactions.length, successfulValue: sumMoney(successful.map((row) => Number(row.amount))), pendingCount: transactions.filter((row) => ["created", "creating", "pending"].includes(row.status)).length, failedCount: transactions.filter((row) => ["failed", "cancelled", "expired"].includes(row.status)).length, unsettledValue: sumMoney(unsettled.map((allocation) => Number(allocation.netAmount))), dueNowValue: sumMoney(dueNow.map((item) => Number(item.netAmount))), refundRequiredValue: sumMoney(refundRequired.map((item) => Number(item.netAmount))) } }, { headers: { "cache-control": "no-store" } });
 }
 
 export async function PATCH(request: Request) {
