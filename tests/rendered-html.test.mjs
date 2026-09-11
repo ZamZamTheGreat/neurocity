@@ -77,14 +77,27 @@ test("provides a chain-store directory backed by multi-branch inventory", async 
   const page = await readFile(new URL("../app/chains/page.tsx", import.meta.url), "utf8");
   const api = await readFile(new URL("../app/api/chains/route.ts", import.meta.url), "utf8");
   const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
-  const mobileDock = await readFile(new URL("../app/components/MobileDock.tsx", import.meta.url), "utf8");
+  const shopChooser = await readFile(new URL("../app/shop/page.tsx", import.meta.url), "utf8");
   assert.match(api, /having\(sql`count\(\$\{storeBranches\.id\}\) > 1`\)/);
   assert.match(api, /eq\(merchants\.isPublic, true\)/);
   assert.match(page, /One chain/);
   assert.match(page, /View all \{chain\.branchCount\} locations/);
   assert.match(page, /\/stores\/\$\{chain\.slug\}#locations/);
   assert.match(storefront, /className="store-location-list" id="locations"/);
-  assert.match(mobileDock, /href: "\/chains"/);
+  assert.match(shopChooser, /href="\/chains"/);
+});
+
+test("uses a clean mobile shop chooser instead of crowding the bottom dock", async () => {
+  const chooser = await readFile(new URL("../app/shop/page.tsx", import.meta.url), "utf8");
+  const dock = await readFile(new URL("../app/components/MobileDock.tsx", import.meta.url), "utf8");
+  const shell = await readFile(new URL("../app/platform-shell.css", import.meta.url), "utf8");
+  assert.match(dock, /href: "\/shop"/);
+  assert.doesNotMatch(dock, /href: "\/malls"/);
+  assert.doesNotMatch(dock, /href: "\/chains"/);
+  assert.match(dock, /path\.startsWith\("\/marketplace"\)/);
+  assert.match(chooser, /href="\/marketplace"/);
+  assert.match(chooser, /href="\/malls"/);
+  assert.match(shell, /grid-template-columns:repeat\(4,1fr\)/);
 });
 
 test("lets administrators schedule store advertising across public entry points", async () => {
