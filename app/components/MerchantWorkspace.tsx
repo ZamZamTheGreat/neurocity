@@ -98,6 +98,9 @@ type Order = {
   addressSnapshot: Record<string, string | null> | null;
   customerNotes: string | null;
   createdAt: string;
+  workflow: string;
+  confirmationExpiresAt: string | null;
+  paymentExpiresAt: string | null;
   allowedTransitions: string[];
   items: {
     id: number;
@@ -2140,7 +2143,7 @@ function MerchantOverview({
     (order) => order.paymentMethod === "eft" && order.paymentProof?.status === "uploaded",
   );
   const fulfilmentWork = orders.filter((order) =>
-    ["accepted", "preparing", "ready_for_pickup", "dispatched", "collected", "delivered", "delivery_failed"].includes(order.status),
+    ["preparing", "ready_for_pickup", "dispatched", "collected", "delivered", "delivery_failed"].includes(order.status),
   );
   const revenue = orders
     .filter((order) => order.status === "completed")
@@ -2429,6 +2432,9 @@ function MerchantOrderCard({
   const [open, setOpen] = useState(
     order.status === "pending_merchant_confirmation",
   );
+  const [clock, setClock] = useState(Date.now());
+  useEffect(() => { if (order.status !== "pending_merchant_confirmation" || !order.confirmationExpiresAt) return; const timer = window.setInterval(() => setClock(Date.now()), 1000); return () => window.clearInterval(timer); }, [order.status, order.confirmationExpiresAt]);
+  const confirmationSeconds = order.confirmationExpiresAt ? Math.max(0, Math.ceil((new Date(order.confirmationExpiresAt).getTime() - clock) / 1000)) : null;
   function transition(status: string) {
     const needsReason = ["rejected", "cancelled", "delivery_failed"].includes(
       status,
@@ -2446,8 +2452,8 @@ function MerchantOrderCard({
     ["uploaded", "rejected"].includes(order.paymentProof.status);
   const pickup = order.fulfillmentMethod === "pickup";
   const journey = pickup
-    ? ["pending_merchant_confirmation", "accepted", "preparing", "ready_for_pickup", "collected", "completed"]
-    : ["pending_merchant_confirmation", "accepted", "preparing", "dispatched", "delivered", "completed"];
+    ? ["pending_merchant_confirmation", "accepted", "paid", "preparing", "ready_for_pickup", "collected", "completed"]
+    : ["pending_merchant_confirmation", "accepted", "paid", "preparing", "dispatched", "delivered", "completed"];
   const terminal = ["rejected", "cancelled", "delivery_failed"].includes(order.status);
   const currentStep = journey.indexOf(order.status);
   const progress = terminal || currentStep < 0 ? 0 : (currentStep / (journey.length - 1)) * 100;
@@ -2457,7 +2463,7 @@ function MerchantOrderCard({
   const whatsappUpdate = order.customerPhone ? `https://wa.me/${whatsappNumber(order.customerPhone)}?text=${encodeURIComponent(`Hi ${order.customerName ?? "there"}, an update for your NeuroCity order ${order.reference}: ${pretty(order.status)}. Reply here if you need help.`)}` : null;
   const guidance: Record<string, string> = {
     pending_merchant_confirmation: "Check the items and confirm that you can fulfil this order.",
-    accepted: order.paymentMethod === "eft" && order.paymentStatus !== "paid" ? "Review the customer's payment proof before preparing the order." : "Payment is clear. Start preparing the customer's items.",
+    accepted: order.paymentStatus !== "paid" ? "Availability is confirmed. Wait for the customer to complete payment before preparing anything." : "Payment is clear. Start preparing the customer's items.",
     preparing: pickup ? "Pack the items, then mark the order ready for collection." : "Pack the items, then mark the order as dispatched.",
     ready_for_pickup: "Keep the order secure until the customer collects it.",
     dispatched: "The order is on its way. Mark it delivered after handover.",
@@ -2488,6 +2494,7 @@ function MerchantOrderCard({
             {order.customerName ?? "Customer"} ·{" "}
             {new Date(order.createdAt).toLocaleString("en-NA")}
           </p>
+          {confirmationSeconds !== null && order.status === "pending_merchant_confirmation" && <small className="order-confirmation-timer">Confirm within {Math.floor(confirmationSeconds / 60)}:{String(confirmationSeconds % 60).padStart(2, "0")}</small>}
         </div>
         <div>
           <small>

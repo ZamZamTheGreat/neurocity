@@ -3,6 +3,7 @@ import { getDb } from "../db";
 import { auditEvents, checkoutGroups, merchantPaymentAllocations, orders, paymentTransactions } from "../db/schema";
 import { lookupPayTodayPayment, normalizePayTodayStatus } from "./paytoday";
 import { cancelCheckoutAllocationsAndReleaseStock, makeCheckoutAllocationsPayable } from "./settlements";
+import { ORDER_WORKFLOW } from "./order-workflows";
 
 export async function reconcilePayTodayTransaction(transactionId: number, actorRef = "system:paytoday-reconciliation") {
   const db = getDb();
@@ -10,6 +11,8 @@ export async function reconcilePayTodayTransaction(transactionId: number, actorR
   if (!transaction?.providerPaymentToken) throw new Error("PayToday transaction is not ready for reconciliation.");
   const [checkout] = await db.select().from(checkoutGroups).where(eq(checkoutGroups.id, transaction.checkoutGroupId)).limit(1);
   if (!checkout) throw new Error("Checkout could not be found.");
+  const checkoutOrders = await db.select({ workflow: orders.workflow }).from(orders).where(eq(orders.checkoutGroupId, checkout.id));
+  const merchantConfirmedWorkflow = checkoutOrders.length > 0 && checkoutOrders.every((order) => order.workflow === ORDER_WORKFLOW);
 
   const provider = await lookupPayTodayPayment(transaction.providerPaymentToken);
   const intentToken = provider.intent?.payment_token ?? provider.payment_intent_token ?? provider.payment_token;
@@ -26,12 +29,12 @@ export async function reconcilePayTodayTransaction(transactionId: number, actorR
   await db.transaction(async (tx) => {
     const providerReference = provider.intent?.transaction_data?.payment_reference ?? provider.intent?.reference ?? provider.reference ?? null;
     await tx.update(paymentTransactions).set({ status, providerReference, lastCheckedAt: at, providerMetadata: { status: providerStatus ?? null, reference: providerReference, reason: provider.intent?.transaction_data?.reason ?? null, finalizedAt: provider.intent?.transaction_data?.time_stamp ?? null }, updatedAt: at }).where(eq(paymentTransactions.id, transaction.id));
-    const checkoutStatus = paidAfterCancellation ? "refund_required" : status === "paid" ? "paid" : status === "failed" ? "payment_failed" : status;
+    const checkoutStatus = paidAfterCancellation ? "refund_required" : status === "paid" ? "paid" : status === "failed" && merchantConfirmedWorkflow ? "awaiting_payment" : status === "failed" ? "payment_failed" : status;
     await tx.update(checkoutGroups).set({ paymentStatus: status, status: checkoutStatus, updatedAt: at }).where(eq(checkoutGroups.id, checkout.id));
-    if (["paid", "failed", "cancelled", "expired"].includes(status)) await tx.update(orders).set({ paymentStatus: status, status: paidAfterCancellation ? "cancelled" : status === "paid" ? "pending_merchant_confirmation" : checkoutStatus, updatedAt: at }).where(eq(orders.checkoutGroupId, checkout.id));
+    if (["paid", "failed", "cancelled", "expired"].includes(status)) await tx.update(orders).set({ paymentStatus: status, status: paidAfterCancellation ? "cancelled" : status === "paid" ? merchantConfirmedWorkflow ? "paid" : "pending_merchant_confirmation" : status === "failed" && merchantConfirmedWorkflow ? "accepted" : checkoutStatus, updatedAt: at }).where(eq(orders.checkoutGroupId, checkout.id));
     if (paidAfterCancellation) await tx.update(merchantPaymentAllocations).set({ settlementStatus: "refund_required", updatedAt: at }).where(eq(merchantPaymentAllocations.checkoutGroupId, checkout.id));
     else if (status === "paid" && checkout.paymentStatus !== "paid") await makeCheckoutAllocationsPayable(tx, checkout.id, at);
-    if (["failed", "cancelled", "expired"].includes(status) && !["failed", "cancelled", "expired"].includes(checkout.paymentStatus)) await cancelCheckoutAllocationsAndReleaseStock(tx, checkout.id, Number(checkout.customerRef), at);
+    if (["failed", "cancelled", "expired"].includes(status) && !(merchantConfirmedWorkflow && status === "failed") && !["failed", "cancelled", "expired"].includes(checkout.paymentStatus)) await cancelCheckoutAllocationsAndReleaseStock(tx, checkout.id, Number(checkout.customerRef), at);
     if (status !== transaction.status || paidAfterCancellation) await tx.insert(auditEvents).values({ actorRef, action: paidAfterCancellation ? "payment.paytoday.paid_after_cancellation" : `payment.paytoday.${status}`, resourceType: "checkout_group", resourceId: String(checkout.id), metadata: { reference: checkout.reference, transactionId: transaction.id, previousStatus: transaction.status } });
   });
   return { status: paidAfterCancellation ? "refund_required" : status, reference: checkout.reference };

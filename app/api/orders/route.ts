@@ -5,10 +5,10 @@ import { getChatGPTUser } from "../../chatgpt-auth";
 import { getDb } from "../../../db";
 import { auditEvents, checkoutGroups, customerAddresses, customerCartItems, merchantDeliveryZones, merchantPaymentAllocations, merchants, orderItemInventoryAllocations, orderItems, orders, orderStatusEvents, paymentTransactions, productVariants, products, variantInventory } from "../../../db/schema";
 import { sendOrderPlacedNotifications } from "../../../lib/order-mail";
-import { createPayTodayPayment, getPayTodayAvailability } from "../../../lib/paytoday";
 import { cancelCheckoutAllocationsAndReleaseStock } from "../../../lib/settlements";
 import { releaseOrderInventory } from "../../../lib/order-inventory";
 import { calculateMerchantAllocations } from "../../../lib/commerce-fees";
+import { deadlineFrom, MERCHANT_CONFIRMATION_MINUTES, ORDER_WORKFLOW } from "../../../lib/order-workflows";
 
 const fulfillmentMethods = new Set(["pickup", "merchant_delivery"]);
 const normalized = (value: string | null | undefined) => value?.trim().replace(/\s+/g, " ").toLocaleLowerCase("en") ?? "";
@@ -17,7 +17,6 @@ type Choice = { merchantId?: number; fulfillmentMethod?: string; addressId?: num
 export async function POST(request: Request) {
   const user = await getChatGPTUser();
   if (!user) return Response.json({ error: "Sign in is required to check out." }, { status: 401 });
-  if (!getPayTodayAvailability().configured) return Response.json({ error: "PayToday is not active yet. Checkout will open as soon as the NeuroCity payment account is enabled." }, { status: 409 });
   try {
     const payload = await request.json() as { fulfillment?: Choice[]; customerNotes?: string; paymentContact?: { email?: string; phone?: string } };
     const userId = Number(user.userId), db = getDb();
@@ -58,11 +57,12 @@ export async function POST(request: Request) {
       await tx.execute(sql`select pg_advisory_xact_lock(${userId})`);
       const currentCart = await tx.select({ id: customerCartItems.id }).from(customerCartItems).where(and(eq(customerCartItems.userId, userId), inArray(customerCartItems.id, cart.map((item) => item.cartId))));
       if (currentCart.length !== cart.length) throw new Error("Your shopping bag changed during checkout. Review it and try again.");
-      const [checkout] = await tx.insert(checkoutGroups).values({ reference, customerRef: user.userId, subtotal, deliveryFee, total, paymentProvider: "paytoday", status: "awaiting_payment" }).returning();
+      const confirmationExpiresAt = deadlineFrom(new Date(), MERCHANT_CONFIRMATION_MINUTES);
+      const [checkout] = await tx.insert(checkoutGroups).values({ reference, customerRef: user.userId, subtotal, deliveryFee, total, paymentProvider: "paytoday", status: "pending_merchant_confirmation" }).returning();
       const createdOrders: Array<{ order: typeof orders.$inferSelect; merchant: typeof merchants.$inferSelect; items: typeof cart; orderItemRows: Array<typeof orderItems.$inferSelect> }> = [];
       const allocations = calculateMerchantAllocations(prepared.map((group) => group.subtotal + group.deliveryFee));
       for (const [groupIndex, group] of prepared.entries()) {
-        const [order] = await tx.insert(orders).values({ checkoutGroupId: checkout.id, merchantId: group.merchant.id, customerRef: user.userId, customerName: group.address?.recipientName ?? user.displayName, customerEmail: user.email, customerPhone: group.address?.phone ?? null, status: "pending_payment", paymentStatus: "pending", paymentMethod: "paytoday", fulfillmentMethod: group.method, addressSnapshot: group.address ? { label: group.address.label, recipientName: group.address.recipientName, phone: group.address.phone, addressLine1: group.address.addressLine1, addressLine2: group.address.addressLine2, suburb: group.address.suburb, city: group.address.city, deliveryNotes: group.address.deliveryNotes, deliveryZone: group.zone?.area, deliveryEstimate: group.zone?.estimatedTime } : null, customerNotes: notes, subtotal: group.subtotal, deliveryFee: group.deliveryFee, total: group.subtotal + group.deliveryFee }).returning();
+        const [order] = await tx.insert(orders).values({ checkoutGroupId: checkout.id, merchantId: group.merchant.id, customerRef: user.userId, customerName: group.address?.recipientName ?? user.displayName, customerEmail: paymentEmail || user.email, customerPhone: paymentPhone || group.address?.phone || null, status: "pending_merchant_confirmation", workflow: ORDER_WORKFLOW, workflowVersion: 1, confirmationExpiresAt, paymentStatus: "not_started", paymentMethod: "paytoday", fulfillmentMethod: group.method, addressSnapshot: group.address ? { label: group.address.label, recipientName: group.address.recipientName, phone: group.address.phone, addressLine1: group.address.addressLine1, addressLine2: group.address.addressLine2, suburb: group.address.suburb, city: group.address.city, deliveryNotes: group.address.deliveryNotes, deliveryZone: group.zone?.area, deliveryEstimate: group.zone?.estimatedTime } : null, customerNotes: notes, subtotal: group.subtotal, deliveryFee: group.deliveryFee, total: group.subtotal + group.deliveryFee }).returning();
         const orderItemRows = await tx.insert(orderItems).values(group.items.map((item) => ({ orderId: order.id, productId: item.productId, variantId: item.variantId, skuSnapshot: item.variantSku, nameSnapshot: item.productName, variantSnapshot: item.availability === "preorder" ? PREORDER_PREFIX + item.variantTitle : item.variantTitle, sizeSnapshot: item.size, colorSnapshot: item.color, unitPrice: Number(item.salePrice ?? item.variantPrice), quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity }))).returning();
         const allocation = allocations[groupIndex];
         await tx.insert(merchantPaymentAllocations).values({ checkoutGroupId: checkout.id, orderId: order.id, merchantId: group.merchant.id, ...allocation, deliveryAmount: group.deliveryFee, settlementStatus: "pending_payment" });
@@ -74,22 +74,8 @@ export async function POST(request: Request) {
       await tx.insert(auditEvents).values({ actorRef: user.userId, action: "checkout.created", resourceType: "checkout_group", resourceId: String(checkout.id), metadata: { reference, merchantCount: createdOrders.length, itemCount: cart.length, subtotal, deliveryFee, total } });
       return { checkout, orders: createdOrders };
     });
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
-    const [transaction] = await db.insert(paymentTransactions).values({ checkoutGroupId: created.checkout.id, provider: "paytoday", amount: total, status: "creating", expiresAt, providerMetadata: { invoiceNumber: reference, merchantCount: created.orders.length } }).returning();
-    try {
-      const names = user.displayName.trim().split(/\s+/);
-      const publicOrigin = (process.env.PUBLIC_APP_URL ?? new URL(request.url).origin).replace(/\/$/, "");
-      const returnUrl = new URL("/api/payments/paytoday/return", publicOrigin);
-      returnUrl.searchParams.set("reference", reference);
-      const result = await createPayTodayPayment({ amount: total, invoiceNumber: reference, firstName: names[0] ?? "Customer", lastName: names.slice(1).join(" ") || "NeuroCity", email: paymentEmail, phone: paymentPhone, returnUrl: returnUrl.toString() });
-      await db.update(paymentTransactions).set({ providerPaymentToken: result.paymentToken, providerReference: result.providerReference, checkoutUrl: result.checkoutUrl, status: "pending", updatedAt: new Date() }).where(eq(paymentTransactions.id, transaction.id));
-      await Promise.allSettled(created.orders.map(({ order, merchant, items }) => sendOrderPlacedNotifications({ reference: `NC-${String(order.id).padStart(6, "0")}`, storeName: merchant.name, customerName: order.customerName ?? user.displayName, customerEmail: user.email, merchantEmail: merchant.contactEmail, status: order.status, total: order.total, fulfillmentMethod: order.fulfillmentMethod ?? "pickup", paymentInstructions: null, lines: items.map((item) => ({ name: item.productName, option: [item.size, item.color].filter(Boolean).join(" / ") || item.variantTitle, quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity })) })));
-      return Response.json({ checkout: { reference, total, merchantCount: created.orders.length, orderReferences: created.orders.map(({ order }) => `NC-${String(order.id).padStart(6, "0")}`), paymentUrl: result.checkoutUrl } }, { status: 201 });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "PayToday payment could not be started.";
-      await db.transaction(async (tx) => { const at = new Date(); await tx.update(paymentTransactions).set({ status: "failed", failureMessage: message, updatedAt: at }).where(eq(paymentTransactions.id, transaction.id)); await tx.update(checkoutGroups).set({ paymentStatus: "failed", status: "payment_failed", updatedAt: at }).where(eq(checkoutGroups.id, created.checkout.id)); await tx.update(orders).set({ paymentStatus: "failed", status: "payment_failed", updatedAt: at }).where(eq(orders.checkoutGroupId, created.checkout.id)); await cancelCheckoutAllocationsAndReleaseStock(tx, created.checkout.id, userId, at); });
-      return Response.json({ error: message, checkoutReference: reference }, { status: 502 });
-    }
+    await Promise.allSettled(created.orders.map(({ order, merchant, items }) => sendOrderPlacedNotifications({ reference: `NC-${String(order.id).padStart(6, "0")}`, storeName: merchant.name, customerName: order.customerName ?? user.displayName, customerEmail: order.customerEmail ?? user.email, merchantEmail: merchant.contactEmail, status: order.status, total: order.total, fulfillmentMethod: order.fulfillmentMethod ?? "pickup", paymentInstructions: null, lines: items.map((item) => ({ name: item.productName, option: [item.size, item.color].filter(Boolean).join(" / ") || item.variantTitle, quantity: item.quantity, lineTotal: Number(item.salePrice ?? item.variantPrice) * item.quantity })) })));
+    return Response.json({ checkout: { reference, total, merchantCount: created.orders.length, orderReferences: created.orders.map(({ order }) => `NC-${String(order.id).padStart(6, "0")}`), confirmationExpiresAt: created.orders[0]?.order.confirmationExpiresAt, status: "pending_merchant_confirmation", paymentUrl: null } }, { status: 201 });
   } catch (error) { return Response.json({ error: error instanceof Error ? error.message : "Checkout could not be created." }, { status: 400 }); }
 }
 
@@ -100,12 +86,12 @@ export async function PATCH(request: Request) {
   if (!Number.isInteger(payload.orderId) || !reason) return Response.json({ error: "Order and cancellation reason are required." }, { status: 400 });
   const db = getDb(); const [order] = await db.select().from(orders).where(and(eq(orders.id, payload.orderId!), eq(orders.customerRef, user.userId))).limit(1);
   if (!order) return Response.json({ error: "Order not found." }, { status: 404 });
-  if (order.status !== "pending_payment" || order.paymentStatus === "paid") return Response.json({ error: "Paid or active orders require a support issue so refunds and merchant allocations stay reconciled." }, { status: 409 });
+  if (!["pending_payment", "pending_merchant_confirmation", "accepted"].includes(order.status) || order.paymentStatus === "paid") return Response.json({ error: "Paid or active orders require a support issue so refunds and merchant allocations stay reconciled." }, { status: 409 });
   await db.transaction(async (tx) => {
     const changedAt = new Date();
     if (order.checkoutGroupId) {
-      await tx.update(orders).set({ status: "cancelled", paymentStatus: "cancelled", updatedAt: changedAt }).where(and(eq(orders.checkoutGroupId, order.checkoutGroupId), eq(orders.paymentStatus, "pending")));
-      await tx.update(checkoutGroups).set({ status: "cancelled", paymentStatus: "cancelled", updatedAt: changedAt }).where(and(eq(checkoutGroups.id, order.checkoutGroupId), eq(checkoutGroups.paymentStatus, "pending")));
+      await tx.update(orders).set({ status: "cancelled", paymentStatus: "cancelled", updatedAt: changedAt }).where(and(eq(orders.checkoutGroupId, order.checkoutGroupId), inArray(orders.paymentStatus, ["not_started", "pending", "failed"])));
+      await tx.update(checkoutGroups).set({ status: "cancelled", paymentStatus: "cancelled", updatedAt: changedAt }).where(and(eq(checkoutGroups.id, order.checkoutGroupId), inArray(checkoutGroups.paymentStatus, ["pending", "failed"])));
       await tx.update(paymentTransactions).set({ status: "cancelled", failureMessage: `Customer cancelled before payment: ${reason}`, updatedAt: changedAt }).where(and(eq(paymentTransactions.checkoutGroupId, order.checkoutGroupId), inArray(paymentTransactions.status, ["created", "creating", "pending"])));
       await cancelCheckoutAllocationsAndReleaseStock(tx, order.checkoutGroupId, Number(user.userId), changedAt);
     } else {

@@ -96,6 +96,12 @@ type Account = {
     id: number;
     reference: string;
     status: string;
+    workflow: string;
+    confirmationExpiresAt: string | null;
+    paymentExpiresAt: string | null;
+    paymentReady: boolean;
+    checkoutTotal: number;
+    confirmedAt: string | null;
     paymentStatus: string;
     paymentProof: {
       id: number;
@@ -889,9 +895,9 @@ function CheckoutBag({
     return (
       <section className="checkout-success">
         <span>✓</span>
-        <p className="eyebrow">Order confirmed</p>
+        <p className="eyebrow">Order request sent</p>
         <h2>{confirmation.reference}</h2>
-        <p>Your order has been sent to the merchant for confirmation.</p>
+        <p>Your items are reserved while the {confirmation.reference ? "stores" : "merchant"} confirm availability. No payment has been taken.</p>
         <strong>N${Number(confirmation.total).toFixed(2)}</strong>
         {confirmation.paymentError && <p className="checkout-warning">{confirmation.paymentError} Your order is saved; choose it under Orders to retry payment.</p>}
         <button onClick={() => setTab("Orders")}>Track these orders</button>
@@ -904,14 +910,14 @@ function CheckoutBag({
         <header>
           <button onClick={() => setCheckoutMerchant(null)}>← Bag</button>
           <div>
-            <p className="eyebrow">Secure checkout</p>
-            <h2>{merchants.length} {merchants.length === 1 ? "store" : "stores"} · one payment</h2>
+            <p className="eyebrow">Order request</p>
+            <h2>{merchants.length} {merchants.length === 1 ? "store" : "stores"} · merchant confirmation first</h2>
           </div>
         </header>
         <ol className="checkout-progress" aria-label="Checkout progress">
           <li className="complete"><span>1</span><b>Bag</b></li>
-          <li className="current"><span>2</span><b>Delivery &amp; payment</b></li>
-          <li><span>3</span><b>Confirmation</b></li>
+          <li className="current"><span>2</span><b>Delivery details</b></li>
+          <li><span>3</span><b>Merchant review</b></li>
         </ol>
         <div className="checkout-layout">
           <div>
@@ -994,9 +1000,9 @@ function CheckoutBag({
               )}
             </section>
             <section>
-              <h3>2. Payment</h3>
+              <h3>2. Payment after confirmation</h3>
               <div className="checkout-options">
-                <div className="selected"><span><b>PayToday secure payment</b><small>One payment to NeuroCity for the complete bag</small></span></div>
+                <div className="selected"><span><b>PayToday secure payment</b><small>The payment button becomes available after every store confirms.</small></span></div>
               </div>
               <div className="checkout-payment-contact">
                 <label>Payment email<input type="email" required autoComplete="email" value={paymentEmail} onChange={(event) => setPaymentEmail(event.target.value)} /></label>
@@ -1051,11 +1057,10 @@ function CheckoutBag({
               }
               onClick={placeOrder}
             >
-              {placing ? "Checking stock and creating order…" : `Pay N$${(checkoutTotal + deliveryFee).toFixed(2)} with PayToday`}
+              {placing ? "Reserving stock and sending request…" : `Submit order request · N$${(checkoutTotal + deliveryFee).toFixed(2)}`}
             </button>
             <small>
-              Prices, inventory and delivery eligibility are checked again
-              before the order is created.
+              The stores have 30 minutes to confirm availability. You will pay only after confirmation.
             </small>
           </aside>
         </div>
@@ -1131,15 +1136,23 @@ function OrderRow({ order }: { order: Account["orders"][number] }) {
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
+  const [clock, setClock] = useState(Date.now());
+  const activeDeadline = order.status === "pending_merchant_confirmation" ? order.confirmationExpiresAt : order.status === "accepted" ? order.paymentExpiresAt : null;
+  useEffect(() => { if (!activeDeadline) return; const timer = window.setInterval(() => setClock(Date.now()), 1000); return () => window.clearInterval(timer); }, [activeDeadline]);
+  const deadlineSeconds = activeDeadline ? Math.max(0, Math.ceil((new Date(activeDeadline).getTime() - clock) / 1000)) : null;
   const pickup = order.fulfillmentMethod === "pickup";
   const journey = pickup
-    ? ["pending_merchant_confirmation", "accepted", "preparing", "ready_for_pickup", "collected", "completed"]
-    : ["pending_merchant_confirmation", "accepted", "preparing", "dispatched", "delivered", "completed"];
+    ? ["pending_merchant_confirmation", "accepted", "paid", "preparing", "ready_for_pickup", "collected", "completed"]
+    : ["pending_merchant_confirmation", "accepted", "paid", "preparing", "dispatched", "delivered", "completed"];
   const terminal = ["rejected", "cancelled"].includes(order.status);
   const currentStep = journey.indexOf(order.status);
   const customerGuidance: Record<string, string> = {
     pending_merchant_confirmation: `${order.storeName} is checking your items.`,
-    accepted: order.paymentMethod === "eft" && order.paymentStatus !== "paid" ? "Complete or verify payment so the store can prepare your order." : "Your order was accepted and will be prepared next.",
+    accepted: order.paymentStatus !== "paid" ? (order.paymentReady ? "Every store has confirmed. Complete payment within the payment window." : "This store confirmed your items. We are waiting for the remaining stores before payment opens.") : "Your order was accepted and will be prepared next.",
+    payment_processing: "PayToday payment is being completed and verified.",
+    paid: "Payment was verified. The store can now begin fulfilment.",
+    confirmation_expired: "The store did not confirm within 30 minutes. Reserved stock has been released.",
+    payment_expired: "The confirmed order was not paid within the payment window. Reserved stock has been released.",
     preparing: "The store is preparing your items.",
     ready_for_pickup: "Your order is ready. Take your order reference when collecting.",
     dispatched: "Your order has left the store and is on its way.",
@@ -1198,6 +1211,7 @@ function OrderRow({ order }: { order: Account["orders"][number] }) {
         <span>{order.reference}</span>
         <strong>{order.storeName}</strong>
         <small>{new Date(order.createdAt).toLocaleDateString("en-NA")}</small>
+        {deadlineSeconds !== null && <small className="order-confirmation-timer">{order.status === "accepted" ? "Pay" : "Confirmation"} window · {Math.floor(deadlineSeconds / 60)}:{String(deadlineSeconds % 60).padStart(2, "0")}</small>}
       </div>
       <div>
         <span className="order-status">
@@ -1339,6 +1353,15 @@ function PaymentInstructionsCard({
 }
 function OrderActions({ order }: { order: Account["orders"][number] }) {
   const [message, setMessage] = useState("");
+  const [openingPayment, setOpeningPayment] = useState(false);
+  async function pay() {
+    setOpeningPayment(true);
+    const response = await fetch("/api/payments/paytoday", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderId: order.id }) });
+    const data = await response.json();
+    if (response.ok && data.paymentUrl) { window.location.assign(data.paymentUrl); return; }
+    setMessage(data.error ?? "Payment could not be opened.");
+    setOpeningPayment(false);
+  }
   async function cancel() {
     const reason = window.prompt("Why are you cancelling this order?")?.trim();
     if (!reason) return;
@@ -1386,7 +1409,8 @@ function OrderActions({ order }: { order: Account["orders"][number] }) {
         </div>
       ))}
       <div>
-        {order.status === "pending_payment" && order.paymentStatus !== "paid" && <button onClick={cancel}>Cancel checkout order</button>}
+        {order.workflow === "merchant_confirmation_v1" && order.status === "accepted" && order.paymentStatus !== "paid" && order.paymentReady && <button disabled={openingPayment} onClick={pay}>{openingPayment ? "Opening PayToday…" : `Pay confirmed checkout · N$${Number(order.checkoutTotal).toFixed(2)}`}</button>}
+        {["pending_payment", "pending_merchant_confirmation", "accepted"].includes(order.status) && order.paymentStatus !== "paid" && <button onClick={cancel}>Cancel order request</button>}
         {!order.issues?.some((issue) => issue.status === "open") && (
           <button onClick={report}>Report an issue</button>
         )}

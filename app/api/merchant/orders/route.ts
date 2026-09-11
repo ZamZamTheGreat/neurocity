@@ -1,11 +1,13 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { auditEvents, merchantPaymentAllocations, merchants, orderItems, orders, orderStatusEvents, paymentProofs } from "../../../../db/schema";
+import { auditEvents, checkoutGroups, merchantPaymentAllocations, merchants, orderItems, orders, orderStatusEvents, paymentProofs } from "../../../../db/schema";
 import { requirePilotMerchant } from "../auth";
 import { sendOrderStatusNotification } from "../../../../lib/order-mail";
 import { sendWhatsAppOrderUpdate } from "../../../../lib/whatsapp-orders";
 import { commitOrderInventory, releaseOrderInventory } from "../../../../lib/order-inventory";
-import { makeOrderAllocationPayable } from "../../../../lib/settlements";
+import { cancelCheckoutAllocationsAndReleaseStock, makeOrderAllocationPayable } from "../../../../lib/settlements";
+import { allowedOrderTransitions, assertOrderTransition, CUSTOMER_PAYMENT_MINUTES, deadlineFrom, ORDER_WORKFLOW } from "../../../../lib/order-workflows";
+import { expireDueOrderRequests } from "../../../../lib/order-expiry";
 
 const transitions: Record<string, string[]> = {
   pending_merchant_confirmation: ["accepted", "rejected"],
@@ -22,11 +24,12 @@ export async function GET() {
   const access = await requirePilotMerchant();
   if (!access) return Response.json({ error: "Merchant authentication required." }, { status: 401 });
   const db = getDb();
+  await expireDueOrderRequests().catch((error) => console.error("order expiry check failed", error));
   const rows = await db.select().from(orders).where(eq(orders.merchantId, access.merchantId)).orderBy(desc(orders.createdAt), desc(orders.id)).limit(100);
   const items = rows.length ? await db.select().from(orderItems).where(inArray(orderItems.orderId, rows.map((order) => order.id))) : [];
   const events = rows.length ? await db.select().from(orderStatusEvents).where(inArray(orderStatusEvents.orderId, rows.map((order) => order.id))).orderBy(desc(orderStatusEvents.createdAt)) : [];
   const proofs = rows.length ? await db.select().from(paymentProofs).where(inArray(paymentProofs.orderId, rows.map((order) => order.id))) : [];
-  return Response.json({ orders: rows.map((order) => ({ ...order, reference: `NC-${String(order.id).padStart(6, "0")}`, items: items.filter((item) => item.orderId === order.id), events: events.filter((event) => event.orderId === order.id), paymentProof: proofs.find((proof) => proof.orderId === order.id) ?? null, allowedTransitions: transitions[order.status] ?? [] })) });
+  return Response.json({ orders: rows.map((order) => ({ ...order, reference: `NC-${String(order.id).padStart(6, "0")}`, items: items.filter((item) => item.orderId === order.id), events: events.filter((event) => event.orderId === order.id), paymentProof: proofs.find((proof) => proof.orderId === order.id) ?? null, allowedTransitions: order.workflow === ORDER_WORKFLOW ? allowedOrderTransitions(order.status, "merchant") : transitions[order.status] ?? [] })) });
 }
 
 export async function PATCH(request: Request) {
@@ -38,12 +41,27 @@ export async function PATCH(request: Request) {
     const db = getDb();
     const [current] = await db.select().from(orders).where(eq(orders.id, payload.orderId!)).limit(1);
     if (!current || current.merchantId !== access.merchantId) return Response.json({ error: "Order not found." }, { status: 404 });
-    if (!(transitions[current.status] ?? []).includes(payload.status)) return Response.json({ error: `Cannot move an order from ${current.status} to ${payload.status}.` }, { status: 409 });
+    try { current.workflow === ORDER_WORKFLOW ? assertOrderTransition(current.status, payload.status, "merchant") : (() => { if (!(transitions[current.status] ?? []).includes(payload.status!)) throw new Error(`Cannot move an order from ${current.status} to ${payload.status}.`); })(); } catch (error) { return Response.json({ error: error instanceof Error ? error.message : "Invalid order transition." }, { status: 409 }); }
+    if (current.workflow === ORDER_WORKFLOW && current.status === "pending_merchant_confirmation" && current.confirmationExpiresAt && current.confirmationExpiresAt <= new Date()) return Response.json({ error: "The 30-minute confirmation window has expired." }, { status: 409 });
     if (["rejected", "cancelled", "delivery_failed"].includes(payload.status) && !payload.note?.trim()) return Response.json({ error: "A reason is required for this order decision." }, { status: 400 });
     if (current.paymentMethod === "eft" && current.paymentStatus !== "paid" && ["preparing", "ready_for_pickup", "dispatched", "collected", "delivered", "completed"].includes(payload.status)) return Response.json({ error: "Verify EFT payment before progressing fulfilment." }, { status: 409 });
     await db.transaction(async (tx) => {
       const changedAt = new Date();
-      await tx.update(orders).set({ status: payload.status!, updatedAt: changedAt }).where(and(eq(orders.id, current.id), eq(orders.status, current.status)));
+      const workflowUpdate = current.workflow === ORDER_WORKFLOW && payload.status === "accepted" ? { confirmedAt: changedAt, paymentStatus: "not_started", orderVersion: current.orderVersion + 1 } : {};
+      await tx.update(orders).set({ status: payload.status!, ...workflowUpdate, updatedAt: changedAt }).where(and(eq(orders.id, current.id), eq(orders.status, current.status)));
+      if (current.workflow === ORDER_WORKFLOW && current.checkoutGroupId && payload.status === "accepted") {
+        const groupOrders = await tx.select({ status: orders.status }).from(orders).where(eq(orders.checkoutGroupId, current.checkoutGroupId));
+        if (groupOrders.every((order) => order.status === "accepted")) {
+          const paymentExpiresAt = deadlineFrom(changedAt, CUSTOMER_PAYMENT_MINUTES);
+          await tx.update(orders).set({ paymentExpiresAt, updatedAt: changedAt }).where(and(eq(orders.checkoutGroupId, current.checkoutGroupId), eq(orders.status, "accepted")));
+          await tx.update(checkoutGroups).set({ status: "awaiting_payment", updatedAt: changedAt }).where(eq(checkoutGroups.id, current.checkoutGroupId));
+        }
+      }
+      if (current.workflow === ORDER_WORKFLOW && current.checkoutGroupId && payload.status === "rejected" && current.paymentStatus !== "paid") {
+        await tx.update(checkoutGroups).set({ status: "rejected", paymentStatus: "cancelled", updatedAt: changedAt }).where(eq(checkoutGroups.id, current.checkoutGroupId));
+        await tx.update(orders).set({ status: "rejected", paymentStatus: "cancelled", updatedAt: changedAt }).where(and(eq(orders.checkoutGroupId, current.checkoutGroupId), inArray(orders.status, ["pending_merchant_confirmation", "accepted"])));
+        await cancelCheckoutAllocationsAndReleaseStock(tx, current.checkoutGroupId, Number(access.user.userId), changedAt);
+      }
       if (["rejected", "cancelled"].includes(payload.status!)) {
         await tx.update(merchantPaymentAllocations).set({ settlementStatus: current.paymentStatus === "paid" ? "refund_required" : "cancelled", updatedAt: changedAt }).where(eq(merchantPaymentAllocations.orderId, current.id));
         await releaseOrderInventory(tx, current.id, changedAt);
@@ -60,7 +78,7 @@ export async function PATCH(request: Request) {
     ]);
     const whatsapp = whatsappResult.status === "fulfilled" ? whatsappResult.value : { delivered: false as const, reason: whatsappResult.reason instanceof Error ? whatsappResult.reason.message : "delivery_failed" };
     await db.insert(auditEvents).values({ actorRef: access.user.userId, action: whatsapp.delivered ? "order.whatsapp_sent" : "order.whatsapp_skipped", resourceType: "order", resourceId: String(current.id), metadata: { status: payload.status, reason: "reason" in whatsapp ? whatsapp.reason : null } }).catch((error) => console.error("order notification audit failed", error));
-    return Response.json({ order: { ...current, status: payload.status, allowedTransitions: transitions[payload.status] ?? [] }, whatsapp });
+    return Response.json({ order: { ...current, status: payload.status, allowedTransitions: current.workflow === ORDER_WORKFLOW ? allowedOrderTransitions(payload.status, "merchant") : transitions[payload.status] ?? [] }, whatsapp });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Order update failed" }, { status: 500 });
   }

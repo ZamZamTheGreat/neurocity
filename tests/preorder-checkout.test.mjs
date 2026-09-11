@@ -12,6 +12,7 @@ async function load(path, deps) {
 }
 const preorder = await load("../lib/preorders.ts", {});
 const commerceFees = await load("../lib/commerce-fees.ts", {});
+const orderWorkflows = await load("../lib/order-workflows.ts", {});
 const table = (name) => new Proxy({ name }, { get: (target, field) => target[field] ?? `${name}.${String(field)}` });
 const schema = Object.fromEntries(["auditEvents", "checkoutGroups", "customerAddresses", "customerCartItems", "merchantDeliveryZones", "merchantPaymentAllocations", "merchants", "orderItems", "orders", "orderStatusEvents", "paymentTransactions", "productVariants", "products", "variantInventory"].map((name) => [name, table(name)]));
 const orm = { and: (...x) => x, eq: (...x) => x, inArray: (...x) => x, sql: (...x) => x };
@@ -43,6 +44,7 @@ async function checkout(availability) {
     "../../../lib/order-mail": { sendOrderPlacedNotifications: async () => {} },
     "../../../lib/paytoday": { getPayTodayAvailability: () => ({ configured: true }), createPayTodayPayment: async () => ({ checkoutUrl: "https://example.com/payment" }) },
     "../../../lib/commerce-fees": commerceFees,
+    "../../../lib/order-workflows": orderWorkflows,
   });
   const response = await route.POST(new Request("http://localhost/api/orders", { method: "POST", body: JSON.stringify({ fulfillment: [{ merchantId: 4, fulfillmentMethod: "pickup" }], paymentContact: { email: "test@example.com", phone: "0811234567" } }) }));
   return { response, body: await response.json(), writes };

@@ -25,7 +25,7 @@
     "android:assets": "node scripts/generate-android-assets.mjs",
     "android:open": "cap open android",
     "android:bundle": "cd android && gradlew.bat bundleRelease",
-    "test:unit": "node --test tests/concierge-conversation.test.mjs tests/preorder-checkout.test.mjs tests/cleanup.test.mjs tests/commerce-fees.test.mjs",
+    "test:unit": "node --test tests/concierge-conversation.test.mjs tests/preorder-checkout.test.mjs tests/cleanup.test.mjs tests/commerce-fees.test.mjs tests/order-workflows.test.mjs",
     "test:http": "npm run build && node --test tests/rendered-html.test.mjs tests/security-http.test.mjs",
     "typecheck": "tsc --noEmit --incremental false",
     "db:provision-pilot": "node scripts/provision-pilot.mjs"
