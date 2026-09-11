@@ -7,6 +7,7 @@ import { NeuroConcierge } from "./NeuroConcierge";
 const items = [
   { href: "/", icon: "⌂", label: "Home" },
   { href: "/shop", icon: "▦", label: "Shop" },
+  { href: "/chains", icon: "◫", label: "Chains" },
   { href: "/access", icon: "◎", label: "Account" },
 ];
 
@@ -39,7 +40,7 @@ export function MobileDock() {
       <nav className={`mobile-dock${selmaOpen ? " selma-open" : ""}`} aria-label="Mobile navigation">
         {items.slice(0, 2).map((item) => {
           const active = item.href === "/shop"
-            ? path === "/shop" || path.startsWith("/marketplace") || path.startsWith("/malls") || path.startsWith("/chains") || path.startsWith("/stores")
+            ? path === "/shop" || path.startsWith("/marketplace") || path.startsWith("/malls") || path.startsWith("/stores")
             : path === item.href;
           return (
             <a key={item.href} className={active ? "active" : ""} href={item.href} aria-current={active ? "page" : undefined}>

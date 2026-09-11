@@ -93,11 +93,11 @@ test("uses a clean mobile shop chooser instead of crowding the bottom dock", asy
   const shell = await readFile(new URL("../app/platform-shell.css", import.meta.url), "utf8");
   assert.match(dock, /href: "\/shop"/);
   assert.doesNotMatch(dock, /href: "\/malls"/);
-  assert.doesNotMatch(dock, /href: "\/chains"/);
+  assert.match(dock, /href: "\/chains"/);
   assert.match(dock, /path\.startsWith\("\/marketplace"\)/);
   assert.match(chooser, /href="\/marketplace"/);
   assert.match(chooser, /href="\/malls"/);
-  assert.match(shell, /grid-template-columns:repeat\(4,1fr\)/);
+  assert.match(shell, /grid-template-columns:repeat\(5,1fr\)/);
 });
 
 test("lets administrators schedule store advertising across public entry points", async () => {
