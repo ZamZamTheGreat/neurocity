@@ -1,8 +1,9 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { auditEvents, orderItems, productVariants, products, serviceBookings, storeBranches, variantInventory } from "../../../../db/schema";
+import { auditEvents, merchants, orderItems, productVariants, products, serviceBookings, storeBranches, variantInventory } from "../../../../db/schema";
 import { createPresignedR2Url } from "../../../../lib/r2";
 import { requirePilotMerchant } from "../auth";
+import { commerceTypeForCategory, isCommerceType, sanitizeCommerceAttributes } from "../../../../lib/commerce-templates";
 
 const statuses = new Set(["needs_confirmation", "draft", "published", "archived"]);
 const availabilityValues = new Set(["available", "preorder", "out_of_stock", "unavailable"]);
@@ -13,6 +14,7 @@ const text = (value: unknown, fallback = "") => typeof value === "string" ? valu
 const optionalText = (value: unknown, fallback: string | null = null) => value === null ? null : typeof value === "string" ? value.trim() || null : fallback;
 const optionList = (value: unknown) => Array.isArray(value) ? [...new Set(value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean))].slice(0, 20) : [];
 const skuPart = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 18) || "STD";
+const commerceTemplatesMismatch = (itemType: string, commerceType: string) => itemType === "service" ? commerceType !== "service_booking" : commerceType === "service_booking";
 
 export async function GET() {
   const access = await requirePilotMerchant();
@@ -34,6 +36,8 @@ export async function POST(request: Request) {
     const description = text(payload.description);
     const badge = optionalText(payload.badge);
     const itemType = text(payload.itemType, "product");
+    const commerceType = isCommerceType(payload.commerceType) ? payload.commerceType : commerceTypeForCategory(category ?? "", itemType);
+    const commerceAttributes = sanitizeCommerceAttributes(commerceType, payload.commerceAttributes);
     const pricingModel = text(payload.pricingModel, "fixed");
     const durationMinutes = payload.durationMinutes === null || payload.durationMinutes === undefined || payload.durationMinutes === "" ? null : Number(payload.durationMinutes);
     const serviceMode = itemType === "service" ? text(payload.serviceMode, "at_business") : null;
@@ -43,7 +47,7 @@ export async function POST(request: Request) {
     const colours = itemType === "product" ? optionList(payload.colours) : [];
     const sizes = itemType === "product" ? optionList(payload.sizes) : [];
     const combinations = Math.max(1, colours.length) * Math.max(1, sizes.length);
-    if (!itemTypes.has(itemType) || !pricingModels.has(pricingModel) || (serviceMode && !serviceModes.has(serviceMode))) return Response.json({ error: "Choose valid catalogue and service settings." }, { status: 400 });
+    if (!itemTypes.has(itemType) || commerceTemplatesMismatch(itemType, commerceType) || !pricingModels.has(pricingModel) || (serviceMode && !serviceModes.has(serviceMode))) return Response.json({ error: "Choose valid catalogue, commerce and service settings." }, { status: 400 });
     if (!name || !sku || !category || !description || (pricingModel !== "quote" && price === null)) return Response.json({ error: "Name, reference, category, description and price are required unless pricing is by quote." }, { status: 400 });
     if (durationMinutes !== null && (!Number.isInteger(durationMinutes) || durationMinutes < 5 || durationMinutes > 10080)) return Response.json({ error: "Service duration must be between 5 minutes and 7 days." }, { status: 400 });
     if (price !== null && (!Number.isFinite(price) || price < 0)) return Response.json({ error: "Price must be a valid non-negative amount." }, { status: 400 });
@@ -53,7 +57,9 @@ export async function POST(request: Request) {
     const [duplicate] = await db.select({ id: products.id }).from(products).where(and(eq(products.merchantId, access.merchantId), eq(products.sku, sku))).limit(1);
     if (duplicate) return Response.json({ error: "That SKU is already used in your catalogue." }, { status: 409 });
     const created = await db.transaction(async (tx) => {
-      const [product] = await tx.insert(products).values({ merchantId: access.merchantId, itemType, name, sku, category, brand, collection, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, badge, status: "draft", availability: "available" }).returning();
+      const [product] = await tx.insert(products).values({ merchantId: access.merchantId, itemType, commerceType, commerceAttributes, name, sku, category, brand, collection, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, badge, status: "draft", availability: "available" }).returning();
+      const [merchant] = await tx.select({ enabledCategories: merchants.enabledCategories, enabledCommerceTypes: merchants.enabledCommerceTypes }).from(merchants).where(eq(merchants.id, access.merchantId)).limit(1);
+      await tx.update(merchants).set({ enabledCategories: [...new Set([...(merchant?.enabledCategories as string[] ?? []), category].filter(Boolean))], enabledCommerceTypes: [...new Set([...(merchant?.enabledCommerceTypes as string[] ?? []), commerceType])] }).where(eq(merchants.id, access.merchantId));
       if (itemType === "product" && price !== null) {
         const colourOptions: (string | null)[] = colours.length ? colours : [null];
         const sizeOptions: (string | null)[] = sizes.length ? sizes : [null];
@@ -95,12 +101,14 @@ export async function PATCH(request: Request) {
     const imageUrl = optionalText(payload.imageUrl, current.imageUrl);
     const imageUrls = payload.imageUrls === undefined ? current.imageUrls : Array.isArray(payload.imageUrls) ? payload.imageUrls.filter((value): value is string => typeof value === "string" && value.length > 0).slice(0, 3) : current.imageUrls;
     const itemType = text(payload.itemType, current.itemType);
+    const commerceType = isCommerceType(payload.commerceType) ? payload.commerceType : isCommerceType(current.commerceType) ? current.commerceType : commerceTypeForCategory(current.category ?? "", itemType);
+    const commerceAttributes = payload.commerceAttributes === undefined ? current.commerceAttributes : sanitizeCommerceAttributes(commerceType, payload.commerceAttributes);
     const pricingModel = text(payload.pricingModel, current.pricingModel);
     const durationMinutes = payload.durationMinutes === undefined ? current.durationMinutes : payload.durationMinutes === null || payload.durationMinutes === "" ? null : Number(payload.durationMinutes);
     const serviceMode = itemType === "service" ? text(payload.serviceMode, current.serviceMode ?? "at_business") : null;
     const bookingRequired = itemType === "service" && (payload.bookingRequired === undefined ? current.bookingRequired : payload.bookingRequired === true);
     if (!name || !sku) return Response.json({ error: "Product name and SKU are required." }, { status: 400 });
-    if (!itemTypes.has(itemType) || !pricingModels.has(pricingModel) || (serviceMode && !serviceModes.has(serviceMode))) return Response.json({ error: "Choose valid catalogue and service settings." }, { status: 400 });
+    if (!itemTypes.has(itemType) || commerceTemplatesMismatch(itemType, commerceType) || !pricingModels.has(pricingModel) || (serviceMode && !serviceModes.has(serviceMode))) return Response.json({ error: "Choose valid catalogue, commerce and service settings." }, { status: 400 });
     if (durationMinutes !== null && (!Number.isInteger(durationMinutes) || durationMinutes < 5 || durationMinutes > 10080)) return Response.json({ error: "Service duration must be between 5 minutes and 7 days." }, { status: 400 });
     if (!statuses.has(status) || !availabilityValues.has(availability)) return Response.json({ error: "Invalid product status or availability." }, { status: 400 });
     if (price !== null && (!Number.isFinite(price) || price < 0)) return Response.json({ error: "Price must be a valid non-negative amount." }, { status: 400 });
@@ -122,7 +130,7 @@ export async function PATCH(request: Request) {
     });
     if (inheritedValues.some(({ nextPrice, nextSalePrice }) => nextSalePrice !== null && nextSalePrice >= nextPrice)) return Response.json({ error: "The new product price conflicts with a custom option-group sale price. Update that option group first." }, { status: 409 });
     const updated = await db.transaction(async (tx) => {
-      const [saved] = await tx.update(products).set({ itemType, name, sku, collection, category, brand, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, status, availability, imageUrl: (imageUrls as string[])[0] ?? imageUrl, imageUrls, badge }).where(and(eq(products.id, current.id), eq(products.merchantId, access.merchantId))).returning();
+      const [saved] = await tx.update(products).set({ itemType, commerceType, commerceAttributes, name, sku, collection, category, brand, description, price, salePrice, pricingModel, durationMinutes, serviceMode, bookingRequired, status, availability, imageUrl: (imageUrls as string[])[0] ?? imageUrl, imageUrls, badge }).where(and(eq(products.id, current.id), eq(products.merchantId, access.merchantId))).returning();
       if (itemType === "product" && price !== null && existingVariants.length === 0) {
         await tx.insert(productVariants).values({ productId: current.id, sku: `M${access.merchantId}-${sku}-DEFAULT`, title: "Standard", attributes: { inventoryMode: "merchant_confirmed", priceMode: "product", salePriceMode: "product" }, price, salePrice, status: status === "published" ? "active" : "draft", imageUrl });
       } else {

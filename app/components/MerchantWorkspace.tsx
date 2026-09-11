@@ -39,6 +39,8 @@ const tabResources: Record<Tab, readonly Resource[]> = {
 type Product = {
   id: number;
   itemType: "product" | "service";
+  commerceType: "apparel" | "general_retail" | "prepared_food" | "grocery" | "service_booking";
+  commerceAttributes: Record<string, string | number | boolean | string[] | null>;
   name: string;
   sku: string;
   collection: string | null;
@@ -230,10 +232,10 @@ function parseCatalogueCsv(source: string) {
   const headers = (records.shift() ?? []).map((value) => value.trim().toLowerCase());
   const required = ["name", "sku", "category", "description", "price"];
   if (!required.every((header) => headers.includes(header))) throw new Error("Missing required columns");
-  const apiFields: Record<string, string> = { sale_price: "salePrice", variant_sku: "variantSku", variant_title: "variantTitle", variant_price: "variantPrice", variant_sale_price: "variantSalePrice", stock_by_size: "stockBySize" };
+  const apiFields: Record<string, string> = { commerce_type: "commerceType", sale_price: "salePrice", variant_sku: "variantSku", variant_title: "variantTitle", variant_price: "variantPrice", variant_sale_price: "variantSalePrice", stock_by_size: "stockBySize" };
   return records.map((values) => Object.fromEntries(headers.map((header, index) => [apiFields[header] ?? header, values[index]?.trim() ?? ""])));
 }
-const catalogueCsvHeaders = ["name", "sku", "category", "description", "price", "sale_price", "brand", "collection", "variant_sku", "variant_title", "size", "sizes", "color", "variant_price", "variant_sale_price", "stock", "stock_by_size"] as const;
+const catalogueCsvHeaders = ["name", "sku", "category", "commerce_type", "description", "price", "sale_price", "brand", "collection", "variant_sku", "variant_title", "size", "sizes", "color", "variant_price", "variant_sale_price", "stock", "stock_by_size"] as const;
 const csvCell = (value: unknown) => {
   const text = value == null ? "" : String(value);
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
@@ -1465,8 +1467,8 @@ function CatalogueManager({
   }) : products;
   const downloadTemplate = () => {
     downloadCatalogueCsv("neurocity-catalogue-template.csv", [
-      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "Black", variant_price: "", variant_sale_price: "", stock: "", stock_by_size: "S:12|M:10|L:8|XL:5" },
-      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "White", variant_price: "329.00", variant_sale_price: "279.00", stock: "", stock_by_size: "S:8|M:8|L:6|XL:4" },
+      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", commerce_type: "apparel", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "Black", variant_price: "", variant_sale_price: "", stock: "", stock_by_size: "S:12|M:10|L:8|XL:5" },
+      { name: "Classic crew-neck T-shirt", sku: "TSHIRT-001", category: "Fashion & Clothing", commerce_type: "apparel", description: "Cotton crew-neck T-shirt, regular fit.", price: "299.00", sale_price: "249.00", brand: "Example Brand", collection: "Essentials", variant_sku: "", variant_title: "", size: "", sizes: "S|M|L|XL", color: "White", variant_price: "329.00", variant_sale_price: "279.00", stock: "", stock_by_size: "S:8|M:8|L:6|XL:4" },
     ]);
   };
   const exportCatalogue = () => {
@@ -1480,6 +1482,7 @@ function CatalogueManager({
         name: product.name,
         sku: product.sku,
         category: product.category ?? "",
+        commerce_type: product.commerceType,
         description: product.description,
         price: product.price?.toFixed(2) ?? "",
         sale_price: product.salePrice?.toFixed(2) ?? "",
