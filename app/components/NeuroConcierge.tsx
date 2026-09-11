@@ -69,6 +69,7 @@ export function NeuroConcierge({
   const [profileError, setProfileError] = useState("");
   const [photoMenu, setPhotoMenu] = useState(false);
   const [cameraConsent, setCameraConsent] = useState(false);
+  const [composerFocused, setComposerFocused] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -358,7 +359,7 @@ export function NeuroConcierge({
       role="presentation"
     >
       <section
-        className="assistant neuro-assistant"
+        className={`assistant neuro-assistant ${busy ? "is-searching" : composerFocused ? "is-listening" : messages.at(-1)?.matches?.length ? "has-results" : "is-ready"}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="selma-title"
@@ -543,6 +544,8 @@ export function NeuroConcierge({
                 <span className="sr-only">Describe what you need</span>
                 <textarea
                   ref={inputRef}
+                  onFocus={() => setComposerFocused(true)}
+                  onBlur={() => setComposerFocused(false)}
                   value={input}
                   maxLength={300}
                   rows={1}

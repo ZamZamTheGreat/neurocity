@@ -372,7 +372,7 @@ export default function AccountPage() {
           </div>
           <div className="account-header-actions">
             <button onClick={() => setTab("Bag")} className="account-bag-shortcut">
-              Bag <b>{bagCount}</b>
+              Bag <b className="bag-count-value" key={bagCount}>{bagCount}</b>
             </button>
             <a href="/marketplace">Explore marketplace</a>
           </div>
@@ -407,7 +407,7 @@ export default function AccountPage() {
               </article>
               <article>
                 <span>Bag total</span>
-                <strong>N${bagTotal.toFixed(2)}</strong>
+                <strong className="bag-total-value" key={bagTotal.toFixed(2)}>N${bagTotal.toFixed(2)}</strong>
                 <small>{bagCount} {bagCount === 1 ? "item" : "items"}</small>
               </article>
               <article>
@@ -809,7 +809,10 @@ function CheckoutBag({
   async function removeBagItem(variantId: number) {
     setRemovingVariantId(variantId);
     try {
-      await updateCart({ action: "cart", variantId, quantity: 0 });
+      await Promise.all([
+        updateCart({ action: "cart", variantId, quantity: 0 }),
+        new Promise((resolve) => window.setTimeout(resolve, 220)),
+      ]);
     } finally {
       setRemovingVariantId(null);
     }
@@ -1084,10 +1087,10 @@ function CheckoutBag({
                 <small>STORE</small>
                 <h3>{merchant.name}</h3>
               </div>
-              <strong>N${merchantTotal.toFixed(2)}</strong>
+              <strong className="bag-total-value" key={merchantTotal.toFixed(2)}>N${merchantTotal.toFixed(2)}</strong>
             </header>
             {items.map((item) => (
-              <article className="account-product-row" key={item.id}>
+              <article className={`account-product-row${removingVariantId === item.variantId ? " is-removing" : ""}`} key={item.id}>
                 {item.imageUrl && <ManagedImage src={item.imageUrl} alt="" />}
                 <div>
                   <strong>{item.productName}</strong>
@@ -1106,7 +1109,7 @@ function CheckoutBag({
                   </div>
                   <button className="bag-remove-item" disabled={removingVariantId === item.variantId} onClick={() => removeBagItem(item.variantId)}>{removingVariantId === item.variantId ? "Removing…" : "Remove"}</button>
                 </div>
-                <b>
+                <b className="bag-total-value" key={`${item.id}-${item.quantity}`}>
                   N$
                   {(
                     Number(item.salePrice ?? item.price) * item.quantity

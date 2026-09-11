@@ -693,10 +693,12 @@ function StoreProduct({
                   !purchasable ||
                   (!preorder && variant.available !== null && variant.available < 1)
                 }
-                onClick={async () => {
+                onClick={async (event) => {
                   if (!variant) return;
+                  const sourceButton = event.currentTarget;
                   setAdding(true);
-                  await accountAction({ action: "cart", variantId: variant.id, quantity: 1 });
+                  const added = await accountAction({ action: "cart", variantId: variant.id, quantity: 1 });
+                  if (added) animateProductToBag(sourceButton, activeImage);
                   setAdding(false);
                 }}
               >
@@ -719,4 +721,26 @@ function StoreProduct({
       </div>
     </article>
   );
+}
+
+function animateProductToBag(sourceButton: HTMLElement, imageUrl: string | null) {
+  if (!imageUrl || typeof window === "undefined" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const destination = [...document.querySelectorAll<HTMLElement>(".store-account, .mobile-dock a[href='/access']")]
+    .find((element) => element.getClientRects().length > 0);
+  if (!destination) return;
+  const source = sourceButton.closest(".store-product-v2")?.querySelector(".store-product-image img")?.getBoundingClientRect();
+  if (!source) return;
+  const target = destination.getBoundingClientRect();
+  const flyer = document.createElement("img");
+  flyer.src = imageUrl;
+  flyer.alt = "";
+  flyer.className = "bag-product-flyer";
+  flyer.style.left = `${source.left + source.width / 2 - 38}px`;
+  flyer.style.top = `${source.top + source.height / 2 - 38}px`;
+  document.body.appendChild(flyer);
+  const animation = flyer.animate([
+    { transform: "translate3d(0,0,0) scale(1)", opacity: 0.95 },
+    { transform: `translate3d(${target.left + target.width / 2 - source.left - source.width / 2}px, ${target.top + target.height / 2 - source.top - source.height / 2}px, 0) scale(.18)`, opacity: 0.25 },
+  ], { duration: 560, easing: "cubic-bezier(.2,.8,.2,1)" });
+  animation.finished.finally(() => flyer.remove());
 }

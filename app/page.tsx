@@ -451,9 +451,9 @@ export function MarketplaceExperience({
                 <strong>Loading local stores…</strong>
               </div>
             ) : visibleStores.length ? (
-              <div className="public-store-grid">
-                {visibleStores.map((store) => (
-                  <article className="public-store-card" key={store.id}>
+              <div className="public-store-grid marketplace-filter-results" key={selectedCategory || "all"}>
+                {visibleStores.map((store, index) => (
+                  <article className="public-store-card marketplace-reveal-card" style={{ "--reveal-index": index } as CSSProperties} key={store.id}>
                     <div className="public-store-art">
                       {store.bannerUrl && <ManagedImage src={store.bannerUrl} alt="" />}
                       <span>Approved store</span>
@@ -562,9 +562,9 @@ export function MarketplaceExperience({
                   View the store →
                 </button>
               </div>
-              <div className="product-grid">
-                {catalogue.slice(0, 3).map((p) => (
-                  <ProductCard key={p.id} product={p} onAdd={addToCart} />
+              <div className="product-grid marketplace-filter-results">
+                {catalogue.slice(0, 3).map((p, index) => (
+                  <div className="marketplace-reveal-card" style={{ "--reveal-index": index } as CSSProperties} key={p.id}><ProductCard product={p} onAdd={addToCart} /></div>
                 ))}
               </div>
             </section>
@@ -637,9 +637,9 @@ export function MarketplaceExperience({
             </label>
           </section>
           <section className="section store-products">
-            <div className="product-grid four">
-              {filtered.map((p) => (
-                <ProductCard key={p.id} product={p} onAdd={addToCart} />
+            <div className="product-grid four marketplace-filter-results">
+              {filtered.map((p, index) => (
+                <div className="marketplace-reveal-card" style={{ "--reveal-index": index } as CSSProperties} key={p.id}><ProductCard product={p} onAdd={addToCart} /></div>
               ))}
             </div>
           </section>

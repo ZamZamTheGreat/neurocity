@@ -32,3 +32,12 @@
 .network-paths p,.network-paths .info-list{font-size:.9rem;line-height:1.55}
 @media(max-width:1000px){.network-hero{grid-template-columns:1fr}.network-hero>aside{display:grid;margin-top:42px;place-items:start}.network-shopping-card{width:100%}}
 @media(max-width:650px){.network-hero{padding-top:48px;padding-bottom:48px}.network-hero h1{font-size:clamp(2.75rem,13vw,4.2rem)}.network-lede{font-size:1rem}.network-hero>div>div button{width:100%}.network-shopping-card{padding:23px}.network-shopping-card button{font-size:.9rem}}
+
+/* Quiet motion system: supports hierarchy without delaying navigation. */
+.network-hero{position:relative;isolation:isolate;overflow:hidden}
+.network-hero:before{content:"";position:absolute;z-index:-1;inset:-12%;background-image:linear-gradient(#ffffff08 1px,transparent 1px),linear-gradient(90deg,#ffffff08 1px,transparent 1px);background-size:72px 72px;mask-image:linear-gradient(120deg,#0008,transparent 72%);animation:network-pattern-drift 34s linear infinite}
+.network-hero>div>.eyebrow,.network-hero>div>h1,.network-hero>div>.network-lede,.network-hero>div>div,.network-hero>div>ul,.network-hero>aside{opacity:0;animation:network-hero-enter .62s cubic-bezier(.2,.75,.25,1) forwards}
+.network-hero>div>h1{animation-delay:.07s}.network-hero>div>.network-lede{animation-delay:.14s}.network-hero>div>div{animation-delay:.21s}.network-hero>div>ul{animation-delay:.28s}.network-hero>aside{animation-delay:.2s}
+@keyframes network-hero-enter{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:none}}
+@keyframes network-pattern-drift{to{transform:translate3d(72px,72px,0)}}
+@media(prefers-reduced-motion:reduce){.network-hero:before{animation:none}.network-hero>div>.eyebrow,.network-hero>div>h1,.network-hero>div>.network-lede,.network-hero>div>div,.network-hero>div>ul,.network-hero>aside{opacity:1;animation:none}}
