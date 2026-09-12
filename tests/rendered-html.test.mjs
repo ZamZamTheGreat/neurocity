@@ -802,6 +802,19 @@ test("uses the compact homepage product scale in merchant storefronts", async ()
   assert.match(storefront, /max-width:560px[^}]+store-product-grid-v2\{grid-template-columns:repeat\(2/s);
 });
 
+test("keeps the featured heading visible and deep-links to the selected storefront item", async () => {
+  const home = await readFile(new URL("../app/components/NeuroCityNetworkHome.tsx", import.meta.url), "utf8");
+  const homepageCss = await readFile(new URL("../app/network-home.css", import.meta.url), "utf8");
+  const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
+  const storefrontCss = await readFile(new URL("../app/shopping-journey-v2.css", import.meta.url), "utf8");
+  assert.match(home, /#product-\$\{product\.id\}/);
+  assert.match(homepageCss, /network-featured-products h2\{[^}]*color:#07111f!important/);
+  assert.match(storefront, /id=\{`product-\$\{product\.id\}`\}/);
+  assert.match(storefront, /target\.scrollIntoView\(\{ behavior:/);
+  assert.match(storefrontCss, /scroll-margin-top:112px/);
+  assert.match(storefrontCss, /store-product-highlight/);
+});
+
 test("protects checkout and database capacity under concurrent traffic", async () => {
   const database = await readFile(new URL("../db/index.ts", import.meta.url), "utf8");
   const orders = await readFile(new URL("../app/api/orders/route.ts", import.meta.url), "utf8");

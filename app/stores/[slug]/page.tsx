@@ -109,6 +109,26 @@ export default function StorefrontPage() {
       .then(setData)
       .catch((reason) => setError(reason.message ?? "Store unavailable."));
   }, [slug]);
+  useEffect(() => {
+    if (!data || !window.location.hash) return;
+    let targetId = window.location.hash.slice(1);
+    try {
+      targetId = decodeURIComponent(targetId);
+    } catch {
+      return;
+    }
+    if (!targetId.startsWith("product-")) return;
+    const timer = window.setTimeout(() => {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+      target.focus({ preventScroll: true });
+      target.classList.add("store-product-highlight");
+      window.setTimeout(() => target.classList.remove("store-product-highlight"), 1600);
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [data]);
   const products = useMemo(() => {
     const rows = (data?.products ?? []).filter(
       (product) =>
@@ -553,7 +573,7 @@ function StoreProduct({
   if (product.itemType === "service") {
     const servicePrice = product.salePrice ?? product.price;
     return (
-      <article className="store-product-v2 service-card" aria-labelledby={`product-${product.id}`}>
+      <article id={`product-${product.id}`} className="store-product-v2 service-card" aria-labelledby={`product-title-${product.id}`} tabIndex={-1}>
         <div className="store-product-image">
           {activeImage ? (
             <ManagedImage src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
@@ -576,7 +596,7 @@ function StoreProduct({
             {product.brand ?? "Local service"}
             {product.collection ? ` · ${product.collection}` : ""}
           </small>
-          <h3 id={`product-${product.id}`}>{product.name}</h3>
+          <h3 id={`product-title-${product.id}`}>{product.name}</h3>
           <p>{product.description}</p>
           <div className="store-stock-line">
             <span className="in-stock">
@@ -610,7 +630,7 @@ function StoreProduct({
     );
   }
   return (
-    <article className="store-product-v2" aria-labelledby={`product-${product.id}`}>
+    <article id={`product-${product.id}`} className="store-product-v2" aria-labelledby={`product-title-${product.id}`} tabIndex={-1}>
       <div className="store-product-image">
         {activeImage ? (
           <ManagedImage src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
@@ -633,7 +653,7 @@ function StoreProduct({
           {product.brand ?? "Local brand"}
           {product.collection ? ` · ${product.collection}` : ""}
         </small>
-        <h3 id={`product-${product.id}`}>{product.name}</h3>
+        <h3 id={`product-title-${product.id}`}>{product.name}</h3>
         <p>{product.description}</p>
         <div className="store-product-fulfillment" aria-label="Fulfilment options">
           {fulfillmentMethods.map((method) => (
