@@ -212,6 +212,9 @@ type ServiceBooking = {
   pricingModel: string;
   customerNotes: string | null;
   merchantNote: string | null;
+  orderId: number | null;
+  paymentStatus: string;
+  paymentExpiresAt: string | null;
   serviceName: string;
   customerName: string;
   customerEmail: string;
@@ -2342,6 +2345,13 @@ function ServiceBookingsPanel({
     });
   }
   async function update(booking: ServiceBooking, status: string, proposal?: { scheduledStart: string; note: string }) {
+    let quotePrice: number | undefined;
+    if (status === "confirmed" && ["quote", "from"].includes(booking.pricingModel)) {
+      const entered = window.prompt("Enter the final service price in Namibian dollars", booking.priceSnapshot ? String(booking.priceSnapshot) : "")?.trim();
+      if (!entered) return;
+      quotePrice = Number(entered);
+      if (!Number.isFinite(quotePrice) || quotePrice <= 0) return setMessage("Enter a valid service price greater than zero.");
+    }
     let scheduledStart: string | undefined;
     if (status === "reschedule_proposed") {
       if (!proposal) return beginReschedule(booking);
@@ -2368,7 +2378,7 @@ function ServiceBookingsPanel({
       response = await fetch("/api/merchant/service-bookings", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id: booking.id, status, scheduledStart, note }),
+        body: JSON.stringify({ id: booking.id, status, scheduledStart, note, quotePrice }),
       });
     } catch {
       if (status === "reschedule_proposed") setRescheduleSaving(false);
@@ -2417,6 +2427,7 @@ function ServiceBookingsPanel({
                   ? "Quote required"
                   : money(booking.priceSnapshot)}
               </strong>
+              <small>Payment · {pretty(booking.paymentStatus)}</small>
             </div>
           </header>
           <div className="merchant-order-detail">

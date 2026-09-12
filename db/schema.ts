@@ -310,9 +310,14 @@ export const serviceBookings = pgTable("service_bookings", {
   pricingModel: varchar("pricing_model", { length: 32 }).notNull().default("fixed"),
   customerNotes: text("customer_notes"),
   merchantNote: text("merchant_note"),
+  orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
+  paymentStatus: varchar("payment_status", { length: 32 }).notNull().default("not_started"),
+  paymentExpiresAt: timestamp("payment_expires_at", { withTimezone: true }),
+  quoteAcceptedAt: timestamp("quote_accepted_at", { withTimezone: true }),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [index("idx_service_bookings_merchant_status").on(table.merchantId, table.status), index("idx_service_bookings_customer").on(table.customerId, table.createdAt), index("idx_service_bookings_schedule").on(table.merchantId, table.scheduledStart)]);
+}, (table) => [index("idx_service_bookings_merchant_status").on(table.merchantId, table.status), index("idx_service_bookings_customer").on(table.customerId, table.createdAt), index("idx_service_bookings_schedule").on(table.merchantId, table.scheduledStart), uniqueIndex("idx_service_bookings_order").on(table.orderId), index("idx_service_bookings_payment").on(table.paymentStatus, table.paymentExpiresAt)]);
 export const auditEvents = pgTable("audit_events", { id: serial("id").primaryKey(), actorRef: text("actor_ref").notNull(), action: varchar("action", { length: 120 }).notNull(), resourceType: varchar("resource_type", { length: 80 }).notNull(), resourceId: text("resource_id").notNull(), metadata: jsonb("metadata").notNull().default({}), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [index("idx_audit_resource").on(table.resourceType, table.resourceId)]);
 export const auditEventReviews = pgTable("audit_event_reviews", { id: serial("id").primaryKey(), auditEventId: integer("audit_event_id").notNull().references(() => auditEvents.id, { onDelete: "cascade" }), status: varchar("status", { length: 24 }).notNull().default("acknowledged"), note: text("note"), reviewedBy: text("reviewed_by").notNull(), reviewedAt: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow() }, (table) => [uniqueIndex("idx_audit_event_review_event").on(table.auditEventId), index("idx_audit_event_review_status").on(table.status)]);
 export const dataBreachIncidents = pgTable("data_breach_incidents", {

@@ -1,6 +1,6 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../db";
-import { auditEvents, checkoutGroups, merchantPaymentAllocations, orders, paymentTransactions } from "../db/schema";
+import { auditEvents, checkoutGroups, merchantPaymentAllocations, orders, paymentTransactions, serviceBookings } from "../db/schema";
 import { lookupPayTodayPayment, normalizePayTodayStatus } from "./paytoday";
 import { cancelCheckoutAllocationsAndReleaseStock, makeCheckoutAllocationsPayable } from "./settlements";
 import { ORDER_WORKFLOW } from "./order-workflows";
@@ -11,7 +11,7 @@ export async function reconcilePayTodayTransaction(transactionId: number, actorR
   if (!transaction?.providerPaymentToken) throw new Error("PayToday transaction is not ready for reconciliation.");
   const [checkout] = await db.select().from(checkoutGroups).where(eq(checkoutGroups.id, transaction.checkoutGroupId)).limit(1);
   if (!checkout) throw new Error("Checkout could not be found.");
-  const checkoutOrders = await db.select({ workflow: orders.workflow }).from(orders).where(eq(orders.checkoutGroupId, checkout.id));
+  const checkoutOrders = await db.select({ id: orders.id, workflow: orders.workflow, fulfillmentMethod: orders.fulfillmentMethod }).from(orders).where(eq(orders.checkoutGroupId, checkout.id));
   const merchantConfirmedWorkflow = checkoutOrders.length > 0 && checkoutOrders.every((order) => order.workflow === ORDER_WORKFLOW);
 
   const provider = await lookupPayTodayPayment(transaction.providerPaymentToken);
@@ -32,6 +32,8 @@ export async function reconcilePayTodayTransaction(transactionId: number, actorR
     const checkoutStatus = paidAfterCancellation ? "refund_required" : status === "paid" ? "paid" : status === "failed" && merchantConfirmedWorkflow ? "awaiting_payment" : status === "failed" ? "payment_failed" : status;
     await tx.update(checkoutGroups).set({ paymentStatus: status, status: checkoutStatus, updatedAt: at }).where(eq(checkoutGroups.id, checkout.id));
     if (["paid", "failed", "cancelled", "expired"].includes(status)) await tx.update(orders).set({ paymentStatus: status, status: paidAfterCancellation ? "cancelled" : status === "paid" ? merchantConfirmedWorkflow ? "paid" : "pending_merchant_confirmation" : status === "failed" && merchantConfirmedWorkflow ? "accepted" : checkoutStatus, updatedAt: at }).where(eq(orders.checkoutGroupId, checkout.id));
+    const serviceOrderIds = checkoutOrders.filter((order) => order.fulfillmentMethod === "service_booking").map((order) => order.id);
+    if (serviceOrderIds.length && ["paid", "failed", "cancelled", "expired"].includes(status)) await tx.update(serviceBookings).set({ paymentStatus: status, paidAt: status === "paid" ? at : null, updatedAt: at }).where(inArray(serviceBookings.orderId, serviceOrderIds));
     if (paidAfterCancellation) await tx.update(merchantPaymentAllocations).set({ settlementStatus: "refund_required", updatedAt: at }).where(eq(merchantPaymentAllocations.checkoutGroupId, checkout.id));
     else if (status === "paid" && checkout.paymentStatus !== "paid") await makeCheckoutAllocationsPayable(tx, checkout.id, at);
     if (["failed", "cancelled", "expired"].includes(status) && !(merchantConfirmedWorkflow && status === "failed") && !["failed", "cancelled", "expired"].includes(checkout.paymentStatus)) await cancelCheckoutAllocationsAndReleaseStock(tx, checkout.id, Number(checkout.customerRef), at);

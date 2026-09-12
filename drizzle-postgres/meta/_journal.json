@@ -253,6 +253,13 @@
       "when": 1790006400000,
       "tag": "0035_safe_document_replacements",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790092800000,
+      "tag": "0036_service_booking_payments",
+      "breakpoints": true
     }
   ]
 }

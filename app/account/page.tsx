@@ -39,6 +39,10 @@ type ServiceBooking = {
   pricingModel: string;
   customerNotes: string | null;
   merchantNote: string | null;
+  orderId: number | null;
+  paymentStatus: string;
+  paymentExpiresAt: string | null;
+  paidAt: string | null;
   serviceName: string;
   storeName: string;
   storeSlug: string;
@@ -695,6 +699,24 @@ function CustomerBooking({
   reload: () => Promise<void>;
   setMessage: (message: string) => void;
 }) {
+  const [openingPayment, setOpeningPayment] = useState(false);
+  async function accept() {
+    const response = await fetch("/api/service-bookings", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: booking.id, action: "accept" }) });
+    const result = await response.json();
+    setMessage(response.ok ? `${booking.reference} accepted. Payment is now open for 30 minutes.` : result.error);
+    if (response.ok) await reload();
+  }
+  async function pay() {
+    if (!booking.orderId) return;
+    const phone = window.prompt("Enter the mobile number PayToday should use for verification")?.trim();
+    if (!phone) return;
+    setOpeningPayment(true);
+    const response = await fetch("/api/payments/paytoday", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderId: booking.orderId, phone }) });
+    const result = await response.json();
+    if (response.ok && result.paymentUrl) { window.location.assign(result.paymentUrl); return; }
+    setMessage(result.error ?? "Payment could not be opened.");
+    setOpeningPayment(false);
+  }
   async function cancel() {
     if (!window.confirm(`Cancel ${booking.reference}?`)) return;
     const response = await fetch("/api/service-bookings", {
@@ -728,6 +750,7 @@ function CustomerBooking({
           ? "Quote"
           : `N$${Number(booking.priceSnapshot).toFixed(2)}`}
       </strong>
+      <span className={`payment-state payment-${booking.paymentStatus}`}>Payment · {booking.paymentStatus.replaceAll("_", " ")}</span>
       <div className="customer-order-detail">
         <p>
           <span>
@@ -739,6 +762,8 @@ function CustomerBooking({
         </p>
         <div>
           <a href={`/stores/${booking.storeSlug}`}>View provider</a>
+          {["quote_proposed", "reschedule_proposed"].includes(booking.status) && <button onClick={accept}>Accept proposal</button>}
+          {booking.status === "confirmed" && booking.orderId && ["not_started", "pending", "failed"].includes(booking.paymentStatus) && <button disabled={openingPayment} onClick={pay}>{openingPayment ? "Opening PayToday…" : `Pay service · N$${Number(booking.priceSnapshot).toFixed(2)}`}</button>}
           {["requested", "confirmed", "reschedule_proposed"].includes(
             booking.status,
           ) && <button onClick={cancel}>Cancel booking</button>}

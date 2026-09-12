@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const user = await getChatGPTUser();
   if (!user) return Response.json({ error: "Sign in is required to pay for an order." }, { status: 401 });
   if (!getPayTodayAvailability().configured) return Response.json({ error: "PayToday is not currently available." }, { status: 409 });
-  const payload = await request.json().catch(() => null) as { orderId?: number } | null;
+  const payload = await request.json().catch(() => null) as { orderId?: number; email?: string; phone?: string } | null;
   if (!Number.isInteger(payload?.orderId)) return Response.json({ error: "Choose a confirmed order to pay." }, { status: 400 });
   const db = getDb();
   const [selected] = await db.select().from(orders).where(and(eq(orders.id, payload!.orderId!), eq(orders.customerRef, user.userId))).limit(1);
@@ -26,6 +26,11 @@ export async function POST(request: Request) {
   if (!checkout || groupOrders.some((order) => !["accepted", "payment_processing"].includes(order.status) || order.paymentStatus === "paid")) return Response.json({ error: "Every store must confirm the order before payment can begin." }, { status: 409 });
   const paymentDeadline = groupOrders.map((order) => order.paymentExpiresAt).filter((value): value is Date => value instanceof Date).sort((a, b) => a.getTime() - b.getTime())[0] ?? deadlineFrom(new Date(), CUSTOMER_PAYMENT_MINUTES);
   if (paymentDeadline <= new Date()) return Response.json({ error: "The payment window has expired. Reserved stock will be released." }, { status: 409 });
+  const paymentEmail = payload?.email?.trim().toLowerCase() || selected.customerEmail || user.email;
+  const paymentPhone = payload?.phone?.trim() || selected.customerPhone || "";
+  if (!/^\S+@\S+\.\S+$/.test(paymentEmail)) return Response.json({ error: "Enter a valid payment email." }, { status: 400 });
+  if (!/^\+?[0-9][0-9 ()-]{6,20}$/.test(paymentPhone)) return Response.json({ error: "Enter a valid mobile number for PayToday verification." }, { status: 400 });
+  if (paymentEmail !== selected.customerEmail || paymentPhone !== selected.customerPhone) await db.update(orders).set({ customerEmail: paymentEmail, customerPhone: paymentPhone, updatedAt: new Date() }).where(eq(orders.id, selected.id));
   const prepared = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(${checkout.id}, 71)`);
     const [existing] = await tx.select().from(paymentTransactions).where(and(eq(paymentTransactions.checkoutGroupId, checkout.id), eq(paymentTransactions.provider, "paytoday"), inArray(paymentTransactions.status, ["creating", "pending"]))).orderBy(desc(paymentTransactions.createdAt)).limit(1);
@@ -43,7 +48,7 @@ export async function POST(request: Request) {
     const names = user.displayName.trim().split(/\s+/);
     const publicOrigin = (process.env.PUBLIC_APP_URL ?? new URL(request.url).origin).replace(/\/$/, "");
     const returnUrl = new URL("/api/payments/paytoday/return", publicOrigin); returnUrl.searchParams.set("reference", checkout.reference);
-    const result = await createPayTodayPayment({ amount: checkout.total, invoiceNumber: checkout.reference, firstName: names[0] ?? "Customer", lastName: names.slice(1).join(" ") || "NeuroCity", email: selected.customerEmail ?? user.email, phone: selected.customerPhone ?? "", returnUrl: returnUrl.toString() });
+    const result = await createPayTodayPayment({ amount: checkout.total, invoiceNumber: checkout.reference, firstName: names[0] ?? "Customer", lastName: names.slice(1).join(" ") || "NeuroCity", email: paymentEmail, phone: paymentPhone, returnUrl: returnUrl.toString() });
     const at = new Date();
     await db.transaction(async (tx) => {
       await tx.update(paymentTransactions).set({ providerPaymentToken: result.paymentToken, providerReference: result.providerReference, checkoutUrl: result.checkoutUrl, status: "pending", updatedAt: at }).where(eq(paymentTransactions.id, transaction.id));
