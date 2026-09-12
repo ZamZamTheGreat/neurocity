@@ -79,6 +79,7 @@
 .store-product-dialog .store-product-copy>small{color:#89651f;font-size:.72rem;letter-spacing:.11em}
 .store-product-dialog .store-product-copy h3{margin:9px 0 13px;font-size:clamp(1.75rem,3vw,2.45rem);line-height:1.05;letter-spacing:-.04em}
 .store-product-dialog .store-product-copy>p{margin:0 0 17px;color:#625d55;font-size:.9rem;line-height:1.65}
+.store-product-dialog .store-product-copy>p,.store-product-dialog .variant-pending{display:block;max-height:none;overflow:visible;white-space:normal;text-overflow:clip;-webkit-box-orient:initial;-webkit-line-clamp:unset}
 .store-product-dialog .store-product-fulfillment{padding-bottom:15px;border-bottom:1px solid #ece7df}
 .store-product-dialog .store-variant-select select{min-height:50px;border-radius:11px;background-color:#fcfbf8}
 .store-product-dialog .store-stock-line{align-items:flex-start;margin:12px 0}
