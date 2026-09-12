@@ -792,6 +792,16 @@ test("uses compact dismissible storefront notifications and visible bag motion",
   assert.match(shoppingCss, /width:min\(300px,calc\(100vw - 28px\)\)/);
 });
 
+test("uses the compact homepage product scale in merchant storefronts", async () => {
+  const homepage = await readFile(new URL("../app/network-home.css", import.meta.url), "utf8");
+  const storefront = await readFile(new URL("../app/shopping-journey-v2.css", import.meta.url), "utf8");
+  assert.match(homepage, /network-featured-products>div\{display:grid;grid-template-columns:repeat\(4/);
+  assert.match(homepage, /aspect-ratio:4\/5/);
+  assert.match(storefront, /store-product-grid-v2\{grid-template-columns:repeat\(4/);
+  assert.match(storefront, /store-product-image\{height:auto;aspect-ratio:4\/5/);
+  assert.match(storefront, /max-width:560px[^}]+store-product-grid-v2\{grid-template-columns:repeat\(2/s);
+});
+
 test("protects checkout and database capacity under concurrent traffic", async () => {
   const database = await readFile(new URL("../db/index.ts", import.meta.url), "utf8");
   const orders = await readFile(new URL("../app/api/orders/route.ts", import.meta.url), "utf8");
