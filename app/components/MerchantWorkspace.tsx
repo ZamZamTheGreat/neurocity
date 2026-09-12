@@ -163,6 +163,7 @@ type Merchant = {
   contactEmail: string | null;
   contactPhone: string | null;
   website: string | null;
+  socialProfiles: string;
   pickupLocation: string | null;
   deliveryMode: string;
   setupStep: number;
@@ -700,7 +701,13 @@ export default function MerchantWorkspace({
       <aside id="merchant-navigation-drawer" className={menuOpen ? "workspace-drawer-open" : ""}>
         <button className="workspace-drawer-close" onClick={() => setMenuOpen(false)} aria-label="Close merchant menu">×</button>
         <div className="merchant-mark">
-          <ManagedImage src={merchant?.logoUrl ?? "/lightwork-logo.png"} alt="" width={160} height={160} />
+          {merchant?.logoUrl ? (
+            <ManagedImage src={merchant.logoUrl} alt="" width={160} height={160} />
+          ) : (
+            <span className="merchant-brand-placeholder" aria-hidden="true">
+              {merchant?.name?.trim().slice(0, 1).toUpperCase() || "N"}
+            </span>
+          )}
           <div>
             <b>{merchant?.name ?? "Merchant"}</b>
             <span>
@@ -1299,6 +1306,7 @@ function SetupPanel({
             <div>
               <label>Contact person<input value={merchant.contactName ?? ""} onChange={(e) => setMerchant({ ...merchant, contactName: e.target.value })} /></label>
               <label>Website<input value={merchant.website ?? ""} onChange={(e) => setMerchant({ ...merchant, website: e.target.value })} /></label>
+              <label className="wide">Social media links<textarea placeholder="Paste Instagram, Facebook, TikTok or LinkedIn links, one per line" value={merchant.socialProfiles ?? ""} onChange={(e) => setMerchant({ ...merchant, socialProfiles: e.target.value })} /></label>
               <label>Location name<input value={merchant.branchName} onChange={(e) => setMerchant({ ...merchant, branchName: e.target.value })} /></label>
               <label>Location phone<input value={merchant.branchPhone} onChange={(e) => setMerchant({ ...merchant, branchPhone: e.target.value })} /></label>
             </div>

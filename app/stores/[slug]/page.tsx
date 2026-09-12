@@ -509,6 +509,20 @@ function StoreProduct({
   const purchasable = preorder || product.availability === "available";
   const price = variant?.salePrice ?? variant?.price;
   const [adding, setAdding] = useState(false);
+  const [viewing, setViewing] = useState(false);
+  useEffect(() => {
+    if (!viewing) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setViewing(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [viewing]);
   async function ask() {
     const message = window.prompt(
       `What would you like to ask about ${product.name}?`,
@@ -570,10 +584,39 @@ function StoreProduct({
     );
     window.location.href = "/account";
   }
+  if (!viewing) {
+    const displayPrice = product.itemType === "service"
+      ? product.salePrice ?? product.price
+      : Number.isFinite(productPrice(product)) ? productPrice(product) : null;
+    return (
+      <article id={`product-${product.id}`} className="store-product-v2 store-product-preview" aria-labelledby={`product-title-${product.id}`} tabIndex={-1}>
+        <div className="store-product-image">
+          {activeImage ? <ManagedImage src={activeImage} alt={product.name} /> : <span>{product.itemType === "service" ? "Service image coming soon" : "Image coming soon"}</span>}
+          {product.badge && <small>{product.badge}</small>}
+          <button aria-label={`Save ${product.name} to wishlist`} onClick={() => accountAction({ action: "wishlist", productId: product.id })}>♡</button>
+        </div>
+        <div className="store-product-preview-copy">
+          <small>{product.brand ?? (product.itemType === "service" ? "Local service" : "Local brand")}</small>
+          <h3 id={`product-title-${product.id}`}>{product.name}</h3>
+          <div className="store-product-preview-meta">
+            <strong>{product.pricingModel === "quote" || displayPrice === null ? "Request a quote" : `${product.pricingModel === "from" ? "From " : ""}N$${displayPrice.toFixed(2)}`}</strong>
+            {product.itemType === "product" && product.variants.length > 0 && <span>{product.variants.length} {product.variants.length === 1 ? "option" : "options"}</span>}
+            {product.itemType === "service" && product.durationMinutes && <span>{product.durationMinutes} min</span>}
+          </div>
+          <button className="store-view-product" type="button" onClick={() => setViewing(true)}>
+            View {product.itemType === "service" ? "service" : "product"}
+          </button>
+        </div>
+      </article>
+    );
+  }
   if (product.itemType === "service") {
     const servicePrice = product.salePrice ?? product.price;
     return (
-      <article id={`product-${product.id}`} className="store-product-v2 service-card" aria-labelledby={`product-title-${product.id}`} tabIndex={-1}>
+      <div className="store-product-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setViewing(false); }}>
+      <section className="store-product-dialog" role="dialog" aria-modal="true" aria-labelledby={`product-dialog-title-${product.id}`}>
+        <button className="store-product-dialog-close" type="button" aria-label="Close product details" onClick={() => setViewing(false)}>×</button>
+      <article className="store-product-v2 service-card" aria-labelledby={`product-dialog-title-${product.id}`}>
         <div className="store-product-image">
           {activeImage ? (
             <ManagedImage src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
@@ -596,7 +639,7 @@ function StoreProduct({
             {product.brand ?? "Local service"}
             {product.collection ? ` · ${product.collection}` : ""}
           </small>
-          <h3 id={`product-title-${product.id}`}>{product.name}</h3>
+          <h3 id={`product-dialog-title-${product.id}`}>{product.name}</h3>
           <p>{product.description}</p>
           <div className="store-stock-line">
             <span className="in-stock">
@@ -627,10 +670,15 @@ function StoreProduct({
           )}
         </div>
       </article>
+      </section>
+      </div>
     );
   }
   return (
-    <article id={`product-${product.id}`} className="store-product-v2" aria-labelledby={`product-title-${product.id}`} tabIndex={-1}>
+    <div className="store-product-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setViewing(false); }}>
+    <section className="store-product-dialog" role="dialog" aria-modal="true" aria-labelledby={`product-dialog-title-${product.id}`}>
+      <button className="store-product-dialog-close" type="button" aria-label="Close product details" onClick={() => setViewing(false)}>×</button>
+    <article className="store-product-v2" aria-labelledby={`product-dialog-title-${product.id}`}>
       <div className="store-product-image">
         {activeImage ? (
           <ManagedImage src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
@@ -653,7 +701,7 @@ function StoreProduct({
           {product.brand ?? "Local brand"}
           {product.collection ? ` · ${product.collection}` : ""}
         </small>
-        <h3 id={`product-title-${product.id}`}>{product.name}</h3>
+        <h3 id={`product-dialog-title-${product.id}`}>{product.name}</h3>
         <p>{product.description}</p>
         <div className="store-product-fulfillment" aria-label="Fulfilment options">
           {fulfillmentMethods.map((method) => (
@@ -747,6 +795,8 @@ function StoreProduct({
         )}
       </div>
     </article>
+    </section>
+    </div>
   );
 }
 

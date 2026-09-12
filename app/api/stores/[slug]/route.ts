@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { merchants, merchantApplications, productVariants, products, storeBranches, storeHours, storePromotions, variantInventory } from "../../../../db/schema";
+import { merchants, productVariants, products, storeBranches, storeHours, storePromotions, variantInventory } from "../../../../db/schema";
 import { parseSocialProfiles } from "../../../../lib/social-profiles";
 import { publicCacheHeaders } from "../../../../lib/server-cache";
 
@@ -16,8 +16,7 @@ export async function GET(_request: Request, context: { params: Promise<{ slug: 
   const stock = variants.length ? await db.select().from(variantInventory).where(inArray(variantInventory.variantId, variants.map((variant) => variant.id))) : [];
   const promotions = await db.select().from(storePromotions).where(and(eq(storePromotions.merchantId, store.id), eq(storePromotions.status, "active")));
   const contacts = store.contactOptions as Record<string, string>;
-  const [application] = await db.select({ socialProfiles: merchantApplications.socialProfiles }).from(merchantApplications).where(eq(merchantApplications.merchantId, store.id)).limit(1);
-  const socialProfiles = parseSocialProfiles(contacts.socialProfiles || application?.socialProfiles);
+  const socialProfiles = parseSocialProfiles(contacts.socialProfiles);
   const publicStore = { ...store, socialProfiles, logoUrl: store.logoUrl?.startsWith("r2://") ? `/api/stores/${encodeURIComponent(store.slug)}/media?type=logo` : store.logoUrl, bannerUrl: store.bannerUrl?.startsWith("r2://") ? `/api/stores/${encodeURIComponent(store.slug)}/media?type=banner` : store.bannerUrl };
   return Response.json({ store: publicStore, branches: branches.map((branch) => ({ ...branch, hours: hours.filter((item) => item.branchId === branch.id) })), promotions, products: catalogue.map((product) => { const images = (product.imageUrls as string[] | null) ?? (product.imageUrl ? [product.imageUrl] : []); const imageUrls = images.map((image, slot) => image.startsWith("r2://") ? `/api/stores/${encodeURIComponent(store.slug)}/media?type=product&productId=${product.id}&slot=${slot}` : image); return { ...product, imageUrl: imageUrls[0] ?? product.imageUrl, imageUrls, variants: variants.filter((variant) => variant.productId === product.id).map((variant) => { const variantStock = stock.filter((item) => item.variantId === variant.id); return { ...variant, imageUrl: variant.imageUrl?.startsWith("r2://") ? `/api/stores/${encodeURIComponent(store.slug)}/media?type=variant&variantId=${variant.id}` : variant.imageUrl, stock: variantStock, available: variantStock.length ? variantStock.reduce((total, item) => total + Math.max(0, item.onHand - item.reserved - item.safetyStock), 0) : null }; }) }; }) }, { headers: publicCacheHeaders(10, 30) });
 }

@@ -7,7 +7,7 @@ import { requirePilotMerchant } from "../auth";
 
 type Hours = { dayOfWeek: number; opensAt: string | null; closesAt: string | null; closed: boolean }[];
 type SetupPayload = {
-  name?: string; category?: string; enabledCategories?: string[]; contactName?: string; contactEmail?: string; contactPhone?: string; website?: string;
+  name?: string; category?: string; enabledCategories?: string[]; contactName?: string; contactEmail?: string; contactPhone?: string; website?: string; socialProfiles?: string;
   pickupLocation?: string; deliveryMode?: string; tagline?: string; description?: string; logoUrl?: string; bannerUrl?: string;
   isPublic?: boolean; returnsPolicy?: string; shippingPolicy?: string; privacyPolicy?: string; pickupEnabled?: boolean;
   deliveryEnabled?: boolean; branchName?: string; branchAddress?: string; branchPhone?: string; hours?: Hours;
@@ -20,7 +20,8 @@ export async function GET() {
   const [merchant] = await db.select().from(merchants).where(eq(merchants.id, access.merchantId)).limit(1);
   const [branch] = await db.select().from(storeBranches).where(and(eq(storeBranches.merchantId, access.merchantId), eq(storeBranches.isPrimary, true))).limit(1);
   const hours = branch ? await db.select().from(storeHours).where(eq(storeHours.branchId, branch.id)) : [];
-  return Response.json({ merchant, branch: branch ?? null, hours, readiness: merchantReadiness(merchant, branch, hours), role: access.membership.role });
+  const contacts = (merchant.contactOptions as Record<string, string> | null) ?? {};
+  return Response.json({ merchant: { ...merchant, socialProfiles: contacts.socialProfiles ?? "" }, branch: branch ?? null, hours, readiness: merchantReadiness(merchant, branch, hours), role: access.membership.role });
 }
 
 export async function PATCH(request: Request) {
@@ -46,7 +47,7 @@ export async function PATCH(request: Request) {
   if (payload.isPublic && (!email || !branchAddress || !payload.tagline?.trim() || !payload.description?.trim() || !logoUrl || !bannerUrl || !payload.contactPhone?.trim() || hours.length !== 7 || invalidOpenHours || !payload.returnsPolicy?.trim() || fulfillmentMethods.length === 0)) return Response.json({ error: "Complete branding, contact details, primary branch address, fulfilment, all seven opening-hour entries and the returns policy before publishing." }, { status: 409 });
   const publishing = payload.isPublic === true;
   const existingContacts = currentMerchant.contactOptions as Record<string, string>;
-  const values = { name, category, primaryCategory: category, enabledCategories, contactName: payload.contactName?.trim() || null, contactEmail: email || null, contactPhone: payload.contactPhone?.trim() || null, website: payload.website?.trim() || null, pickupLocation: branchAddress || currentMerchant.pickupLocation, deliveryMode: payload.deliveryMode === "platform_managed" ? "platform_managed" : "merchant_managed", tagline: payload.tagline?.trim() || null, description: payload.description?.trim() || null, logoUrl: logoUrl || null, bannerUrl: bannerUrl || null, policies: { returns: payload.returnsPolicy?.trim() || "", shipping: payload.shippingPolicy?.trim() || "", privacy: payload.privacyPolicy?.trim() || "" }, contactOptions: { ...existingContacts, phone: payload.contactPhone?.trim() || "", email: email || "", website: payload.website?.trim() || "" }, fulfillmentMethods, isPublic: publishing, status: publishing && currentMerchant.status === "onboarding" ? "active" : currentMerchant.status, setupStep: 3 };
+  const values = { name, category, primaryCategory: category, enabledCategories, contactName: payload.contactName?.trim() || null, contactEmail: email || null, contactPhone: payload.contactPhone?.trim() || null, website: payload.website?.trim() || null, pickupLocation: branchAddress || currentMerchant.pickupLocation, deliveryMode: payload.deliveryMode === "platform_managed" ? "platform_managed" : "merchant_managed", tagline: payload.tagline?.trim() || null, description: payload.description?.trim() || null, logoUrl: logoUrl || null, bannerUrl: bannerUrl || null, policies: { returns: payload.returnsPolicy?.trim() || "", shipping: payload.shippingPolicy?.trim() || "", privacy: payload.privacyPolicy?.trim() || "" }, contactOptions: { ...existingContacts, phone: payload.contactPhone?.trim() || "", email: email || "", website: payload.website?.trim() || "", socialProfiles: payload.socialProfiles?.trim() || "" }, fulfillmentMethods, isPublic: publishing, status: publishing && currentMerchant.status === "onboarding" ? "active" : currentMerchant.status, setupStep: 3 };
   const result = await db.transaction(async (tx) => {
     const [merchant] = await tx.update(merchants).set(values).where(eq(merchants.id, access.merchantId)).returning();
     let [branch] = await tx.select().from(storeBranches).where(and(eq(storeBranches.merchantId, access.merchantId), eq(storeBranches.isPrimary, true))).limit(1);
@@ -59,5 +60,5 @@ export async function PATCH(request: Request) {
     await tx.insert(auditEvents).values({ actorRef: access.user.userId, action: publishing ? "merchant.storefront_published" : "merchant.setup_updated", resourceType: "merchant", resourceId: String(access.merchantId), metadata: { isPublic: values.isPublic, category, setupStep: values.setupStep, previousStatus: currentMerchant.status, status: values.status }, createdAt: new Date() });
     return { merchant, branch };
   });
-  return Response.json({ ...result, hours, readiness: merchantReadiness(result.merchant, result.branch, hours) });
+  return Response.json({ ...result, merchant: { ...result.merchant, socialProfiles: payload.socialProfiles?.trim() || "" }, hours, readiness: merchantReadiness(result.merchant, result.branch, hours) });
 }

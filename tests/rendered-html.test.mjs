@@ -643,9 +643,10 @@ test("shows validated merchant social profiles on the storefront", async () => {
   const route = await readFile(new URL("../app/api/stores/[slug]/route.ts", import.meta.url), "utf8");
   const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
   const parser = await readFile(new URL("../lib/social-profiles.ts", import.meta.url), "utf8");
-  assert.match(approval, /socialProfiles: application\.socialProfiles/);
-  assert.match(setup, /\.\.\.existingContacts/);
+  assert.doesNotMatch(approval, /socialProfiles: application\.socialProfiles/);
+  assert.match(setup, /socialProfiles: payload\.socialProfiles/);
   assert.match(route, /parseSocialProfiles/);
+  assert.doesNotMatch(route, /application\?\.socialProfiles/);
   assert.match(storefront, /store-social-links/);
   assert.match(storefront, /noopener noreferrer/);
   assert.match(parser, /instagram\.com/);
@@ -809,6 +810,32 @@ test("uses the compact homepage product scale in merchant storefronts", async ()
   assert.match(storefront, /store-product-grid-v2\{grid-template-columns:repeat\(4/);
   assert.match(storefront, /store-product-image\{height:auto;aspect-ratio:4\/5/);
   assert.match(storefront, /max-width:560px[^}]+store-product-grid-v2\{grid-template-columns:repeat\(2/s);
+});
+
+test("starts approved storefront setup without borrowed presentation details", async () => {
+  const approval = await readFile(new URL("../app/api/admin/applications/route.ts", import.meta.url), "utf8");
+  const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");
+  assert.match(approval, /logoUrl: null, bannerUrl: null/);
+  assert.match(approval, /contactOptions: \{\}, fulfillmentMethods: \[\], isPublic: false/);
+  assert.doesNotMatch(approval, /contactName: application\.representativeName/);
+  assert.doesNotMatch(workspace, /merchant\?\.logoUrl \?\? "\/lightwork-logo\.png"/);
+  assert.match(workspace, /merchant-brand-placeholder/);
+});
+
+test("uses compact storefront cards with a complete product detail view", async () => {
+  const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/shopping-journey-v2.css", import.meta.url), "utf8");
+  assert.match(storefront, /store-product-preview/);
+  assert.match(storefront, /View \{product\.itemType === "service" \? "service" : "product"\}/);
+  assert.match(storefront, /role="dialog" aria-modal="true"/);
+  assert.match(styles, /\.store-product-modal/);
+  assert.match(styles, /\.store-product-preview-copy/);
+});
+
+test("matches marketplace store-card density to homepage featured products", async () => {
+  const styles = await readFile(new URL("../app/shopping-journey-v2.css", import.meta.url), "utf8");
+  assert.match(styles, /neurocity-marketplace\.marketplace-shell \.public-store-grid\{grid-template-columns:repeat\(4/);
+  assert.match(styles, /max-width:760px[^}]+public-store-grid\{grid-template-columns:repeat\(2/s);
 });
 
 test("keeps the featured heading visible and deep-links to the selected storefront item", async () => {
@@ -1183,7 +1210,7 @@ test("supports primary and additional merchant discovery categories", async () =
   assert.match(schema, /categories: jsonb\("categories"\)/);
   assert.match(application, /Additional categories/);
   assert.match(applicationApi, /const categories = \[\.\.\.new Set/);
-  assert.match(approvalApi, /enabledCategories: Array\.isArray\(application\.categories\)/);
+  assert.match(approvalApi, /enabledCategories: \[application\.category\]/);
   assert.match(setup, /merchant-category-picker/);
   assert.match(setupApi, /enabledCategories = \[\.\.\.new Set\(\[category/);
   assert.match(storesApi, /categories: merchants\.enabledCategories/);
