@@ -11,6 +11,7 @@ const fields = {
   registrationNumber: "",
   businessType: "",
   category: "",
+  categories: [] as string[],
   offeringType: "",
   locationType: "physical_store",
   mainOperatingArea: "",
@@ -56,7 +57,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
   const [mallName, setMallName] = useState(
     mallSlug ? "" : "NeuroCity Marketplace",
   );
-  const update = (name: string, value: string | number | boolean) =>
+  const update = (name: string, value: string | number | boolean | string[]) =>
     setForm((current) => ({ ...current, [name]: value }));
 
   useEffect(() => {
@@ -68,7 +69,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const draft: Record<string, string | boolean> = { ...form };
+      const draft: Record<string, string | boolean | string[]> = { ...form };
       delete draft.password;
       delete draft.confirmPassword;
       delete draft.termsAccepted;
@@ -222,7 +223,7 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
             <select
               required
               value={form.category}
-              onChange={(event) => update("category", event.target.value)}
+              onChange={(event) => setForm((current) => ({ ...current, category: event.target.value, categories: [...new Set([event.target.value, ...current.categories])] }))}
             >
               <option value="" disabled>
                 Select the best match
@@ -235,6 +236,16 @@ export default function ApplyPage({ mallSlug }: { mallSlug?: string } = {}) {
             </select>
             {selectedCategory && <small>{selectedCategory.includes}</small>}
           </label>
+          <fieldset className="category-multiselect wide">
+            <legend>Additional categories</legend>
+            <small>Select all other categories that accurately describe your business.</small>
+            <div>
+              {merchantCategories.filter((item) => item.name !== form.category).map((item) => {
+                const selected = form.categories.includes(item.name);
+                return <label className={selected ? "selected" : ""} key={item.name}><input type="checkbox" checked={selected} onChange={() => update("categories", selected ? form.categories.filter((name) => name !== item.name) : [...form.categories, item.name])} /><span>{item.icon} {item.name}</span></label>;
+              })}
+            </div>
+          </fieldset>
           <label>
             What will you offer?
             <select

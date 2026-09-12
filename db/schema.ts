@@ -214,6 +214,7 @@ export const merchantApplications = pgTable("merchant_applications", {
   registrationNumber: varchar("registration_number", { length: 120 }).notNull(),
   businessType: varchar("business_type", { length: 80 }).notNull(),
   category: varchar("category", { length: 120 }).notNull(),
+  categories: jsonb("categories").notNull().default([]),
   offeringType: varchar("offering_type", { length: 24 }).notNull().default("products"),
   locationType: varchar("location_type", { length: 32 }).notNull().default("physical_store"),
   mainOperatingArea: varchar("main_operating_area", { length: 240 }).notNull().default(""),

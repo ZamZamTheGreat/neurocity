@@ -1100,6 +1100,25 @@ test("publishes a completed onboarding storefront into the public marketplace", 
   assert.match(stores, /inArray\(merchants\.status, \["pilot", "active"\]\)/);
 });
 
+test("supports primary and additional merchant discovery categories", async () => {
+  const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
+  const application = await readFile(new URL("../app/apply/page.tsx", import.meta.url), "utf8");
+  const applicationApi = await readFile(new URL("../app/api/applications/route.ts", import.meta.url), "utf8");
+  const approvalApi = await readFile(new URL("../app/api/admin/applications/route.ts", import.meta.url), "utf8");
+  const setup = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");
+  const setupApi = await readFile(new URL("../app/api/merchant/setup/route.ts", import.meta.url), "utf8");
+  const storesApi = await readFile(new URL("../app/api/stores/route.ts", import.meta.url), "utf8");
+  const marketplace = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(schema, /categories: jsonb\("categories"\)/);
+  assert.match(application, /Additional categories/);
+  assert.match(applicationApi, /const categories = \[\.\.\.new Set/);
+  assert.match(approvalApi, /enabledCategories: Array\.isArray\(application\.categories\)/);
+  assert.match(setup, /merchant-category-picker/);
+  assert.match(setupApi, /enabledCategories = \[\.\.\.new Set\(\[category/);
+  assert.match(storesApi, /categories: merchants\.enabledCategories/);
+  assert.match(marketplace, /store\.categories\?\.includes\(selectedCategory\)/);
+});
+
 test("applies database migrations before a free Render release", async () => {
   const renderConfig = await readFile(new URL("../render.yaml", import.meta.url), "utf8");
   const buildCommand = renderConfig.match(/buildCommand:\s*(.+)/)?.[1] ?? "";

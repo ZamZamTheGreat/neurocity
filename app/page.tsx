@@ -30,6 +30,7 @@ type PublicStore = {
   name: string;
   slug: string;
   category: string;
+  categories: string[];
   tagline: string | null;
   description: string | null;
   logoUrl: string | null;
@@ -141,7 +142,7 @@ export function MarketplaceExperience({
     () =>
       stores.filter(
         (store) =>
-          (!selectedCategory || store.category === selectedCategory) &&
+          (!selectedCategory || store.category === selectedCategory || store.categories?.includes(selectedCategory)) &&
           `${store.name} ${store.category} ${store.tagline ?? ""} ${store.description ?? ""}`
             .toLowerCase()
             .includes(query.toLowerCase()),

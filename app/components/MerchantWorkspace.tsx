@@ -158,6 +158,7 @@ type Merchant = {
   name: string;
   slug: string;
   category: string;
+  enabledCategories: string[];
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
@@ -304,6 +305,7 @@ function setupMerchant(data: SetupResponse): Merchant {
   const policies = merchant.policies ?? {};
   return {
     ...merchant,
+    enabledCategories: [...new Set([merchant.category, ...(Array.isArray(merchant.enabledCategories) ? merchant.enabledCategories : [])])],
     returnsPolicy: policies.returns ?? "",
     shippingPolicy: policies.shipping ?? "",
     privacyPolicy: policies.privacy ?? "",
@@ -1174,7 +1176,7 @@ function SetupPanel({
               required
               value={merchant.category}
               onChange={(e) =>
-                setMerchant({ ...merchant, category: e.target.value })
+                setMerchant({ ...merchant, category: e.target.value, enabledCategories: [...new Set([e.target.value, ...merchant.enabledCategories])] })
               }
             >
               {!merchantCategories.some(
@@ -1189,6 +1191,16 @@ function SetupPanel({
               ))}
             </select>
           </label>
+          <fieldset className="wide merchant-category-picker">
+            <legend>Other categories customers can find you under</legend>
+            <small>Select every category that accurately represents the business. Your main category remains the primary label.</small>
+            <div>
+              {merchantCategories.filter((item) => item.name !== merchant.category).map((item) => {
+                const selected = merchant.enabledCategories.includes(item.name);
+                return <label className={selected ? "selected" : ""} key={item.name}><input type="checkbox" checked={selected} onChange={() => setMerchant({ ...merchant, enabledCategories: selected ? merchant.enabledCategories.filter((name) => name !== item.name) : [...merchant.enabledCategories, item.name] })} /><span>{item.icon} {item.name}</span></label>;
+              })}
+            </div>
+          </fieldset>
           <label className="wide">
             Store tagline
             <input

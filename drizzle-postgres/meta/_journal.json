@@ -232,6 +232,13 @@
       "when": 1789747200000,
       "tag": "0032_order_workflow_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1789833600000,
+      "tag": "0033_merchant_application_categories",
+      "breakpoints": true
     }
   ]
 }
