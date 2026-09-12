@@ -18,8 +18,7 @@ type Mall = {
   storeCount: number;
   domain: string | null;
 };
-type FeaturedProduct = { id: number; name: string; imageUrl: string | null; price: number | null; salePrice: number | null; badge: string | null };
-type FeaturedMerchant = { name: string; slug: string; pickupLocation: string | null };
+type FeaturedProduct = { id: number; name: string; imageUrl: string | null; price: number | null; salePrice: number | null; pricingModel?: string; itemType?: string; badge: string | null; merchantName: string; merchantSlug: string };
 
 export default function NeuroCityNetworkHome({
   directoryOnly = false,
@@ -28,7 +27,7 @@ export default function NeuroCityNetworkHome({
 }) {
   const [malls, setMalls] = useState<Mall[]>([]);
   const [loading, setLoading] = useState(true);
-  const [featured, setFeatured] = useState<{ merchant: FeaturedMerchant; products: FeaturedProduct[] } | null>(null);
+  const [featured, setFeatured] = useState<FeaturedProduct[]>([]);
   const askSelma = (text = "") => openConcierge({ initialPrompt: text });
   const structuredData = {
     "@context": "https://schema.org",
@@ -84,7 +83,7 @@ export default function NeuroCityNetworkHome({
   }, []);
   useEffect(() => {
     if (directoryOnly) return;
-    fetch("/api/catalogue").then(async (response) => { const data = await response.json(); if (response.ok) setFeatured({ merchant: data.merchant, products: (data.products ?? []).slice(0, 4) }); }).catch(() => undefined);
+    fetch("/api/catalogue").then(async (response) => { const data = await response.json(); if (response.ok) setFeatured((data.products ?? []).slice(0, 4)); }).catch(() => setFeatured([]));
   }, [directoryOnly]);
   return (
     <main id="main-content" className="network-home digital-malls-home">
@@ -163,10 +162,9 @@ export default function NeuroCityNetworkHome({
               <article><small>03</small><b>Ask Selma-AI</b><span>Describe your budget, size, colour or occasion and get relevant local options.</span><button onClick={() => askSelma()}>Start a search →</button></article>
             </div>
           </section>
-          {featured?.products.length ? <section className="network-featured-products">
+          {featured.length ? <section className="network-featured-products">
             <header><div><p className="eyebrow"><span /> AVAILABLE NOW</p><h2>Start with what&apos;s in the marketplace.</h2></div><a href="/marketplace">Browse everything →</a></header>
-            <div>{featured.products.map((product) => <article key={product.id}><a href={`/stores/${featured.merchant.slug}`}><div><ManagedImage src={product.imageUrl ?? "/branding/neurocity-malls-mark.png"} alt={product.name} />{product.badge && <span>{product.badge}</span>}</div><small>{featured.merchant.name}</small><h3>{product.name}</h3><p>{product.salePrice != null ? `N$${product.salePrice.toFixed(2)}` : product.price != null ? `N$${product.price.toFixed(2)}` : "Price confirmed by store"}</p><b>View in store →</b></a></article>)}</div>
-            {featured.merchant.pickupLocation && <p className="featured-pickup">Collection available from {featured.merchant.pickupLocation}.</p>}
+            <div>{featured.map((product) => <article key={product.id}><a href={`/stores/${encodeURIComponent(product.merchantSlug)}#shop`}><div><ManagedImage src={product.imageUrl ?? "/branding/neurocity-malls-mark.png"} alt={product.name} />{product.badge && <span>{product.badge}</span>}</div><small>{product.merchantName}</small><h3>{product.name}</h3><p>{product.itemType === "service" && product.pricingModel === "quote" ? "Request a quote" : product.salePrice != null ? `N$${product.salePrice.toFixed(2)}` : product.price != null ? `${product.itemType === "service" && product.pricingModel === "from" ? "From " : ""}N$${product.price.toFixed(2)}` : "Price confirmed by store"}</p><b>{product.itemType === "service" ? "View service" : "View in store"} →</b></a></article>)}</div>
           </section> : null}
           <section className="network-paths">
             <article>

@@ -693,6 +693,10 @@ test("brings live catalogue products forward on the network homepage", async () 
   const home = await readFile(new URL("../app/components/NeuroCityNetworkHome.tsx", import.meta.url), "utf8");
   assert.match(home, /\/api\/catalogue/);
   assert.match(home, /AVAILABLE NOW/);
+  assert.match(home, /product\.merchantSlug/);
+  assert.match(home, /product\.merchantName/);
+  assert.doesNotMatch(home, /data\.merchant/);
+  assert.doesNotMatch(home, /featured\.merchant/);
   assert.match(home, /directoryOnly \|\| loading \|\| malls\.length > 0/);
 });
 
