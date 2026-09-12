@@ -454,7 +454,21 @@ export function MarketplaceExperience({
             ) : visibleStores.length ? (
               <div className="public-store-grid marketplace-filter-results" key={selectedCategory || "all"}>
                 {visibleStores.map((store, index) => (
-                  <article className="public-store-card marketplace-reveal-card" style={{ "--reveal-index": index } as CSSProperties} key={store.id}>
+                  <article
+                    className="public-store-card marketplace-reveal-card"
+                    style={{ "--reveal-index": index } as CSSProperties}
+                    key={store.id}
+                    role="link"
+                    tabIndex={0}
+                    aria-label={`Visit ${store.name}`}
+                    onClick={() => openStore(store.slug)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openStore(store.slug);
+                      }
+                    }}
+                  >
                     <div className="public-store-art">
                       {store.bannerUrl && <ManagedImage src={store.bannerUrl} alt="" />}
                       <span>Approved store</span>
@@ -473,7 +487,7 @@ export function MarketplaceExperience({
                           </span>
                         ))}
                       </div>
-                      <button onClick={() => openStore(store.slug)}>
+                      <button onClick={() => openStore(store.slug)} tabIndex={-1}>
                         Visit store →
                       </button>
                     </div>

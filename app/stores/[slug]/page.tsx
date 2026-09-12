@@ -589,11 +589,24 @@ function StoreProduct({
       ? product.salePrice ?? product.price
       : Number.isFinite(productPrice(product)) ? productPrice(product) : null;
     return (
-      <article id={`product-${product.id}`} className="store-product-v2 store-product-preview" aria-labelledby={`product-title-${product.id}`} tabIndex={-1}>
+      <article
+        id={`product-${product.id}`}
+        className="store-product-v2 store-product-preview"
+        aria-labelledby={`product-title-${product.id}`}
+        role="button"
+        tabIndex={0}
+        onClick={() => setViewing(true)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setViewing(true);
+          }
+        }}
+      >
         <div className="store-product-image">
           {activeImage ? <ManagedImage src={activeImage} alt={product.name} /> : <span>{product.itemType === "service" ? "Service image coming soon" : "Image coming soon"}</span>}
           {product.badge && <small>{product.badge}</small>}
-          <button aria-label={`Save ${product.name} to wishlist`} onClick={() => accountAction({ action: "wishlist", productId: product.id })}>♡</button>
+          <button aria-label={`Save ${product.name} to wishlist`} onClick={(event) => { event.stopPropagation(); void accountAction({ action: "wishlist", productId: product.id }); }}>♡</button>
         </div>
         <div className="store-product-preview-copy">
           <small>{product.brand ?? (product.itemType === "service" ? "Local service" : "Local brand")}</small>
@@ -603,7 +616,7 @@ function StoreProduct({
             {product.itemType === "product" && product.variants.length > 0 && <span>{product.variants.length} {product.variants.length === 1 ? "option" : "options"}</span>}
             {product.itemType === "service" && product.durationMinutes && <span>{product.durationMinutes} min</span>}
           </div>
-          <button className="store-view-product" type="button" onClick={() => setViewing(true)}>
+          <button className="store-view-product" type="button" onClick={() => setViewing(true)} tabIndex={-1}>
             View {product.itemType === "service" ? "service" : "product"}
           </button>
         </div>

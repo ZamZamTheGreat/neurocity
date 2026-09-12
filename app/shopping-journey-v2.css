@@ -144,3 +144,7 @@
 @media(max-width:340px){
 .storefront-v2 .store-product-grid-v2,.neurocity-marketplace.marketplace-shell .public-store-grid{grid-template-columns:1fr!important}
 }
+
+.store-product-preview,.neurocity-marketplace .public-store-card{cursor:pointer}
+.store-product-preview:focus-visible,.neurocity-marketplace .public-store-card:focus-visible{outline:3px solid #b88a3255;outline-offset:3px;border-color:#b88a32}
+.store-product-preview:active,.neurocity-marketplace .public-store-card:active{transform:translateY(-1px) scale(.995)}
