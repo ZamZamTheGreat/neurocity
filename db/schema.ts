@@ -245,7 +245,7 @@ export const merchantApplications = pgTable("merchant_applications", {
 
 export const applicationDocuments = pgTable("application_documents", {
   id: serial("id").primaryKey(), applicationId: integer("application_id").notNull().references(() => merchantApplications.id, { onDelete: "cascade" }),
-  documentType: varchar("document_type", { length: 80 }).notNull(), storageKey: text("storage_key"), originalName: text("original_name"), mimeType: varchar("mime_type", { length: 120 }), sizeBytes: integer("size_bytes"), status: varchar("status", { length: 32 }).notNull().default("pending_upload"), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  documentType: varchar("document_type", { length: 80 }).notNull(), storageKey: text("storage_key"), originalName: text("original_name"), mimeType: varchar("mime_type", { length: 120 }), sizeBytes: integer("size_bytes"), pendingStorageKey: text("pending_storage_key"), pendingOriginalName: text("pending_original_name"), pendingMimeType: varchar("pending_mime_type", { length: 120 }), pendingSizeBytes: integer("pending_size_bytes"), status: varchar("status", { length: 32 }).notNull().default("pending_upload"), createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [uniqueIndex("idx_application_document_type").on(table.applicationId, table.documentType)]);
 
 export const merchantMemberships = pgTable("merchant_memberships", {

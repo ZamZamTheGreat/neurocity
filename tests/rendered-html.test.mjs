@@ -1103,6 +1103,23 @@ test("keeps merchant approval transactional and document-gated", async () => {
   assert.doesNotMatch(patchHandler, /storageKeys/);
 });
 
+test("keeps verified application documents safe during replacement uploads", async () => {
+  const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
+  const start = await readFile(new URL("../app/api/applications/documents/upload-url/route.ts", import.meta.url), "utf8");
+  const complete = await readFile(new URL("../app/api/applications/documents/complete/route.ts", import.meta.url), "utf8");
+  const operations = await readFile(new URL("../app/api/admin/operations/route.ts", import.meta.url), "utf8");
+  assert.match(schema, /pendingStorageKey: text\("pending_storage_key"\)/);
+  assert.match(start, /\["submitted", "under_review", "more_information_required"\]/);
+  assert.match(start, /pendingStorageKey: key/);
+  assert.doesNotMatch(start, /set\(\{ storageKey: key/);
+  assert.match(start, /returning\(\{ id: applicationDocuments\.id \}\)/);
+  assert.match(complete, /candidateKey = row\.pendingStorageKey/);
+  assert.match(complete, /pendingStorageKey: null/);
+  assert.match(complete, /createPresignedR2Url\("DELETE", row\.storageKey/);
+  assert.match(operations, /PDF malware scanning/);
+  assert.match(operations, /Private document storage/);
+});
+
 test("supports audited mall lifecycle and manager access", async () => {
   const route = await readFile(new URL("../app/api/admin/platforms/route.ts", import.meta.url), "utf8");
   const resolver = await readFile(new URL("../lib/platform-tenant.ts", import.meta.url), "utf8");

@@ -19,6 +19,7 @@ export default function DocumentsPage() {
         [type]: "Enter your application reference and choose a file.",
       }));
     setStates((s) => ({ ...s, [type]: "Preparing secure upload…" }));
+    try {
     const response = await fetch("/api/applications/documents/upload-url", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -37,11 +38,13 @@ export default function DocumentsPage() {
       headers: { "content-type": file.type },
       body: file,
     });
-    if (!put.ok)
+    if (!put.ok) {
+      const failed = await put.json().catch(() => ({}));
       return setStates((s) => ({
         ...s,
-        [type]: "Storage upload failed. Check R2 CORS configuration.",
+        [type]: failed.error ?? "Secure upload failed. Please try again.",
       }));
+    }
     const complete = await fetch("/api/applications/documents/complete", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -52,6 +55,9 @@ export default function DocumentsPage() {
       ...s,
       [type]: complete.ok ? "Uploaded securely ✓" : completed.error,
     }));
+    } catch {
+      setStates((s) => ({ ...s, [type]: "The connection was interrupted. Your previous document is still safe; please retry." }));
+    }
   }
   return (
     <main className="application-page">

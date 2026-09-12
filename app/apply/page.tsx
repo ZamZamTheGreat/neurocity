@@ -479,6 +479,7 @@ function ApplicationDocuments({ reference }: { reference: string }) {
   async function upload(type: string, file?: File) {
     if (!file) return;
     setStates((state) => ({ ...state, [type]: "Preparing secure upload…" }));
+    try {
     const response = await fetch("/api/applications/documents/upload-url", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -502,11 +503,13 @@ function ApplicationDocuments({ reference }: { reference: string }) {
       headers: { "content-type": file.type },
       body: file,
     });
-    if (!put.ok)
+    if (!put.ok) {
+      const failed = await put.json().catch(() => ({}));
       return setStates((state) => ({
         ...state,
-        [type]: "Storage upload failed. Please try again.",
+        [type]: failed.error ?? "Secure upload failed. Please try again.",
       }));
+    }
     const confirmation = await fetch("/api/applications/documents/complete", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -519,6 +522,9 @@ function ApplicationDocuments({ reference }: { reference: string }) {
         ? "Uploaded securely ✓"
         : (confirmed.error ?? "Upload could not be verified."),
     }));
+    } catch {
+      setStates((state) => ({ ...state, [type]: "The connection was interrupted. Your previous document is still safe; please retry." }));
+    }
   }
   const returnTo = `/apply?reference=${encodeURIComponent(reference)}`;
   return (
