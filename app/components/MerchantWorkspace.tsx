@@ -2326,38 +2326,65 @@ function ServiceBookingsPanel({
   reload: () => Promise<void>;
   setMessage: (message: string) => void;
 }) {
-  async function update(booking: ServiceBooking, status: string) {
+  const [rescheduleDraft, setRescheduleDraft] = useState<{ bookingId: number; scheduledStart: string; note: string } | null>(null);
+  const [rescheduleSaving, setRescheduleSaving] = useState(false);
+  function localDateTime(value: Date) {
+    const offset = value.getTimezoneOffset() * 60_000;
+    return new Date(value.getTime() - offset).toISOString().slice(0, 16);
+  }
+  function beginReschedule(booking: ServiceBooking) {
+    const existing = booking.scheduledStart ? new Date(booking.scheduledStart) : new Date(booking.requestedStart);
+    const minimum = new Date(Date.now() + 30 * 60_000);
+    setRescheduleDraft({
+      bookingId: booking.id,
+      scheduledStart: localDateTime(existing.getTime() > minimum.getTime() ? existing : minimum),
+      note: booking.merchantNote ?? "",
+    });
+  }
+  async function update(booking: ServiceBooking, status: string, proposal?: { scheduledStart: string; note: string }) {
     let scheduledStart: string | undefined;
     if (status === "reschedule_proposed") {
-      const value = window.prompt("Propose a new date/time (YYYY-MM-DD HH:MM)");
-      if (!value) return;
-      const parsed = new Date(value.replace(" ", "T"));
+      if (!proposal) return beginReschedule(booking);
+      const parsed = new Date(proposal.scheduledStart);
       if (Number.isNaN(parsed.getTime()))
         return setMessage("Enter a valid appointment date and time.");
+      if (parsed.getTime() <= Date.now())
+        return setMessage("Choose an appointment time in the future.");
       scheduledStart = parsed.toISOString();
     }
-    const note = ["declined", "cancelled", "reschedule_proposed"].includes(
-      status,
-    )
-      ? window.prompt("Add a note for the customer")?.trim()
-      : undefined;
+    const note = status === "reschedule_proposed"
+      ? proposal?.note.trim()
+      : ["declined", "cancelled"].includes(status)
+        ? window.prompt("Add a note for the customer")?.trim()
+        : undefined;
     if (
       ["declined", "cancelled", "reschedule_proposed"].includes(status) &&
       !note
     )
       return;
-    const response = await fetch("/api/merchant/service-bookings", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id: booking.id, status, scheduledStart, note }),
-    });
+    if (status === "reschedule_proposed") setRescheduleSaving(true);
+    let response: Response;
+    try {
+      response = await fetch("/api/merchant/service-bookings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: booking.id, status, scheduledStart, note }),
+      });
+    } catch {
+      if (status === "reschedule_proposed") setRescheduleSaving(false);
+      return setMessage("The reschedule proposal could not be sent. Check your connection and try again.");
+    }
     const result = await response.json();
+    if (status === "reschedule_proposed") setRescheduleSaving(false);
     setMessage(
       response.ok
         ? `${booking.reference} moved to ${pretty(status)}.`
         : result.error,
     );
-    if (response.ok) await reload();
+    if (response.ok) {
+      setRescheduleDraft(null);
+      await reload();
+    }
   }
   if (!bookings.length)
     return (
@@ -2424,6 +2451,25 @@ function ServiceBookingsPanel({
               </p>
             </section>
           </div>
+          {rescheduleDraft?.bookingId === booking.id && (
+            <form
+              className="booking-reschedule-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void update(booking, "reschedule_proposed", rescheduleDraft);
+              }}
+            >
+              <header>
+                <div><small>PROPOSE A NEW TIME</small><strong>Reschedule {booking.reference}</strong></div>
+                <button type="button" onClick={() => setRescheduleDraft(null)} aria-label="Close reschedule form">×</button>
+              </header>
+              <div>
+                <label>New appointment date and time<input required type="datetime-local" min={localDateTime(new Date(Date.now() + 30 * 60_000))} value={rescheduleDraft.scheduledStart} onChange={(event) => setRescheduleDraft({ ...rescheduleDraft, scheduledStart: event.target.value })} /></label>
+                <label>Message to customer<textarea required maxLength={1000} placeholder="Explain the proposed change and any relevant details" value={rescheduleDraft.note} onChange={(event) => setRescheduleDraft({ ...rescheduleDraft, note: event.target.value })} /></label>
+              </div>
+              <footer><button type="button" className="secondary" onClick={() => setRescheduleDraft(null)}>Cancel</button><button disabled={rescheduleSaving}>{rescheduleSaving ? "Sending…" : "Send reschedule proposal"}</button></footer>
+            </form>
+          )}
           <footer>
             {booking.allowedTransitions.map((status) => (
               <button
