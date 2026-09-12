@@ -112,3 +112,23 @@
 .neurocity-marketplace.marketplace-shell .public-store-copy>button{min-height:38px;border-radius:9px}
 }
 @media(prefers-reduced-motion:reduce){.store-product-modal{animation:none}}
+
+/* Narrow phones: retain two useful cards and remove inherited full-screen media heights. */
+@media(max-width:560px){
+.storefront-v2 .store-product-grid-v2{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
+.storefront-v2 .store-product-preview .store-product-image{height:auto!important;min-height:0!important;aspect-ratio:1/1!important}
+.storefront-v2 .store-product-preview-copy{gap:5px;padding:9px!important}
+.storefront-v2 .store-product-preview-copy h3{min-height:2.35em;font-size:.84rem!important;line-height:1.18}
+.storefront-v2 .store-product-preview-meta{gap:2px}
+.storefront-v2 .store-product-preview-meta strong{font-size:.86rem}
+.storefront-v2 .store-view-product{min-height:36px;margin-top:1px}
+.neurocity-marketplace.marketplace-shell .public-store-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
+.neurocity-marketplace.marketplace-shell .public-store-art{height:auto!important;aspect-ratio:1/1!important}
+.neurocity-marketplace.marketplace-shell .public-store-copy>img{display:block;top:-21px;right:8px;width:40px;height:40px;padding:4px;border-radius:9px}
+.neurocity-marketplace.marketplace-shell .public-store-copy h3{margin-right:42px}
+.neurocity-marketplace.marketplace-shell .public-store-copy>div{overflow:hidden;flex-wrap:nowrap}
+.neurocity-marketplace.marketplace-shell .public-store-copy>div span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+@media(max-width:340px){
+.storefront-v2 .store-product-grid-v2,.neurocity-marketplace.marketplace-shell .public-store-grid{grid-template-columns:1fr!important}
+}

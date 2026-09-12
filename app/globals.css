@@ -5797,3 +5797,5 @@ main {
 .delivery-zone-panel form,.delivery-zone-list article{grid-template-columns:1fr}
 .delivery-zone-panel form button,.delivery-zone-list article>button{width:100%;min-height:44px}
 }
+
+@media(max-width:760px){.cookie-preferences{bottom:calc(112px + env(safe-area-inset-bottom));padding:6px 9px;font-size:.62rem}}
