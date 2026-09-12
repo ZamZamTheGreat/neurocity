@@ -1088,6 +1088,24 @@ test("sends service booking lifecycle notifications", async () => {
   assert.match(bookingMail, /SMTP|sendMail/);
 });
 
+test("uses one polished NeuroCity layout across every email notification", async () => {
+  const mail = await readFile(new URL("../lib/mail.ts", import.meta.url), "utf8");
+  const template = await readFile(new URL("../lib/email-template.ts", import.meta.url), "utf8");
+  const orders = await readFile(new URL("../lib/order-mail.ts", import.meta.url), "utf8");
+  const bookings = await readFile(new URL("../lib/booking-mail.ts", import.meta.url), "utf8");
+  const passwordReset = await readFile(new URL("../app/api/auth/password-reset/request/route.ts", import.meta.url), "utf8");
+  const breach = await readFile(new URL("../app/api/admin/data-breaches/route.ts", import.meta.url), "utf8");
+  assert.match(mail, /message\.html \?\? plainTextEmailHtml/);
+  assert.match(template, /Namibia’s connected shopping network/);
+  assert.match(template, /max-width:640px/);
+  assert.match(template, /Privacy/);
+  assert.match(template, /If the button does not work/);
+  assert.match(orders, /neuroCityEmail/);
+  assert.match(bookings, /neuroCityEmail/);
+  assert.match(passwordReset, /actionLabel: "Reset password"/);
+  assert.match(breach, /tone: "urgent"/);
+});
+
 test("keeps merchant approval transactional and document-gated", async () => {
   const source = await readFile(new URL("../app/api/admin/applications/route.ts", import.meta.url), "utf8");
   const patchHandler = source.slice(source.indexOf("export async function PATCH"), source.indexOf("export async function DELETE"));

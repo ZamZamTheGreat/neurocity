@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { plainTextEmailHtml } from "./email-template";
 
 type Mail = { to: string; subject: string; text: string; html?: string; replyTo?: string };
 
@@ -11,6 +12,6 @@ export async function sendMail(message: Mail) {
   }
   const port = Number(process.env.SMTP_PORT ?? 465);
   const transport = nodemailer.createTransport({ host: process.env.SMTP_HOST ?? "smtp.gmail.com", port, secure: port === 465, requireTLS: true, disableFileAccess: true, disableUrlAccess: true, auth: { user, pass } });
-  await transport.sendMail({ from: process.env.MAIL_FROM ?? `NeuroCity <${user}>`, ...message });
+  await transport.sendMail({ from: process.env.MAIL_FROM ?? `NeuroCity <${user}>`, ...message, html: message.html ?? plainTextEmailHtml(message.subject, message.text) });
   return { delivered: true } as const;
 }

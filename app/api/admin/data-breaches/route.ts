@@ -2,11 +2,11 @@ import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { auditEvents, dataBreachIncidents, dataBreachNotifications, users } from "../../../../db/schema";
 import { sendMail } from "../../../../lib/mail";
+import { emailPanel, escapeEmailHtml as escapeHtml, neuroCityEmail } from "../../../../lib/email-template";
 import { isSameOriginMutation, readBoundedBody } from "../../../../lib/request-security";
 import { getChatGPTUser } from "../../../chatgpt-auth";
 
 const clean = (value: unknown, max: number) => typeof value === "string" ? value.trim().slice(0, max) : "";
-const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character]!);
 
 async function administrator() {
   const user = await getChatGPTUser();
@@ -82,7 +82,7 @@ export async function PATCH(request: Request) {
     subject,
     replyTo: incident.contactEmail,
     text: `Hello ${recipient.displayName},\n\nWe are writing to tell you about a personal data incident that may affect you.\n\nWhat happened\n${incident.nature}\n\nPossible consequences\n${incident.likelyConsequences}\n\nWhat we have done and what you can do\n${incident.measuresTaken}\n\nQuestions: ${incident.contactEmail}\n\nNeuroCity`,
-    html: `<div style="max-width:620px;margin:auto;font-family:Arial,sans-serif;color:#18201c"><h1 style="font-size:24px">Important privacy notice</h1><p>Hello ${escapeHtml(recipient.displayName)},</p><p>We are writing to tell you about a personal data incident that may affect you.</p><h2 style="font-size:17px">What happened</h2><p style="white-space:pre-line">${escapeHtml(incident.nature)}</p><h2 style="font-size:17px">Possible consequences</h2><p style="white-space:pre-line">${escapeHtml(incident.likelyConsequences)}</p><h2 style="font-size:17px">What we have done and what you can do</h2><p style="white-space:pre-line">${escapeHtml(incident.measuresTaken)}</p><p>Questions can be sent to <a href="mailto:${escapeHtml(incident.contactEmail)}">${escapeHtml(incident.contactEmail)}</a>.</p><p><b>NeuroCity</b></p></div>`,
+    html: neuroCityEmail({ eyebrow: "IMPORTANT PRIVACY NOTICE", title: incident.title, intro: `Hello ${recipient.displayName}. We are writing to tell you about a personal data incident that may affect you.`, tone: "urgent", bodyHtml: `${emailPanel(`<b>What happened</b><p style="margin:7px 0 0;white-space:pre-line">${escapeHtml(incident.nature)}</p>`)}${emailPanel(`<b>Possible consequences</b><p style="margin:7px 0 0;white-space:pre-line">${escapeHtml(incident.likelyConsequences)}</p>`)}${emailPanel(`<b>What we have done and what you can do</b><p style="margin:7px 0 0;white-space:pre-line">${escapeHtml(incident.measuresTaken)}</p>`, true)}<p style="margin:20px 0 0;color:#56616a;font-size:13px">Questions can be sent to <a href="mailto:${escapeHtml(incident.contactEmail)}" style="color:#80601d">${escapeHtml(incident.contactEmail)}</a>.</p>`, footerNote: "This privacy notification contains information about an incident recorded by NeuroCity." }),
   })));
   const failed = deliveries.filter((result) => result.status === "rejected" || (result.status === "fulfilled" && !result.value.delivered)).length;
   const notifiedAt = new Date();

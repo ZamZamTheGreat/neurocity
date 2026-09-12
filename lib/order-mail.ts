@@ -1,16 +1,16 @@
 import { sendMail } from "./mail";
+import { escapeEmailHtml as escapeHtml, neuroCityEmail, neuroCityUrl } from "./email-template";
 
 type OrderLine = { name: string; option?: string | null; quantity: number; lineTotal: number };
 type PaymentInstructions = { bankName: string; accountHolder: string; accountType: string; accountNumber: string; branchCode: string; referenceInstructions: string };
 type OrderNotice = { reference: string; storeName: string; customerName: string; customerEmail: string; merchantEmail?: string | null; status: string; total: number; fulfillmentMethod: string; lines?: OrderLine[]; note?: string | null; paymentInstructions?: PaymentInstructions | null };
 
-const siteUrl = () => (process.env.PUBLIC_SITE_URL ?? process.env.APP_URL ?? "https://neurocity-fhl1.onrender.com").replace(/\/$/, "");
+const siteUrl = neuroCityUrl;
 const money = (value: number) => `N$${Number(value).toFixed(2)}`;
 const words = (value: string) => value.replaceAll("_", " ");
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]!);
 
 function layout(title: string, intro: string, body: string, actionLabel: string, actionUrl: string) {
-  return `<!doctype html><html><body style="margin:0;background:#f4f2ee;font-family:Arial,sans-serif;color:#191916"><div style="max-width:620px;margin:0 auto;padding:30px 16px"><div style="padding:18px 22px;background:#171713;color:#fff;border-radius:14px 14px 0 0"><b style="font-size:21px">Neuro<span style="color:#9b84ff">City</span></b><span style="float:right;color:#aaa69f;font-size:12px">Windhoek</span></div><div style="padding:26px 22px;background:#fff;border-radius:0 0 14px 14px"><p style="margin:0 0 8px;color:#7457ff;font-size:11px;font-weight:bold;letter-spacing:1px">ORDER UPDATE</p><h1 style="margin:0 0 12px;font-size:26px">${escapeHtml(title)}</h1><p style="margin:0 0 22px;color:#625e57;line-height:1.55">${escapeHtml(intro)}</p>${body}<a href="${actionUrl}" style="display:inline-block;margin-top:22px;padding:13px 18px;border-radius:9px;background:#7457ff;color:#fff;text-decoration:none;font-weight:bold">${escapeHtml(actionLabel)}</a><p style="margin:24px 0 0;color:#918b83;font-size:11px">This is an automatic NeuroCity transaction message.</p></div></div></body></html>`;
+  return neuroCityEmail({ eyebrow: "ORDER UPDATE", title, intro, bodyHtml: body, actionLabel, actionUrl, footerNote: "This is an automatic NeuroCity transaction message. Keep the order reference for support." });
 }
 
 export async function sendOrderPlacedNotifications(notice: OrderNotice) {
