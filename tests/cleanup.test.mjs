@@ -28,6 +28,7 @@ test("merchant readiness uses the storefront publication requirements", async ()
     logoUrl: "/logo.png",
     bannerUrl: "/banner.png",
     policies: { returns: "Returns accepted." },
+    paymentSettings: { bankName: "Bank", accountHolder: "Example Store", accountType: "Business", accountNumber: "1234", branchCode: "280172" },
   };
   const branch = {
     address: "Windhoek",
@@ -38,7 +39,7 @@ test("merchant readiness uses the storefront publication requirements", async ()
   assert.equal(merchantReadiness(merchant, branch, Array(7)).percent, 100);
   assert.equal(
     merchantReadiness({ ...merchant, contactPhone: null }, branch, Array(7)).percent,
-    86,
+    88,
   );
 });
 

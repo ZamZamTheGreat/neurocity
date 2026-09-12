@@ -21,7 +21,7 @@ export default function PaymentSettingsPanel({ settings, setSettings, settlement
     if (!response.ok) return setMessage(data.error);
     setSettings(data.settings); setMessage("Settlement bank account saved securely.");
   }
-  return <section className="payment-settings-panel">
+  return <section className="payment-settings-panel" id="setup-settlement">
     <header><div><p className="eyebrow">Getting paid</p><h2>NeuroCity settlements</h2><ul className="info-list"><li>Customers pay the complete bag total to NeuroCity through PayToday.</li><li>Each transaction deducts 2.5% for PayToday and 1.5% for NeuroCity. Your net share becomes due on a T+2 business-day basis.</li></ul></div><span>4% total fees · T+2</span></header>
     <div className="transaction-analytics"><article><span>Gross recorded sales</span><strong>{money(settlementSummary.grossSales)}</strong></article><article><span>Pending customer payment</span><strong>{money(settlementSummary.pendingCustomerPayment)}</strong></article><article><span>Scheduled T+2</span><strong>{money(settlementSummary.scheduled)}</strong></article><article><span>Due now</span><strong>{money(settlementSummary.dueNow)}</strong></article><article><span>Processing</span><strong>{money(settlementSummary.processing)}</strong></article><article><span>Settled to date</span><strong>{money(settlementSummary.settled)}</strong></article>{settlementSummary.refundAdjustment > 0 && <article><span>Refund adjustment</span><strong>{money(settlementSummary.refundAdjustment)}</strong></article>}</div>
     <div className="payment-fields">

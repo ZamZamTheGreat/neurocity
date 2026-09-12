@@ -1241,3 +1241,21 @@ test("lets administrators inspect the complete merchant application", async () =
   assert.match(styles, /\.application-detail-grid/);
   assert.match(styles, /\.application-more-details\[open\]/);
 });
+
+test("builds daily transaction and merchant settlement documents from captured payments", async () => {
+  const ledger = await readFile(new URL("../app/components/AdminTransactionLedger.tsx", import.meta.url), "utf8");
+  const route = await readFile(new URL("../app/api/admin/transactions/route.ts", import.meta.url), "utf8");
+  const setup = await readFile(new URL("../app/api/merchant/setup/route.ts", import.meta.url), "utf8");
+  const readiness = await readFile(new URL("../lib/merchant-readiness.ts", import.meta.url), "utf8");
+  assert.match(route, /capturedAt: row\.status === "paid"/);
+  assert.match(route, /settlementAccount: settlementAccount/);
+  assert.match(ledger, /Daily transaction report/);
+  assert.match(ledger, /Africa\/Windhoek/);
+  assert.match(ledger, /Merchant totals/);
+  assert.match(ledger, /neurocity-transactions-\$\{reportDate\}\.csv/);
+  assert.match(ledger, /neurocity-merchant-totals-\$\{reportDate\}\.csv/);
+  assert.match(ledger, /PayToday fee \(2\.5%\)/);
+  assert.match(ledger, /NeuroCity fee \(1\.5%\)/);
+  assert.match(setup, /settlement account before publishing/);
+  assert.match(readiness, /\["settlement"/);
+});

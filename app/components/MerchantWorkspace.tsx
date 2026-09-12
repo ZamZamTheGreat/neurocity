@@ -805,6 +805,7 @@ export default function MerchantWorkspace({
               createInvite={createInvite}
               inviteCode={inviteCode}
               canInvite={session.memberships[0].role === "owner"}
+              settlementReady={[paymentSettings.bankName, paymentSettings.accountHolder, paymentSettings.accountType, paymentSettings.accountNumber, paymentSettings.branchCode].every(Boolean)}
             />
             <PaymentSettingsPanel
               settings={paymentSettings}
@@ -1083,6 +1084,7 @@ function SetupPanel({
   createInvite,
   inviteCode,
   canInvite,
+  settlementReady,
 }: {
   merchant: Merchant;
   setMerchant: (merchant: Merchant) => void;
@@ -1094,6 +1096,7 @@ function SetupPanel({
   createInvite: () => void;
   inviteCode: string;
   canInvite: boolean;
+  settlementReady: boolean;
 }) {
   const [mediaCrop, setMediaCrop] = useState<{ file: File; type: "logo" | "banner" } | null>(null);
   const [mediaPreview, setMediaPreview] = useState<Partial<Record<"logo" | "banner", string>>>({});
@@ -1123,6 +1126,7 @@ function SetupPanel({
     { key: "fulfilment", label: "Fulfilment", target: "setup-selling", done: merchant.pickupEnabled || merchant.deliveryEnabled },
     { key: "hours", label: "Opening hours", target: "setup-selling", done: merchant.hours.length === 7 && merchant.hours.every((hour) => hour.closed || (hour.opensAt && hour.closesAt)) },
     { key: "policies", label: "Returns policy", target: "setup-selling", done: Boolean(merchant.returnsPolicy) },
+    { key: "settlement", label: "Settlement account", target: "setup-settlement", done: settlementReady },
   ];
   const completion = Math.round(setupChecks.filter((check) => check.done).length / setupChecks.length * 100);
   const missingChecks = setupChecks.filter((check) => !check.done);
