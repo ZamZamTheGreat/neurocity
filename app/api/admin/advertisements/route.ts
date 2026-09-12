@@ -20,23 +20,29 @@ export async function GET() {
 export async function POST(request: Request) {
   const user = await administrator();
   if (!user) return Response.json({ error: "Administrator access required." }, { status: 403 });
-  const body = await request.json() as { merchantId?: number; productId?: number | null; placement?: string; headline?: string; description?: string; callToAction?: string; status?: string; sortOrder?: number; startsAt?: string | null; endsAt?: string | null };
+  const body = await request.json() as { merchantId?: number; productIds?: number[]; placement?: string; headline?: string; description?: string; callToAction?: string; status?: string; sortOrder?: number; startsAt?: string | null; endsAt?: string | null };
   if (!Number.isInteger(body.merchantId) || !["home", "marketplace", "home_featured"].includes(body.placement ?? "")) return Response.json({ error: "Choose a store and advertising placement." }, { status: 400 });
   const db = getDb();
   const [merchant] = await db.select({ id: merchants.id, bannerUrl: merchants.bannerUrl, isPublic: merchants.isPublic, status: merchants.status }).from(merchants).where(eq(merchants.id, body.merchantId!)).limit(1);
   if (!merchant?.isPublic || !["pilot", "active"].includes(merchant.status)) return Response.json({ error: "Only a public, active store can be advertised." }, { status: 409 });
-  const featuredProduct = body.placement === "home_featured" && Number.isInteger(body.productId)
-    ? (await db.select({ id: products.id, name: products.name }).from(products).where(and(eq(products.id, body.productId!), eq(products.merchantId, body.merchantId!), eq(products.status, "published"))).limit(1))[0]
-    : null;
-  if (body.placement === "home_featured" && !featuredProduct) return Response.json({ error: "Choose a published product or service from this store." }, { status: 409 });
+  const requestedProductIds = [...new Set((body.productIds ?? []).filter(Number.isInteger))];
+  if (requestedProductIds.length > 50) return Response.json({ error: "Select no more than 50 featured items at a time." }, { status: 400 });
+  const featuredProducts = body.placement === "home_featured" && requestedProductIds.length
+    ? await db.select({ id: products.id, name: products.name }).from(products).where(and(inArray(products.id, requestedProductIds), eq(products.merchantId, body.merchantId!), eq(products.status, "published")))
+    : [];
+  if (body.placement === "home_featured" && (!requestedProductIds.length || featuredProducts.length !== requestedProductIds.length)) return Response.json({ error: "Choose one or more published products or services from this store." }, { status: 409 });
   if (body.placement !== "home_featured" && !merchant.bannerUrl) return Response.json({ error: "Only a public, active store with a banner can be advertised." }, { status: 409 });
   if (body.placement !== "home_featured" && !body.headline?.trim()) return Response.json({ error: "Enter a headline for this banner." }, { status: 400 });
   const startsAt = cleanDate(body.startsAt); const endsAt = cleanDate(body.endsAt);
   if ((startsAt && Number.isNaN(startsAt.valueOf())) || (endsAt && Number.isNaN(endsAt.valueOf())) || (startsAt && endsAt && endsAt <= startsAt)) return Response.json({ error: "Choose a valid campaign schedule." }, { status: 400 });
   const status = ["draft", "active", "paused"].includes(body.status ?? "") ? body.status! : "draft";
-  const [campaign] = await db.insert(advertisingCampaigns).values({ merchantId: body.merchantId!, productId: featuredProduct?.id ?? null, placement: body.placement!, headline: body.headline?.trim() || featuredProduct?.name || "Featured product", description: body.description?.trim() || null, callToAction: body.callToAction?.trim() || (featuredProduct ? "View in store" : "Visit store"), status, sortOrder: Number.isInteger(body.sortOrder) ? body.sortOrder! : 0, startsAt, endsAt, createdBy: Number(user.userId) }).returning();
-  await db.insert(auditEvents).values({ actorRef: user.userId, action: "advertisement.created", resourceType: "advertising_campaign", resourceId: String(campaign.id), metadata: { merchantId: body.merchantId, productId: featuredProduct?.id ?? null, placement: body.placement, status } });
-  return Response.json({ campaign }, { status: 201 });
+  const campaignInputs = featuredProducts.length ? featuredProducts.map((product, index) => ({ merchantId: body.merchantId!, productId: product.id, placement: body.placement!, headline: product.name, description: null, callToAction: "View in store", status, sortOrder: (Number.isInteger(body.sortOrder) ? body.sortOrder! : 0) + index, startsAt, endsAt, createdBy: Number(user.userId) })) : [{ merchantId: body.merchantId!, productId: null, placement: body.placement!, headline: body.headline!.trim(), description: body.description?.trim() || null, callToAction: body.callToAction?.trim() || "Visit store", status, sortOrder: Number.isInteger(body.sortOrder) ? body.sortOrder! : 0, startsAt, endsAt, createdBy: Number(user.userId) }];
+  const campaigns = await db.transaction(async (transaction) => {
+    const created = await transaction.insert(advertisingCampaigns).values(campaignInputs).returning();
+    await transaction.insert(auditEvents).values(created.map((campaign) => ({ actorRef: user.userId, action: "advertisement.created", resourceType: "advertising_campaign", resourceId: String(campaign.id), metadata: { merchantId: body.merchantId, productId: campaign.productId, placement: body.placement, status } })));
+    return created;
+  });
+  return Response.json({ campaign: campaigns[0], campaigns }, { status: 201 });
 }
 
 export async function PATCH(request: Request) {

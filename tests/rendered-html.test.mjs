@@ -121,9 +121,13 @@ test("lets administrators schedule store advertising across public entry points"
   assert.match(marketplace, /AdvertisingBanner placement="marketplace"/);
   assert.match(schema, /productId: integer\("product_id"\)/);
   assert.match(publicApi, /home_featured/);
-  assert.match(adminApi, /Choose a published product or service from this store/);
-  assert.match(advertisingManager, /Homepage featured product/);
+  assert.match(adminApi, /Choose one or more published products or services from this store/);
+  assert.match(adminApi, /db\.transaction/);
+  assert.match(advertisingManager, /Homepage featured products/);
   assert.match(advertisingManager, /availableProducts/);
+  assert.match(advertisingManager, /type="checkbox"/);
+  assert.match(advertisingManager, /featured-product-thumb/);
+  assert.match(advertisingManager, /productIds: \[\] as number\[\]/);
 });
 
 test("keeps digital-mall branding isolated from the marketplace", async () => {
