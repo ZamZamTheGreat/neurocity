@@ -91,16 +91,23 @@
 .store-product-dialog-close:hover{border-color:#b88a32;background:#fffaf0}
 @keyframes product-modal-in{from{opacity:0}to{opacity:1}}
 @media(max-width:700px){
-.store-product-dialog{max-height:94dvh;border:0;border-radius:22px 22px 0 0}
+.store-product-modal{align-items:end;width:100%;padding:0;overflow:hidden}
+.store-product-dialog{width:100%;max-width:100%;max-height:94dvh;overflow-x:hidden;border:0;border-radius:22px 22px 0 0}
 .store-product-dialog:before{position:sticky;top:7px;z-index:4;display:block;width:42px;height:4px;margin:7px auto -11px;border-radius:999px;background:#d5cec2;content:""}
-.store-product-dialog .store-product-image{min-height:0;aspect-ratio:16/11}
+.store-product-dialog>.store-product-v2{display:grid;grid-template-columns:minmax(0,1fr)!important;width:100%;min-width:0}
+.store-product-dialog .store-product-detail-media{width:100%;min-width:0}
+.store-product-dialog .store-product-image{width:100%;height:auto!important;min-height:0!important;aspect-ratio:16/10!important}
 .store-product-dialog .store-product-thumbnails{padding:9px 12px}
 .store-product-dialog .store-product-thumbnails img{width:48px;height:48px}
-.store-product-dialog .store-product-copy{padding:20px 17px calc(24px + env(safe-area-inset-bottom))}
+.store-product-dialog .store-product-copy{width:100%;min-width:0;padding:20px 17px calc(24px + env(safe-area-inset-bottom))!important}
 .store-product-dialog .store-product-copy h3{font-size:1.6rem}
 .store-product-dialog .store-product-copy>p{font-size:.84rem;line-height:1.55}
-.store-product-dialog .store-stock-line small{max-width:48%}
-.store-product-dialog .store-product-buy{position:sticky;bottom:0;z-index:2;margin-inline:-17px;padding:14px 17px calc(14px + env(safe-area-inset-bottom));background:#fffffff2;box-shadow:0 -10px 24px #1d160d0d;backdrop-filter:blur(10px)}
+.store-product-dialog .store-variant-picker,.store-product-dialog .store-variant-select,.store-product-dialog .store-variant-select select{max-width:100%;min-width:0}
+.store-product-dialog .store-stock-line{flex-direction:column;gap:5px}
+.store-product-dialog .store-stock-line small{max-width:100%;text-align:left;overflow-wrap:anywhere}
+.store-product-dialog .store-product-buy{position:sticky;bottom:0;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) minmax(132px,auto);align-items:center;margin-inline:-17px;padding:14px 17px calc(14px + env(safe-area-inset-bottom));background:#fffffff2;box-shadow:0 -10px 24px #1d160d0d;backdrop-filter:blur(10px)}
+.store-product-dialog .store-product-buy>button{width:100%;min-width:0}
+.store-product-dialog .store-ask-button{width:100%;white-space:normal;line-height:1.35}
 .store-product-dialog-close{top:15px;margin:15px 13px -55px auto}
 .neurocity-marketplace.marketplace-shell .public-store-card{border-radius:16px}
 .neurocity-marketplace.marketplace-shell .public-store-art{aspect-ratio:4/5}
@@ -110,6 +117,11 @@
 .neurocity-marketplace.marketplace-shell .public-store-copy>p{display:none}
 .neurocity-marketplace.marketplace-shell .public-store-copy>div{min-height:21px;margin:6px 2px}
 .neurocity-marketplace.marketplace-shell .public-store-copy>button{min-height:38px;border-radius:9px}
+}
+@media(max-width:380px){
+.store-product-dialog .store-product-copy h3{font-size:1.4rem}
+.store-product-dialog .store-product-buy{grid-template-columns:1fr}
+.store-product-dialog .store-product-buy>div{display:flex;align-items:baseline;justify-content:space-between}
 }
 @media(prefers-reduced-motion:reduce){.store-product-modal{animation:none}}
 
