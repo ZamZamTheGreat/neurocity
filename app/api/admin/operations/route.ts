@@ -63,7 +63,7 @@ export async function GET() {
       { name: "WhatsApp webhook", configured: Boolean(process.env.WHATSAPP_VERIFY_TOKEN && process.env.META_APP_SECRET), detail: "Verification and signature checks" },
       { name: "Transactional email", configured: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS), detail: "Customer and merchant notices" },
       { name: "Private document storage", configured: Boolean(process.env.R2_ENDPOINT && process.env.R2_BUCKET && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY), detail: "R2 application documents and payment proofs" },
-      { name: "PDF malware scanning", configured: Boolean(process.env.CLAMAV_HOST), detail: "Private ClamAV service required for PDF uploads" },
+      { name: "Enhanced malware scanning", configured: Boolean(process.env.CLAMAV_HOST), detail: "Optional private ClamAV layer; all uploads still undergo content sanitisation" },
       { name: "PayToday", configured: Boolean(process.env.PAYTODAY_SHOP_KEY && process.env.PAYTODAY_SHOP_HANDLE && process.env.PAYTODAY_PRIVATE_KEY), detail: "Payment credentials" },
       { name: "Security alerts", configured: Boolean(process.env.SECURITY_ALERT_WEBHOOK_URL || (process.env.SMTP_USER && process.env.SMTP_PASS && (process.env.SECURITY_ALERT_EMAIL || process.env.ADMIN_EMAIL))), detail: "Administrator escalation channel" },
     ],

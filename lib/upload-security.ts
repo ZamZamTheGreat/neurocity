@@ -37,10 +37,10 @@ export function verifyUploadTicket(token: string, userId: string): Ticket {
 
 export function validateFileType(bytes: Uint8Array, mime: string) {
   const data = Buffer.from(bytes);
-  const valid = mime === "image/png" ? data.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) && data.subarray(-8, -4).toString() === "IEND"
-    : mime === "image/jpeg" ? data[0] === 255 && data[1] === 216 && data[2] === 255 && data[data.length - 2] === 255 && data[data.length - 1] === 217
-    : mime === "image/webp" ? data.subarray(0, 4).toString() === "RIFF" && data.subarray(8, 12).toString() === "WEBP" && data.length >= 16 && data.readUInt32LE(4) + 8 === data.length
-    : mime === "application/pdf" ? /^%PDF-1\.[0-7]/.test(data.subarray(0, 8).toString()) && /%%EOF\s*$/.test(data.subarray(-1024).toString())
+  const valid = mime === "image/png" ? data.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))
+    : mime === "image/jpeg" || mime === "image/jpg" ? data[0] === 255 && data[1] === 216 && data[2] === 255
+    : mime === "image/webp" ? data.subarray(0, 4).toString() === "RIFF" && data.subarray(8, 12).toString() === "WEBP"
+    : mime === "application/pdf" ? /^%PDF-(?:1\.[0-7]|2\.0)/.test(data.subarray(0, 8).toString())
     : false;
   if (!valid) throw new Error("File content does not match its declared type.");
 }
@@ -83,7 +83,6 @@ export async function scanFile(bytes: Uint8Array, allowSanitizationOnly = false)
 export async function storeScannedUpload(ticket: Ticket, bytes: Uint8Array) {
   if (bytes.length !== ticket.size) throw new Error("File size does not match the upload request.");
   validateFileType(bytes, ticket.mimeType);
-  const scanResult = await scanFile(bytes, ticket.mimeType.startsWith("image/"));
   // Full decode rejects malformed images and decompression bombs. Re-encoding
   // strips metadata and trailing/polyglot payloads before anything is published.
   let stored: Buffer<ArrayBufferLike> = Buffer.from(bytes);
@@ -103,7 +102,12 @@ export async function storeScannedUpload(ticket: Ticket, bytes: Uint8Array) {
     stored = Buffer.from(await clean.save());
     if (stored.length > maxDocumentBytes) throw new Error("Processed PDF is too large.");
   }
-  const headers = { "content-type": ticket.mimeType, "if-none-match": "*", "x-amz-meta-security-scan": scanResult === "clamav-v1" ? "clamav-v1" : "sanitized-v1", "x-amz-meta-sha256": createHash("sha256").update(stored).digest("hex") };
+  // Scan the normalized output when ClamAV is configured. In the default
+  // balanced mode, successful content disarm and reconstruction is sufficient;
+  // deployments can still require ClamAV with UPLOAD_MALWARE_SCAN_MODE=required.
+  const scanResult = await scanFile(stored, true);
+  const securityStatus = scanResult === "clamav-v1" ? "clamav-v1" : ticket.mimeType === "application/pdf" ? "sanitized-v2" : "sanitized-v1";
+  const headers = { "content-type": ticket.mimeType, "if-none-match": "*", "x-amz-meta-security-scan": securityStatus, "x-amz-meta-sha256": createHash("sha256").update(stored).digest("hex") };
   const response = await fetch(createPresignedR2Url("PUT", ticket.key, 60, undefined, headers), {
     method: "PUT", body: new Uint8Array(stored).buffer, signal: AbortSignal.timeout(20_000),
     headers,
@@ -116,6 +120,7 @@ export async function verifiedObject(key: string) {
   const size = Number(response.headers.get("content-length"));
   const securityStatus = response.headers.get("x-amz-meta-security-scan");
   const sanitizedRaster = securityStatus === "sanitized-v1" && response.headers.get("content-type")?.startsWith("image/");
-  if (!response.ok || !(securityStatus === "clamav-v1" || sanitizedRaster) || !Number.isInteger(size) || size < 1 || size > maxDocumentBytes) throw new Error("Upload requires validation. Please upload the file again.");
+  const sanitizedPdf = securityStatus === "sanitized-v2" && response.headers.get("content-type") === "application/pdf";
+  if (!response.ok || !(securityStatus === "clamav-v1" || sanitizedRaster || sanitizedPdf) || !Number.isInteger(size) || size < 1 || size > maxDocumentBytes) throw new Error("Upload requires validation. Please upload the file again.");
   return response;
 }

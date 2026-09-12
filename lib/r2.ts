@@ -1,7 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 
 export const documentTypes = new Set(["business_registration", "representative_identification", "proof_of_business_address", "bank_confirmation_letter"]);
-export const allowedDocumentMimeTypes = new Set(["application/pdf", "image/jpeg", "image/png"]);
+export const allowedDocumentMimeTypes = new Set(["application/pdf", "image/jpeg", "image/jpg", "image/png"]);
 export const maxDocumentBytes = 10 * 1024 * 1024;
 
 function getR2() {

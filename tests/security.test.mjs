@@ -265,6 +265,13 @@ test("sanitisation-only metadata cannot make a document downloadable", async () 
   finally { globalThis.fetch = previous; }
 });
 
+test("rebuilt PDFs remain downloadable in balanced scanning mode", async () => {
+  const previous = globalThis.fetch;
+  globalThis.fetch = async () => new Response(null, { headers: { "content-length": "100", "content-type": "application/pdf", "x-amz-meta-security-scan": "sanitized-v2" } });
+  try { assert.equal((await security.verifiedObject("applications/1/rebuilt.pdf")).ok, true); }
+  finally { globalThis.fetch = previous; }
+});
+
 test("merchant reads cannot cross membership boundaries and customer cannot read admin documents", async () => {
   const ownerJar = new Map();
   await call(security.registration.POST, { name: "Owner", email: "owner@security.example", password: "security-test-password", privacyAccepted: true, termsAccepted: true }, ownerJar);

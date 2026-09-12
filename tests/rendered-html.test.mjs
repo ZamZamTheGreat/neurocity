@@ -1134,7 +1134,7 @@ test("keeps verified application documents safe during replacement uploads", asy
   assert.match(complete, /candidateKey = row\.pendingStorageKey/);
   assert.match(complete, /pendingStorageKey: null/);
   assert.match(complete, /createPresignedR2Url\("DELETE", row\.storageKey/);
-  assert.match(operations, /PDF malware scanning/);
+  assert.match(operations, /Enhanced malware scanning/);
   assert.match(operations, /Private document storage/);
 });
 

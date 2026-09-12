@@ -15,8 +15,10 @@ export async function PUT(request: Request) {
     await storeScannedUpload(ticket, bytes);
     return Response.json({ ok: true });
   } catch (error) {
-    console.error("verified upload failed", error instanceof Error ? error.message : error);
-    await securityAlert("upload_rejected", "warning", { userHash: securityFingerprint(user.userId) }, securityFingerprint(user.userId));
-    return Response.json({ error: "File could not be verified. Check its type and size, then retry. If this continues, contact support." }, { status: 422 });
+    const reason = error instanceof Error ? error.message : "Upload failed.";
+    console.error("verified upload failed", reason);
+    if (/Invalid upload|does not match its declared type|file was rejected/i.test(reason)) await securityAlert("upload_rejected", "warning", { userHash: securityFingerprint(user.userId) }, securityFingerprint(user.userId));
+    const message = /scanning is temporarily unavailable/i.test(reason) ? "Secure scanning is temporarily unavailable. Please try again shortly." : /Unsupported PDF/i.test(reason) ? "This PDF is encrypted, empty, or has too many pages. Save an unencrypted copy and retry." : /too large/i.test(reason) ? "The processed file is larger than 10 MB. Choose a smaller file and retry." : "This file could not be read safely. Try another PDF, JPG or PNG file.";
+    return Response.json({ error: message }, { status: 422 });
   }
 }
