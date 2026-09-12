@@ -96,7 +96,7 @@
 .store-product-dialog:before{position:sticky;top:7px;z-index:4;display:block;width:42px;height:4px;margin:7px auto -11px;border-radius:999px;background:#d5cec2;content:""}
 .store-product-dialog>.store-product-v2{display:grid;grid-template-columns:minmax(0,1fr)!important;width:100%;min-width:0}
 .store-product-dialog .store-product-detail-media{width:100%;min-width:0}
-.store-product-dialog .store-product-image{width:100%;height:auto!important;min-height:0!important;aspect-ratio:16/10!important}
+.store-product-dialog .store-product-image{width:100%;height:auto!important;min-height:0!important;aspect-ratio:1/1!important}
 .store-product-dialog .store-product-image>img{object-fit:contain!important;transform:none!important}
 .store-product-dialog .store-product-thumbnails{padding:9px 12px}
 .store-product-dialog .store-product-thumbnails img{width:48px;height:48px}
@@ -150,3 +150,4 @@
 .store-product-preview,.neurocity-marketplace .public-store-card,.neurocity-marketplace .product-card{cursor:pointer}
 .store-product-preview:focus-visible,.neurocity-marketplace .public-store-card:focus-visible,.neurocity-marketplace .product-card:focus-visible{outline:3px solid #b88a3255;outline-offset:3px;border-color:#b88a32}
 .store-product-preview:active,.neurocity-marketplace .public-store-card:active,.neurocity-marketplace .product-card:active{transform:translateY(-1px) scale(.995)}
+.store-product-preview .store-view-product,.neurocity-marketplace .public-store-copy>button,.neurocity-marketplace .product-copy>div>button{pointer-events:none}
