@@ -928,11 +928,19 @@ test("supports product and service catalogue items", async () => {
   const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
   const merchantProducts = await readFile(new URL("../app/api/merchant/products/route.ts", import.meta.url), "utf8");
   const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
+  const marketplace = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const catalogue = await readFile(new URL("../app/api/catalogue/route.ts", import.meta.url), "utf8");
   assert.match(schema, /itemType: varchar\("item_type"/);
   assert.match(schema, /durationMinutes: integer\("duration_minutes"/);
   assert.match(merchantProducts, /pricingModels = new Set\(\["fixed", "from", "quote"\]\)/);
   assert.match(storefront, /Request booking/);
   assert.match(storefront, /api\/service-bookings/);
+  assert.match(marketplace, /service-product-card/);
+  assert.match(marketplace, /View & book/);
+  assert.match(marketplace, /product\.merchantName/);
+  assert.doesNotMatch(marketplace, /<small>LIGHTWORK/);
+  assert.match(catalogue, /merchantName: merchants\.name/);
+  assert.match(catalogue, /eq\(merchants\.isPublic, true\)/);
   assert.match(schema, /serviceBookings = pgTable\("service_bookings"/);
 });
 

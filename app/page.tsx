@@ -10,11 +10,20 @@ import AdvertisingBanner from "./components/AdvertisingBanner";
 
 type Product = {
   id: number;
+  itemType: "product" | "service";
   name: string;
-  collection: string;
+  collection: string | null;
+  category: string | null;
   price: number | null;
+  salePrice: number | null;
+  pricingModel: "fixed" | "from" | "quote";
+  durationMinutes: number | null;
+  serviceMode: string | null;
+  bookingRequired: boolean;
+  merchantName: string;
+  merchantSlug: string;
   image: string;
-  badge: string;
+  badge: string | null;
 };
 type PublicStore = {
   id: number;
@@ -124,7 +133,7 @@ export function MarketplaceExperience({
   const filtered = useMemo(
     () =>
       catalogue.filter((p) =>
-        `${p.name} ${p.collection}`.toLowerCase().includes(query.toLowerCase()),
+        `${p.name} ${p.collection ?? ""} ${p.category ?? ""} ${p.merchantName} ${p.itemType}`.toLowerCase().includes(query.toLowerCase()),
       ),
     [query, catalogue],
   );
@@ -171,18 +180,9 @@ export function MarketplaceExperience({
     ? `/malls/${encodeURIComponent(mallSlug)}/apply`
     : "/apply";
 
-  function addToCart(product: Product) {
-    if (product.price === null) {
-      setNotice(
-        `${product.name} is in pilot review. Ask LightWork to confirm price and availability.`,
-      );
-      askConcierge();
-      return;
-    }
-    setNotice(
-      `Choose the size and colour for ${product.name} in the LightWork storefront.`,
-    );
-    window.location.href = "/stores/lightwork-clothing#shop";
+  function openCatalogueItem(product: Product) {
+    setNotice(product.itemType === "service" ? `Opening ${product.merchantName} to view this service.` : `Choose the available options for ${product.name} in ${product.merchantName}.`);
+    window.location.href = `/stores/${encodeURIComponent(product.merchantSlug)}#shop`;
   }
 
   return (
@@ -564,7 +564,7 @@ export function MarketplaceExperience({
               </div>
               <div className="product-grid marketplace-filter-results">
                 {catalogue.slice(0, 3).map((p, index) => (
-                  <div className="marketplace-reveal-card" style={{ "--reveal-index": index } as CSSProperties} key={p.id}><ProductCard product={p} onAdd={addToCart} /></div>
+                  <div className="marketplace-reveal-card" style={{ "--reveal-index": index } as CSSProperties} key={p.id}><ProductCard product={p} onOpen={openCatalogueItem} /></div>
                 ))}
               </div>
             </section>
@@ -639,7 +639,7 @@ export function MarketplaceExperience({
           <section className="section store-products">
             <div className="product-grid four marketplace-filter-results">
               {filtered.map((p, index) => (
-                <div className="marketplace-reveal-card" style={{ "--reveal-index": index } as CSSProperties} key={p.id}><ProductCard product={p} onAdd={addToCart} /></div>
+                <div className="marketplace-reveal-card" style={{ "--reveal-index": index } as CSSProperties} key={p.id}><ProductCard product={p} onOpen={openCatalogueItem} /></div>
               ))}
             </div>
           </section>
@@ -705,25 +705,28 @@ export function MarketplaceExperience({
 
 function ProductCard({
   product,
-  onAdd,
+  onOpen,
 }: {
   product: Product;
-  onAdd: (p: Product) => void;
+  onOpen: (p: Product) => void;
 }) {
+  const service = product.itemType === "service";
+  const displayedPrice = product.salePrice ?? product.price;
   return (
-    <article className="product-card">
+    <article className={`product-card${service ? " service-product-card" : ""}`}>
       <div className="product-image">
         <ManagedImage src={product.image} alt={product.name} />
-        <span>{product.badge}</span>
+        <span>{product.badge ?? (service ? "SERVICE" : "PRODUCT")}</span>
         <button aria-label={`Save ${product.name}`}>♡</button>
       </div>
       <div className="product-copy">
-        <small>LIGHTWORK · {product.collection}</small>
+        <small>{product.merchantName}{product.collection ? ` · ${product.collection}` : ""}</small>
         <h3>{product.name}</h3>
+        {service && <p className="marketplace-service-meta"><span>{product.durationMinutes ? `${product.durationMinutes} min` : "Duration confirmed by provider"}</span><span>{product.serviceMode === "at_customer" ? "At your location" : product.serviceMode === "remote" ? "Online / remote" : "At the business"}</span></p>}
         <div>
-          <b>{money(product.price)}</b>
-          <button onClick={() => onAdd(product)}>
-            {product.price ? "+ Add" : "Ask store"}
+          <b>{service && product.pricingModel === "quote" ? "Request a quote" : `${service && product.pricingModel === "from" ? "From " : ""}${money(displayedPrice)}`}</b>
+          <button onClick={() => onOpen(product)}>
+            {service ? (product.bookingRequired ? "View & book" : "View service") : "Choose options"}
           </button>
         </div>
       </div>
