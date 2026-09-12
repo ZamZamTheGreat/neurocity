@@ -758,6 +758,27 @@ test("keeps customer order tracking current while the account is open", async ()
   assert.match(account, /document\.addEventListener\("visibilitychange", refreshWhenVisible\)/);
 });
 
+test("keeps an unfinished PayToday checkout resumable inside its payment window", async () => {
+  const payment = await readFile(new URL("../app/api/payments/paytoday/route.ts", import.meta.url), "utf8");
+  const accountApi = await readFile(new URL("../app/api/account/route.ts", import.meta.url), "utf8");
+  const account = await readFile(new URL("../app/account/page.tsx", import.meta.url), "utf8");
+  assert.match(payment, /\["accepted", "payment_processing"\]\.includes\(order\.status\)/);
+  assert.match(payment, /prepared\.existing\?\.checkoutUrl/);
+  assert.match(accountApi, /\["accepted", "payment_processing"\]\.includes\(candidate\.status\)/);
+  assert.match(account, /Return to PayToday/);
+  assert.match(account, /order\.paymentStatus !== "paid"/);
+});
+
+test("uses compact dismissible storefront notifications and visible bag motion", async () => {
+  const storefront = await readFile(new URL("../app/stores/[slug]/page.tsx", import.meta.url), "utf8");
+  const shoppingCss = await readFile(new URL("../app/shopping-journey-v2.css", import.meta.url), "utf8");
+  assert.match(storefront, /Added to bag\./);
+  assert.match(storefront, /Dismiss notification/);
+  assert.match(storefront, /duration: 1100/);
+  assert.match(storefront, /destination\.animate/);
+  assert.match(shoppingCss, /width:min\(300px,calc\(100vw - 28px\)\)/);
+});
+
 test("protects checkout and database capacity under concurrent traffic", async () => {
   const database = await readFile(new URL("../db/index.ts", import.meta.url), "utf8");
   const orders = await readFile(new URL("../app/api/orders/route.ts", import.meta.url), "utf8");
@@ -797,7 +818,7 @@ test("keeps the customer journey connected from storefront to multi-store checko
   const conciergeEvents = await readFile(new URL("../lib/concierge-events.ts", import.meta.url), "utf8");
   assert.match(storefront, /account\?tab=Bag/);
   assert.match(storefront, /!preorder && item\.available !== null && item\.available < 1/);
-  assert.match(storefront, /Added to your bag/);
+  assert.match(storefront, /Added to bag/);
   assert.match(storefront, /https:\/\/wa\.me\//);
   assert.match(storefront, /Text store/);
   assert.match(storefront, /whatsappItemHref/);

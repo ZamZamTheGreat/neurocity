@@ -1137,7 +1137,7 @@ function OrderRow({ order }: { order: Account["orders"][number] }) {
   const [uploading, setUploading] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
   const [clock, setClock] = useState(Date.now());
-  const activeDeadline = order.status === "pending_merchant_confirmation" ? order.confirmationExpiresAt : order.status === "accepted" ? order.paymentExpiresAt : null;
+  const activeDeadline = order.status === "pending_merchant_confirmation" ? order.confirmationExpiresAt : ["accepted", "payment_processing"].includes(order.status) ? order.paymentExpiresAt : null;
   useEffect(() => { if (!activeDeadline) return; const timer = window.setInterval(() => setClock(Date.now()), 1000); return () => window.clearInterval(timer); }, [activeDeadline]);
   const deadlineSeconds = activeDeadline ? Math.max(0, Math.ceil((new Date(activeDeadline).getTime() - clock) / 1000)) : null;
   const pickup = order.fulfillmentMethod === "pickup";
@@ -1211,7 +1211,7 @@ function OrderRow({ order }: { order: Account["orders"][number] }) {
         <span>{order.reference}</span>
         <strong>{order.storeName}</strong>
         <small>{new Date(order.createdAt).toLocaleDateString("en-NA")}</small>
-        {deadlineSeconds !== null && <small className="order-confirmation-timer">{order.status === "accepted" ? "Pay" : "Confirmation"} window · {Math.floor(deadlineSeconds / 60)}:{String(deadlineSeconds % 60).padStart(2, "0")}</small>}
+        {deadlineSeconds !== null && <small className="order-confirmation-timer">{["accepted", "payment_processing"].includes(order.status) ? "Pay" : "Confirmation"} window · {Math.floor(deadlineSeconds / 60)}:{String(deadlineSeconds % 60).padStart(2, "0")}</small>}
       </div>
       <div>
         <span className="order-status">
@@ -1409,7 +1409,7 @@ function OrderActions({ order }: { order: Account["orders"][number] }) {
         </div>
       ))}
       <div>
-        {order.workflow === "merchant_confirmation_v1" && order.status === "accepted" && order.paymentStatus !== "paid" && order.paymentReady && <button disabled={openingPayment} onClick={pay}>{openingPayment ? "Opening PayToday…" : `Pay confirmed checkout · N$${Number(order.checkoutTotal).toFixed(2)}`}</button>}
+        {order.workflow === "merchant_confirmation_v1" && ["accepted", "payment_processing"].includes(order.status) && order.paymentStatus !== "paid" && order.paymentReady && <button disabled={openingPayment} onClick={pay}>{openingPayment ? "Opening PayToday…" : `${order.status === "payment_processing" ? "Return to PayToday" : "Pay confirmed checkout"} · N$${Number(order.checkoutTotal).toFixed(2)}`}</button>}
         {["pending_payment", "pending_merchant_confirmation", "accepted"].includes(order.status) && order.paymentStatus !== "paid" && <button onClick={cancel}>Cancel order request</button>}
         {!order.issues?.some((issue) => issue.status === "open") && (
           <button onClick={report}>Report an issue</button>

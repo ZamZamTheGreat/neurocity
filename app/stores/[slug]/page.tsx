@@ -95,6 +95,11 @@ export default function StorefrontPage() {
   const [collection, setCollection] = useState("all");
   const [sort, setSort] = useState("featured");
   useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 4200);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+  useEffect(() => {
     fetch(`/api/stores/${encodeURIComponent(slug)}`)
       .then(async (response) => {
         const body = await response.json();
@@ -159,7 +164,7 @@ export default function StorefrontPage() {
     setNotice(
       response.ok
         ? body.action === "cart"
-          ? "Added to your bag. Open your account when you are ready to checkout."
+          ? "Added to bag."
           : body.action === "wishlist"
             ? "Saved to your wishlist."
             : "Store saved to your NeuroCity account."
@@ -193,13 +198,15 @@ export default function StorefrontPage() {
         </nav>
       </header>
       {notice && (
-        <button
+        <div
           className="store-notice"
+          role="status"
           aria-live="polite"
-          onClick={() => setNotice("")}
         >
-          {notice} ×
-        </button>
+          <span className="store-notice-mark" aria-hidden="true">✓</span>
+          <span>{notice}</span>
+          <button className="store-notice-close" type="button" aria-label="Dismiss notification" onClick={() => setNotice("")}>×</button>
+        </div>
       )}
       <section className="store-hero-v2">
         <div className="store-hero-copy">
@@ -735,12 +742,14 @@ function animateProductToBag(sourceButton: HTMLElement, imageUrl: string | null)
   flyer.src = imageUrl;
   flyer.alt = "";
   flyer.className = "bag-product-flyer";
-  flyer.style.left = `${source.left + source.width / 2 - 38}px`;
-  flyer.style.top = `${source.top + source.height / 2 - 38}px`;
+  flyer.style.left = `${source.left + source.width / 2 - 46}px`;
+  flyer.style.top = `${source.top + source.height / 2 - 46}px`;
   document.body.appendChild(flyer);
   const animation = flyer.animate([
-    { transform: "translate3d(0,0,0) scale(1)", opacity: 0.95 },
-    { transform: `translate3d(${target.left + target.width / 2 - source.left - source.width / 2}px, ${target.top + target.height / 2 - source.top - source.height / 2}px, 0) scale(.18)`, opacity: 0.25 },
-  ], { duration: 560, easing: "cubic-bezier(.2,.8,.2,1)" });
-  animation.finished.finally(() => flyer.remove());
+    { transform: "translate3d(0,0,0) scale(.82)", opacity: 0, offset: 0 },
+    { transform: "translate3d(0,-10px,0) scale(1)", opacity: 1, offset: .18 },
+    { transform: `translate3d(${(target.left + target.width / 2 - source.left - source.width / 2) * .58}px, ${(target.top + target.height / 2 - source.top - source.height / 2) * .48 - 38}px, 0) scale(.72) rotate(-3deg)`, opacity: .95, offset: .62 },
+    { transform: `translate3d(${target.left + target.width / 2 - source.left - source.width / 2}px, ${target.top + target.height / 2 - source.top - source.height / 2}px, 0) scale(.16)`, opacity: .35, offset: 1 },
+  ], { duration: 1100, easing: "cubic-bezier(.22,.72,.2,1)" });
+  animation.finished.finally(() => { flyer.remove(); destination.animate([{ transform: "scale(1)" }, { transform: "scale(1.1)" }, { transform: "scale(1)" }], { duration: 420, easing: "ease-out" }); });
 }

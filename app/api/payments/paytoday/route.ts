@@ -23,19 +23,21 @@ export async function POST(request: Request) {
   if (!selected?.checkoutGroupId || selected.workflow !== ORDER_WORKFLOW) return Response.json({ error: "This order does not use merchant-confirmed payment." }, { status: 409 });
   const [checkout] = await db.select().from(checkoutGroups).where(eq(checkoutGroups.id, selected.checkoutGroupId)).limit(1);
   const groupOrders = await db.select().from(orders).where(eq(orders.checkoutGroupId, selected.checkoutGroupId));
-  if (!checkout || groupOrders.some((order) => order.status !== "accepted" || order.paymentStatus === "paid")) return Response.json({ error: "Every store must confirm the order before payment can begin." }, { status: 409 });
+  if (!checkout || groupOrders.some((order) => !["accepted", "payment_processing"].includes(order.status) || order.paymentStatus === "paid")) return Response.json({ error: "Every store must confirm the order before payment can begin." }, { status: 409 });
   const paymentDeadline = groupOrders.map((order) => order.paymentExpiresAt).filter((value): value is Date => value instanceof Date).sort((a, b) => a.getTime() - b.getTime())[0] ?? deadlineFrom(new Date(), CUSTOMER_PAYMENT_MINUTES);
   if (paymentDeadline <= new Date()) return Response.json({ error: "The payment window has expired. Reserved stock will be released." }, { status: 409 });
   const prepared = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(${checkout.id}, 71)`);
     const [existing] = await tx.select().from(paymentTransactions).where(and(eq(paymentTransactions.checkoutGroupId, checkout.id), eq(paymentTransactions.provider, "paytoday"), inArray(paymentTransactions.status, ["creating", "pending"]))).orderBy(desc(paymentTransactions.createdAt)).limit(1);
     if (existing) return { existing, transaction: null };
+    if (groupOrders.some((order) => order.status === "payment_processing")) return { existing: null, transaction: null };
     const transactionKey = randomUUID();
     const [transaction] = await tx.insert(paymentTransactions).values({ checkoutGroupId: checkout.id, provider: "paytoday", amount: checkout.total, status: "creating", expiresAt: paymentDeadline, providerMetadata: { invoiceNumber: checkout.reference, workflow: ORDER_WORKFLOW, orderVersions: groupOrders.map((order) => ({ id: order.id, version: order.orderVersion })), transactionKey } }).returning();
     return { existing: null, transaction };
   });
   if (prepared.existing?.checkoutUrl) return Response.json({ paymentUrl: prepared.existing.checkoutUrl, reference: checkout.reference });
   if (prepared.existing) return Response.json({ error: "PayToday is already preparing this payment. Try again in a moment." }, { status: 409 });
+  if (!prepared.transaction) return Response.json({ error: "This payment is being verified. Refresh the order before trying again." }, { status: 409 });
   const transaction = prepared.transaction!;
   try {
     const names = user.displayName.trim().split(/\s+/);
