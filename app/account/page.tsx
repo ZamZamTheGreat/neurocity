@@ -481,19 +481,7 @@ export default function AccountPage() {
           </div>
         )}
         {tab === "Bookings" && (
-          <div className="account-list">
-            {bookings.map((booking) => (
-              <CustomerBooking
-                key={booking.id}
-                booking={booking}
-                reload={load}
-                setMessage={setMessage}
-              />
-            ))}
-            {bookings.length === 0 && (
-              <Empty text="Your service requests and confirmed appointments will appear here." />
-            )}
-          </div>
+          <CustomerBookings bookings={bookings} reload={load} setMessage={setMessage} />
         )}
         {tab === "Messages" && (
           <div className="inbox-list">
@@ -690,6 +678,23 @@ export default function AccountPage() {
   );
 }
 
+function CustomerBookings({ bookings, reload, setMessage }: { bookings: ServiceBooking[]; reload: () => Promise<void>; setMessage: (message: string) => void }) {
+  const [filter, setFilter] = useState<"active" | "action" | "history">("active");
+  const actionStatuses = new Set(["quote_proposed", "reschedule_proposed"]);
+  const historyStatuses = new Set(["completed", "declined", "cancelled"]);
+  const visible = bookings.filter((booking) => filter === "action" ? actionStatuses.has(booking.status) || (booking.status === "confirmed" && ["not_started", "pending", "failed"].includes(booking.paymentStatus)) : filter === "history" ? historyStatuses.has(booking.status) : !historyStatuses.has(booking.status));
+  const actionCount = bookings.filter((booking) => actionStatuses.has(booking.status) || (booking.status === "confirmed" && ["not_started", "pending", "failed"].includes(booking.paymentStatus))).length;
+  return <section className="customer-bookings">
+    <header><div><small>SERVICE BOOKINGS</small><h2>Your appointments</h2><p>Review provider responses, pay confirmed bookings and follow each appointment.</p></div><a href="/marketplace?type=service">Find a service</a></header>
+    <nav className="booking-filters" aria-label="Filter bookings">
+      <button className={filter === "active" ? "active" : ""} onClick={() => setFilter("active")}>Active <span>{bookings.length - bookings.filter((booking) => historyStatuses.has(booking.status)).length}</span></button>
+      <button className={filter === "action" ? "active" : ""} onClick={() => setFilter("action")}>Action needed <span>{actionCount}</span></button>
+      <button className={filter === "history" ? "active" : ""} onClick={() => setFilter("history")}>History</button>
+    </nav>
+    <div className="account-list booking-list">{visible.map((booking) => <CustomerBooking key={booking.id} booking={booking} reload={reload} setMessage={setMessage} />)}{visible.length === 0 && <Empty text={bookings.length ? "No bookings in this view." : "Your service requests and confirmed appointments will appear here."} />}</div>
+  </section>;
+}
+
 function CustomerBooking({
   booking,
   reload,
@@ -700,6 +705,9 @@ function CustomerBooking({
   setMessage: (message: string) => void;
 }) {
   const [openingPayment, setOpeningPayment] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { if (!booking.paymentExpiresAt || booking.paymentStatus === "paid") return; const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, [booking.paymentExpiresAt, booking.paymentStatus]);
   async function accept() {
     const response = await fetch("/api/service-bookings", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: booking.id, action: "accept" }) });
     const result = await response.json();
@@ -708,10 +716,9 @@ function CustomerBooking({
   }
   async function pay() {
     if (!booking.orderId) return;
-    const phone = window.prompt("Enter the mobile number PayToday should use for verification")?.trim();
-    if (!phone) return;
+    if (!phone.trim()) return setMessage("Enter the mobile number PayToday should use for verification.");
     setOpeningPayment(true);
-    const response = await fetch("/api/payments/paytoday", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderId: booking.orderId, phone }) });
+    const response = await fetch("/api/payments/paytoday", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderId: booking.orderId, phone: phone.trim() }) });
     const result = await response.json();
     if (response.ok && result.paymentUrl) { window.location.assign(result.paymentUrl); return; }
     setMessage(result.error ?? "Payment could not be opened.");
@@ -729,46 +736,18 @@ function CustomerBooking({
     if (response.ok) await reload();
   }
   const appointment = booking.scheduledStart ?? booking.requestedStart;
+  const proposal = ["quote_proposed", "reschedule_proposed"].includes(booking.status);
+  const paymentOpen = booking.status === "confirmed" && booking.orderId && ["not_started", "pending", "failed"].includes(booking.paymentStatus);
+  const seconds = booking.paymentExpiresAt ? Math.max(0, Math.floor((new Date(booking.paymentExpiresAt).getTime() - now) / 1000)) : null;
+  const statusCopy: Record<string, string> = { requested: "Waiting for the provider to review your request.", quote_proposed: "The provider sent a final price for your approval.", reschedule_proposed: "The provider suggested a different appointment time.", confirmed: booking.paymentStatus === "paid" ? "Paid and confirmed with the provider." : "The provider confirmed availability. Complete payment to secure it.", in_progress: "Your service is currently in progress.", completed: "This appointment is complete.", declined: "The provider could not accept this request.", cancelled: booking.paymentStatus === "expired" ? "The payment window expired." : "This booking was cancelled." };
   return (
-    <article className="account-order expanded">
-      <div>
-        <span>{booking.reference}</span>
-        <strong>{booking.storeName}</strong>
-        <small>{booking.serviceName}</small>
-      </div>
-      <div>
-        <span className="order-status">
-          {booking.status.replaceAll("_", " ")}
-        </span>
-        <small>
-          {new Date(appointment).toLocaleString("en-NA")} ·{" "}
-          {(booking.serviceMode ?? "at_business").replaceAll("_", " ")}
-        </small>
-      </div>
-      <strong>
-        {booking.pricingModel === "quote" || booking.priceSnapshot === null
-          ? "Quote"
-          : `N$${Number(booking.priceSnapshot).toFixed(2)}`}
-      </strong>
-      <span className={`payment-state payment-${booking.paymentStatus}`}>Payment · {booking.paymentStatus.replaceAll("_", " ")}</span>
-      <div className="customer-order-detail">
-        <p>
-          <span>
-            {booking.durationMinutes
-              ? `${booking.durationMinutes} minutes`
-              : "Duration to be confirmed"}
-          </span>
-          {booking.merchantNote && <small>{booking.merchantNote}</small>}
-        </p>
-        <div>
-          <a href={`/stores/${booking.storeSlug}`}>View provider</a>
-          {["quote_proposed", "reschedule_proposed"].includes(booking.status) && <button onClick={accept}>Accept proposal</button>}
-          {booking.status === "confirmed" && booking.orderId && ["not_started", "pending", "failed"].includes(booking.paymentStatus) && <button disabled={openingPayment} onClick={pay}>{openingPayment ? "Opening PayToday…" : `Pay service · N$${Number(booking.priceSnapshot).toFixed(2)}`}</button>}
-          {["requested", "confirmed", "reschedule_proposed"].includes(
-            booking.status,
-          ) && <button onClick={cancel}>Cancel booking</button>}
-        </div>
-      </div>
+    <article className={`booking-card status-${booking.status}`}>
+      <header><div><span>{booking.reference}</span><h3>{booking.serviceName}</h3><a href={`/stores/${booking.storeSlug}`}>{booking.storeName}</a></div><span className="booking-status">{booking.status.replaceAll("_", " ")}</span></header>
+      <p className="booking-status-copy">{statusCopy[booking.status] ?? "Follow this booking here."}</p>
+      <div className="booking-facts"><div><small>APPOINTMENT</small><strong>{new Date(appointment).toLocaleDateString("en-NA", { weekday: "short", day: "numeric", month: "short" })}</strong><span>{new Date(appointment).toLocaleTimeString("en-NA", { hour: "2-digit", minute: "2-digit" })}</span></div><div><small>SERVICE</small><strong>{booking.durationMinutes ? `${booking.durationMinutes} min` : "To confirm"}</strong><span>{(booking.serviceMode ?? "at_business").replaceAll("_", " ")}</span></div><div><small>PRICE</small><strong>{booking.priceSnapshot === null ? "Quote pending" : `N$${Number(booking.priceSnapshot).toFixed(2)}`}</strong><span className={`booking-payment payment-${booking.paymentStatus}`}>{booking.paymentStatus === "paid" ? "Paid" : `Payment ${booking.paymentStatus.replaceAll("_", " ")}`}</span></div></div>
+      {booking.merchantNote && <div className="booking-provider-note"><small>MESSAGE FROM PROVIDER</small><p>{booking.merchantNote}</p></div>}
+      {paymentOpen && <div className="booking-payment-action"><div><small>PAYMENT WINDOW</small><strong>{seconds !== null ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} remaining` : "30 minutes"}</strong><span>Your booking is secured after PayToday verifies payment.</span></div><label>Mobile number<input type="tel" inputMode="tel" autoComplete="tel" placeholder="e.g. 081 123 4567" value={phone} onChange={(event) => setPhone(event.target.value)} /></label><button disabled={openingPayment || seconds === 0} onClick={pay}>{openingPayment ? "Opening PayToday…" : `Pay N$${Number(booking.priceSnapshot).toFixed(2)}`}</button></div>}
+      <footer><a href={`/stores/${booking.storeSlug}`}>View provider</a>{proposal && <button className="primary" onClick={accept}>{booking.status === "quote_proposed" ? "Accept quote and continue" : "Accept new time"}</button>}{["requested", "confirmed", "quote_proposed", "reschedule_proposed"].includes(booking.status) && booking.paymentStatus !== "paid" && <button className="quiet-danger" onClick={cancel}>Cancel request</button>}</footer>
     </article>
   );
 }
