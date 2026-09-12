@@ -26,16 +26,34 @@ type Application = {
   status: string;
   tradingName: string;
   legalName: string;
+  registrationNumber: string;
+  businessType: string;
   category: string;
+  categories: string[];
+  offeringType: string;
   targetPlatformName: string;
   locationType: string;
   mainOperatingArea: string;
   physicalAddress: string;
   branchLocations: string;
   representativeName: string;
+  representativeRole: string;
   email: string;
   phone: string;
+  website: string | null;
+  socialProfiles: string | null;
+  branchCount: number;
   description: string;
+  productSummary: string;
+  estimatedProductCount: number;
+  pickupAvailable: boolean;
+  deliveryAvailable: boolean;
+  deliveryDetails: string | null;
+  returnsPolicy: string;
+  termsAccepted: boolean;
+  privacyAccepted: boolean;
+  reviewedAt: string | null;
+  reviewNotes: string | null;
   submittedAt: string;
   documents?: Document[];
 };
@@ -643,6 +661,57 @@ function ApplicationList({
                 <p>{item.description}</p>
               </div>
             </div>
+            <details className="application-more-details">
+              <summary>
+                <span>
+                  <strong>More details</strong>
+                  <small>View the complete submitted application</small>
+                </span>
+                <b aria-hidden="true">⌄</b>
+              </summary>
+              <div className="application-detail-grid">
+                <ApplicationDetailSection title="Business identity" entries={[
+                  ["Legal name", item.legalName],
+                  ["Trading name", item.tradingName],
+                  ["Registration number", item.registrationNumber],
+                  ["Business type", item.businessType?.replaceAll("_", " ")],
+                  ["Offering type", item.offeringType?.replaceAll("_", " ")],
+                  ["Categories", Array.isArray(item.categories) && item.categories.length ? item.categories.join(", ") : item.category],
+                ]} />
+                <ApplicationDetailSection title="Representative and contact" entries={[
+                  ["Representative", item.representativeName],
+                  ["Role", item.representativeRole],
+                  ["Email", item.email],
+                  ["Phone", item.phone],
+                  ["Website", item.website],
+                  ["Social profiles", item.socialProfiles],
+                ]} />
+                <ApplicationDetailSection title="Locations and fulfilment" entries={[
+                  ["Location type", item.locationType?.replaceAll("_", " ")],
+                  ["Main operating area", item.mainOperatingArea],
+                  ["Physical address", item.physicalAddress],
+                  ["Branch count", item.branchCount],
+                  ["Branch locations", item.branchLocations],
+                  ["Pickup available", item.pickupAvailable ? "Yes" : "No"],
+                  ["Delivery available", item.deliveryAvailable ? "Yes" : "No"],
+                  ["Delivery details", item.deliveryDetails],
+                ]} />
+                <ApplicationDetailSection title="Catalogue and policies" entries={[
+                  ["Business description", item.description],
+                  ["Products or services", item.productSummary],
+                  ["Estimated catalogue size", item.estimatedProductCount],
+                  ["Returns policy", item.returnsPolicy],
+                ]} />
+                <ApplicationDetailSection title="Submission and review" entries={[
+                  ["Platform", item.targetPlatformName],
+                  ["Submitted", new Date(item.submittedAt).toLocaleString("en-NA")],
+                  ["Reviewed", item.reviewedAt ? new Date(item.reviewedAt).toLocaleString("en-NA") : null],
+                  ["Review notes", item.reviewNotes],
+                  ["Terms accepted", item.termsAccepted ? "Yes" : "No"],
+                  ["Privacy policy accepted", item.privacyAccepted ? "Yes" : "No"],
+                ]} />
+              </div>
+            </details>
             <div className="document-review">
               <div>
                 <strong>Required documents</strong>
@@ -720,6 +789,28 @@ function ApplicationList({
         );
       })}
     </div>
+  );
+}
+
+function ApplicationDetailSection({
+  title,
+  entries,
+}: {
+  title: string;
+  entries: Array<[string, string | number | null | undefined]>;
+}) {
+  return (
+    <section>
+      <h4>{title}</h4>
+      <dl>
+        {entries.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value === null || value === undefined || value === "" ? "Not provided" : value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
 

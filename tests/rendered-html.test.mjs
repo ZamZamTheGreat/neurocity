@@ -1197,3 +1197,20 @@ test("applies database migrations before a free Render release", async () => {
   assert.match(buildCommand, /npm run db:migrate/);
   assert.ok(buildCommand.indexOf("npm run build") < buildCommand.indexOf("npm run db:migrate"));
 });
+test("lets administrators inspect the complete merchant application", async () => {
+  const admin = await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../app/admin-dashboard-v2.css", import.meta.url), "utf8");
+  assert.match(admin, /className="application-more-details"/);
+  assert.match(admin, />More details</);
+  for (const field of [
+    "Registration number",
+    "Representative and contact",
+    "Locations and fulfilment",
+    "Products or services",
+    "Returns policy",
+    "Privacy policy accepted",
+    "Review notes",
+  ]) assert.match(admin, new RegExp(field));
+  assert.match(styles, /\.application-detail-grid/);
+  assert.match(styles, /\.application-more-details\[open\]/);
+});
