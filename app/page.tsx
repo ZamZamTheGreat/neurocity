@@ -728,11 +728,23 @@ function ProductCard({
   const service = product.itemType === "service";
   const displayedPrice = product.salePrice ?? product.price;
   return (
-    <article className={`product-card${service ? " service-product-card" : ""}`}>
+    <article
+      className={`product-card${service ? " service-product-card" : ""}`}
+      role="button"
+      tabIndex={0}
+      aria-label={`View ${product.name}`}
+      onClick={() => onOpen(product)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen(product);
+        }
+      }}
+    >
       <div className="product-image">
         <ManagedImage src={product.image} alt={product.name} />
         <span>{product.badge ?? (service ? "SERVICE" : "PRODUCT")}</span>
-        <button aria-label={`Save ${product.name}`}>♡</button>
+        <button aria-label={`Save ${product.name}`} onClick={(event) => event.stopPropagation()}>♡</button>
       </div>
       <div className="product-copy">
         <small>{product.merchantName}{product.collection ? ` · ${product.collection}` : ""}</small>
@@ -740,7 +752,7 @@ function ProductCard({
         {service && <p className="marketplace-service-meta"><span>{product.durationMinutes ? `${product.durationMinutes} min` : "Duration confirmed by provider"}</span><span>{product.serviceMode === "at_customer" ? "At your location" : product.serviceMode === "remote" ? "Online / remote" : "At the business"}</span></p>}
         <div>
           <b>{service && product.pricingModel === "quote" ? "Request a quote" : `${service && product.pricingModel === "from" ? "From " : ""}${money(displayedPrice)}`}</b>
-          <button onClick={() => onOpen(product)}>
+          <button onClick={() => onOpen(product)} tabIndex={-1}>
             {service ? (product.bookingRequired ? "View & book" : "View service") : "Choose options"}
           </button>
         </div>
