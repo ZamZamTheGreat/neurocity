@@ -83,7 +83,11 @@ export default function NeuroCityNetworkHome({
   }, []);
   useEffect(() => {
     if (directoryOnly) return;
-    fetch("/api/catalogue").then(async (response) => { const data = await response.json(); if (response.ok) setFeatured((data.products ?? []).slice(0, 4)); }).catch(() => setFeatured([]));
+    fetch("/api/advertisements?placement=home_featured").then(async (response) => {
+      const data = await response.json();
+      const advertisements = (data.advertisements ?? []) as Array<{ productId: number; productName: string; productImageUrl: string | null; productPrice: number | null; productSalePrice: number | null; pricingModel?: string; itemType?: string; badge: string | null; merchantName: string; merchantSlug: string }>;
+      if (response.ok) setFeatured(advertisements.map((item) => ({ id: item.productId, name: item.productName, imageUrl: item.productImageUrl, price: item.productPrice, salePrice: item.productSalePrice, pricingModel: item.pricingModel, itemType: item.itemType, badge: item.badge, merchantName: item.merchantName, merchantSlug: item.merchantSlug })).slice(0, 4));
+    }).catch(() => setFeatured([]));
   }, [directoryOnly]);
   return (
     <main id="main-content" className="network-home digital-malls-home">

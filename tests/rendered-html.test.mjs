@@ -119,6 +119,11 @@ test("lets administrators schedule store advertising across public entry points"
   assert.match(admin, />Advertising</);
   assert.match(home, /AdvertisingBanner placement="home"/);
   assert.match(marketplace, /AdvertisingBanner placement="marketplace"/);
+  assert.match(schema, /productId: integer\("product_id"\)/);
+  assert.match(publicApi, /home_featured/);
+  assert.match(adminApi, /Choose a published product or service from this store/);
+  assert.match(advertisingManager, /Homepage featured product/);
+  assert.match(advertisingManager, /availableProducts/);
 });
 
 test("keeps digital-mall branding isolated from the marketplace", async () => {
@@ -691,7 +696,7 @@ test("provides one-use password recovery without account disclosure", async () =
 
 test("brings live catalogue products forward on the network homepage", async () => {
   const home = await readFile(new URL("../app/components/NeuroCityNetworkHome.tsx", import.meta.url), "utf8");
-  assert.match(home, /\/api\/catalogue/);
+  assert.match(home, /\/api\/advertisements\?placement=home_featured/);
   assert.match(home, /AVAILABLE NOW/);
   assert.match(home, /product\.merchantSlug/);
   assert.match(home, /product\.merchantName/);

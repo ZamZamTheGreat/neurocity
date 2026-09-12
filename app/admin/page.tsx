@@ -10,7 +10,7 @@ import MallPlatformManager, {
 } from "../components/MallPlatformManager";
 import AdminTransactionLedger, { type AdminTransaction, type TransactionSummary } from "../components/AdminTransactionLedger";
 import AdminOperationsOverview, { type OperationsData } from "../components/AdminOperationsOverview";
-import AdminAdvertisingManager, { type AdvertisingCampaign, type AdvertisingMerchant } from "../components/AdminAdvertisingManager";
+import AdminAdvertisingManager, { type AdvertisingCampaign, type AdvertisingMerchant, type AdvertisingProduct } from "../components/AdminAdvertisingManager";
 
 type Document = {
   id: number;
@@ -70,6 +70,7 @@ export default function AdminPage() {
   const [platforms, setPlatforms] = useState<MallPlatform[]>([]);
   const [campaigns, setCampaigns] = useState<AdvertisingCampaign[]>([]);
   const [advertisingMerchants, setAdvertisingMerchants] = useState<AdvertisingMerchant[]>([]);
+  const [advertisingProducts, setAdvertisingProducts] = useState<AdvertisingProduct[]>([]);
   const [message, setMessage] = useState("");
   const [view, setView] = useState<View>("operations");
   const [operations, setOperations] = useState<OperationsData | null>(null);
@@ -124,7 +125,7 @@ export default function AdminPage() {
       setPlatforms(platformData.platforms ?? []);
     }
     if (operationsResponse.ok) setOperations(await operationsResponse.json());
-    if (advertisingResponse.ok) { const advertisingData = await advertisingResponse.json(); setCampaigns(advertisingData.campaigns ?? []); setAdvertisingMerchants(advertisingData.merchants ?? []); }
+    if (advertisingResponse.ok) { const advertisingData = await advertisingResponse.json(); setCampaigns(advertisingData.campaigns ?? []); setAdvertisingMerchants(advertisingData.merchants ?? []); setAdvertisingProducts(advertisingData.products ?? []); }
     const reconciliationResponse = await reconciliationRequest;
     if (reconciliationResponse?.ok) {
       const result = await reconciliationResponse.json();
@@ -539,7 +540,7 @@ export default function AdminPage() {
         ) : view === "transactions" ? (
           <AdminTransactionLedger transactions={transactions} summary={transactionSummary} />
         ) : view === "advertising" ? (
-          <AdminAdvertisingManager campaigns={campaigns} merchants={advertisingMerchants} reload={load} notify={setMessage} />
+          <AdminAdvertisingManager campaigns={campaigns} merchants={advertisingMerchants} products={advertisingProducts} reload={load} notify={setMessage} />
         ) : (
           <MallPlatformManager
             platforms={platforms}
