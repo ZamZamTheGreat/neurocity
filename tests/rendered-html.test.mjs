@@ -494,6 +494,15 @@ test("provides an accessible three-line merchant navigation button on mobile", a
   assert.match(drawers, /\.hamburger-lines span\{display:block;width:19px;height:2px/);
 });
 
+test("keeps merchant navigation reachable while the workspace scrolls", async () => {
+  const workspace = await readFile(new URL("../app/components/MerchantWorkspace.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/merchant-dashboard-clean.css", import.meta.url), "utf8");
+  assert.match(workspace, /aria-controls="merchant-navigation-drawer"/);
+  assert.match(css, /\.merchant-dashboard-v2 \.dashboard-head>\.workspace-menu-toggle\{position:fixed!important/);
+  assert.match(css, /\.merchant-dashboard-v2>aside\{position:sticky;top:0;height:100dvh;overflow-y:auto\}/);
+  assert.match(css, /\.merchant-dashboard-v2\{overflow:visible\}/);
+});
+
 test("uses the dashboard colour system across the NeuroCity marketplace", async () => {
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/marketplace-dashboard-theme.css", import.meta.url), "utf8");
