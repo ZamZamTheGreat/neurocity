@@ -617,6 +617,7 @@ function StoreProduct({
       <section className="store-product-dialog" role="dialog" aria-modal="true" aria-labelledby={`product-dialog-title-${product.id}`}>
         <button className="store-product-dialog-close" type="button" aria-label="Close product details" onClick={() => setViewing(false)}>×</button>
       <article className="store-product-v2 service-card" aria-labelledby={`product-dialog-title-${product.id}`}>
+        <div className="store-product-detail-media">
         <div className="store-product-image">
           {activeImage ? (
             <ManagedImage src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
@@ -634,6 +635,7 @@ function StoreProduct({
           </button>
         </div>
         {gallery.length > 1 && <div className="store-product-thumbnails" aria-label={`${product.name} images`}>{gallery.map((image, index) => <button className={index === imageIndex ? "active" : ""} key={image} onClick={() => setImageIndex(index)} aria-label={`View image ${index + 1}`}><ManagedImage src={image} alt="" width={160} height={120} /></button>)}</div>}
+        </div>
         <div className="store-product-copy">
           <small>
             {product.brand ?? "Local service"}
@@ -679,6 +681,7 @@ function StoreProduct({
     <section className="store-product-dialog" role="dialog" aria-modal="true" aria-labelledby={`product-dialog-title-${product.id}`}>
       <button className="store-product-dialog-close" type="button" aria-label="Close product details" onClick={() => setViewing(false)}>×</button>
     <article className="store-product-v2" aria-labelledby={`product-dialog-title-${product.id}`}>
+      <div className="store-product-detail-media">
       <div className="store-product-image">
         {activeImage ? (
           <ManagedImage src={activeImage} alt={`${product.name} view ${imageIndex + 1}`} />
@@ -696,6 +699,7 @@ function StoreProduct({
         </button>
       </div>
       {gallery.length > 1 && <div className="store-product-thumbnails" aria-label={`${product.name} images`}>{gallery.map((image, index) => <button className={activeImage === image ? "active" : ""} key={image} onClick={() => { setImageIndex(index); setManualImage(image); }} aria-label={`View image ${index + 1}`}><ManagedImage src={image} alt="" width={160} height={120} /></button>)}</div>}
+      </div>
       <div className="store-product-copy">
         <small>
           {product.brand ?? "Local brand"}
