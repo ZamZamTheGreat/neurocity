@@ -97,15 +97,17 @@
 .store-product-dialog>.store-product-v2{display:grid;grid-template-columns:minmax(0,1fr)!important;width:100%;min-width:0}
 .store-product-dialog .store-product-detail-media{width:100%;min-width:0}
 .store-product-dialog .store-product-image{width:100%;height:auto!important;min-height:0!important;aspect-ratio:16/10!important}
+.store-product-dialog .store-product-image>img{object-fit:contain!important;transform:none!important}
 .store-product-dialog .store-product-thumbnails{padding:9px 12px}
 .store-product-dialog .store-product-thumbnails img{width:48px;height:48px}
 .store-product-dialog .store-product-copy{width:100%;min-width:0;padding:20px 17px calc(24px + env(safe-area-inset-bottom))!important}
 .store-product-dialog .store-product-copy h3{font-size:1.6rem}
-.store-product-dialog .store-product-copy>p{font-size:.84rem;line-height:1.55}
+.store-product-dialog .store-product-copy>p{display:block;overflow:visible;font-size:.84rem;line-height:1.55;-webkit-box-orient:initial;-webkit-line-clamp:unset}
+.store-product-dialog .variant-pending{display:block;max-height:none;overflow:visible;white-space:normal;text-overflow:clip;-webkit-line-clamp:unset}
 .store-product-dialog .store-variant-picker,.store-product-dialog .store-variant-select,.store-product-dialog .store-variant-select select{max-width:100%;min-width:0}
 .store-product-dialog .store-stock-line{flex-direction:column;gap:5px}
 .store-product-dialog .store-stock-line small{max-width:100%;text-align:left;overflow-wrap:anywhere}
-.store-product-dialog .store-product-buy{position:sticky;bottom:0;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) minmax(132px,auto);align-items:center;margin-inline:-17px;padding:14px 17px calc(14px + env(safe-area-inset-bottom));background:#fffffff2;box-shadow:0 -10px 24px #1d160d0d;backdrop-filter:blur(10px)}
+.store-product-dialog .store-product-buy{position:relative;bottom:auto;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) minmax(132px,auto);align-items:center;margin-inline:-17px;padding:14px 17px;background:#faf9f6;box-shadow:none}
 .store-product-dialog .store-product-buy>button{width:100%;min-width:0}
 .store-product-dialog .store-ask-button{width:100%;white-space:normal;line-height:1.35}
 .store-product-dialog-close{top:15px;margin:15px 13px -55px auto}
