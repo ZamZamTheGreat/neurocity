@@ -18,6 +18,7 @@ const eslintConfig = defineConfig([
     ".security-test-dist/**",
     ".seed-dist/**",
     ".sites-release-worktree/**",
+    "android/**/build/**",
     "outputs/**",
     "work/**",
     "**/node_modules/**",

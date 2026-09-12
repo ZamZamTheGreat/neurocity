@@ -454,7 +454,7 @@ export function MarketplaceExperience({
             ) : visibleStores.length ? (
               <div className="public-store-grid marketplace-filter-results" key={selectedCategory || "all"}>
                 {visibleStores.map((store, index) => (
-                  <article
+                  <div
                     className="public-store-card marketplace-reveal-card"
                     style={{ "--reveal-index": index } as CSSProperties}
                     key={store.id}
@@ -491,7 +491,7 @@ export function MarketplaceExperience({
                         Visit store →
                       </button>
                     </div>
-                  </article>
+                  </div>
                 ))}
               </div>
             ) : (
@@ -728,7 +728,7 @@ function ProductCard({
   const service = product.itemType === "service";
   const displayedPrice = product.salePrice ?? product.price;
   return (
-    <article
+    <div
       className={`product-card${service ? " service-product-card" : ""}`}
       role="button"
       tabIndex={0}
@@ -757,7 +757,7 @@ function ProductCard({
           </button>
         </div>
       </div>
-    </article>
+    </div>
   );
 }
 

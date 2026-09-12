@@ -41,7 +41,15 @@ export async function PATCH(request: Request) {
     const db = getDb();
     const [current] = await db.select().from(orders).where(eq(orders.id, payload.orderId!)).limit(1);
     if (!current || current.merchantId !== access.merchantId) return Response.json({ error: "Order not found." }, { status: 404 });
-    try { current.workflow === ORDER_WORKFLOW ? assertOrderTransition(current.status, payload.status, "merchant") : (() => { if (!(transitions[current.status] ?? []).includes(payload.status!)) throw new Error(`Cannot move an order from ${current.status} to ${payload.status}.`); })(); } catch (error) { return Response.json({ error: error instanceof Error ? error.message : "Invalid order transition." }, { status: 409 }); }
+    try {
+      if (current.workflow === ORDER_WORKFLOW) {
+        assertOrderTransition(current.status, payload.status, "merchant");
+      } else if (!(transitions[current.status] ?? []).includes(payload.status)) {
+        throw new Error(`Cannot move an order from ${current.status} to ${payload.status}.`);
+      }
+    } catch (error) {
+      return Response.json({ error: error instanceof Error ? error.message : "Invalid order transition." }, { status: 409 });
+    }
     if (current.workflow === ORDER_WORKFLOW && current.status === "pending_merchant_confirmation" && current.confirmationExpiresAt && current.confirmationExpiresAt <= new Date()) return Response.json({ error: "The 30-minute confirmation window has expired." }, { status: 409 });
     if (["rejected", "cancelled", "delivery_failed"].includes(payload.status) && !payload.note?.trim()) return Response.json({ error: "A reason is required for this order decision." }, { status: 400 });
     if (current.paymentMethod === "eft" && current.paymentStatus !== "paid" && ["preparing", "ready_for_pickup", "dispatched", "collected", "delivered", "completed"].includes(payload.status)) return Response.json({ error: "Verify EFT payment before progressing fulfilment." }, { status: 409 });

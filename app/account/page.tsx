@@ -706,8 +706,14 @@ function CustomerBooking({
 }) {
   const [openingPayment, setOpeningPayment] = useState(false);
   const [phone, setPhone] = useState("");
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => { if (!booking.paymentExpiresAt || booking.paymentStatus === "paid") return; const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, [booking.paymentExpiresAt, booking.paymentStatus]);
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    if (!booking.paymentExpiresAt || booking.paymentStatus === "paid") return;
+    const updateClock = () => setNow(Date.now());
+    updateClock();
+    const timer = window.setInterval(updateClock, 1000);
+    return () => window.clearInterval(timer);
+  }, [booking.paymentExpiresAt, booking.paymentStatus]);
   async function accept() {
     const response = await fetch("/api/service-bookings", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: booking.id, action: "accept" }) });
     const result = await response.json();
@@ -738,7 +744,7 @@ function CustomerBooking({
   const appointment = booking.scheduledStart ?? booking.requestedStart;
   const proposal = ["quote_proposed", "reschedule_proposed"].includes(booking.status);
   const paymentOpen = booking.status === "confirmed" && booking.orderId && ["not_started", "pending", "failed"].includes(booking.paymentStatus);
-  const seconds = booking.paymentExpiresAt ? Math.max(0, Math.floor((new Date(booking.paymentExpiresAt).getTime() - now) / 1000)) : null;
+  const seconds = booking.paymentExpiresAt && now > 0 ? Math.max(0, Math.floor((new Date(booking.paymentExpiresAt).getTime() - now) / 1000)) : null;
   const statusCopy: Record<string, string> = { requested: "Waiting for the provider to review your request.", quote_proposed: "The provider sent a final price for your approval.", reschedule_proposed: "The provider suggested a different appointment time.", confirmed: booking.paymentStatus === "paid" ? "Paid and confirmed with the provider." : "The provider confirmed availability. Complete payment to secure it.", in_progress: "Your service is currently in progress.", completed: "This appointment is complete.", declined: "The provider could not accept this request.", cancelled: booking.paymentStatus === "expired" ? "The payment window expired." : "This booking was cancelled." };
   return (
     <article className={`booking-card status-${booking.status}`}>
@@ -1140,10 +1146,16 @@ function OrderRow({ order }: { order: Account["orders"][number] }) {
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
-  const [clock, setClock] = useState(Date.now());
+  const [clock, setClock] = useState(0);
   const activeDeadline = order.status === "pending_merchant_confirmation" ? order.confirmationExpiresAt : ["accepted", "payment_processing"].includes(order.status) ? order.paymentExpiresAt : null;
-  useEffect(() => { if (!activeDeadline) return; const timer = window.setInterval(() => setClock(Date.now()), 1000); return () => window.clearInterval(timer); }, [activeDeadline]);
-  const deadlineSeconds = activeDeadline ? Math.max(0, Math.ceil((new Date(activeDeadline).getTime() - clock) / 1000)) : null;
+  useEffect(() => {
+    if (!activeDeadline) return;
+    const updateClock = () => setClock(Date.now());
+    updateClock();
+    const timer = window.setInterval(updateClock, 1000);
+    return () => window.clearInterval(timer);
+  }, [activeDeadline]);
+  const deadlineSeconds = activeDeadline && clock > 0 ? Math.max(0, Math.ceil((new Date(activeDeadline).getTime() - clock) / 1000)) : null;
   const pickup = order.fulfillmentMethod === "pickup";
   const journey = pickup
     ? ["pending_merchant_confirmation", "accepted", "paid", "preparing", "ready_for_pickup", "collected", "completed"]

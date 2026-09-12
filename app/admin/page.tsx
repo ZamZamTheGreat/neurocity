@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import AdminOrderCentre, {
   type AdminOrder,
@@ -96,7 +96,7 @@ export default function AdminPage() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  async function load() {
+  const load = useCallback(async () => {
     const reconciliationRequest = ["operations", "orders", "transactions"].includes(view)
       ? fetch("/api/admin/transactions/reconcile", { method: "POST" }).catch(() => null)
       : null;
@@ -156,27 +156,27 @@ export default function AdminPage() {
         if (freshOrders.ok) {
           const orderData = await freshOrders.json();
           setOrders(orderData.orders ?? []);
-          setOrderAnalytics(orderData.analytics ?? orderAnalytics);
+          setOrderAnalytics((current) => orderData.analytics ?? current);
         }
         if (freshTransactions.ok) {
           const transactionData = await freshTransactions.json();
           setTransactions(transactionData.transactions ?? []);
-          setTransactionSummary(transactionData.summary ?? transactionSummary);
+          setTransactionSummary((current) => transactionData.summary ?? current);
         }
         if (freshOperations.ok) setOperations(await freshOperations.json());
       }
     }
-  }
+  }, [view]);
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
   useEffect(() => {
     if (!['orders', 'transactions', 'operations'].includes(view)) return;
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void load();
     }, 30000);
     return () => window.clearInterval(timer);
-  }, [view]);
+  }, [load, view]);
   const filteredApplications = useMemo(
     () =>
       (items ?? []).filter(

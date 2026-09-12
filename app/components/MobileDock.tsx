@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { OPEN_CONCIERGE_EVENT, openConcierge, type ConciergeRequest } from "../../lib/concierge-events";
 import { NeuroConcierge } from "./NeuroConcierge";
+import { ManagedImage } from "./ManagedImage";
 
 const items = [
   { href: "/", icon: "⌂", label: "Home" },
@@ -49,7 +50,7 @@ export function MobileDock() {
           );
         })}
         <button className={`mobile-selma${selmaOpen ? " active" : ""}`} onClick={() => openConcierge()} aria-label={`Ask ${companionName}`} aria-expanded={selmaOpen}>
-          <i aria-hidden="true"><img src="/selma-ai-avatar.webp" alt="" /></i><span>{companionName}</span>
+          <i aria-hidden="true"><ManagedImage src="/selma-ai-avatar.webp" alt="" width={180} height={180} /></i><span>{companionName}</span>
         </button>
         {items.slice(2).map((item) => {
           const active = item.href === "/access"

@@ -2329,22 +2329,23 @@ function ServiceBookingsPanel({
   reload: () => Promise<void>;
   setMessage: (message: string) => void;
 }) {
-  const [rescheduleDraft, setRescheduleDraft] = useState<{ bookingId: number; scheduledStart: string; note: string } | null>(null);
+  const [rescheduleDraft, setRescheduleDraft] = useState<{ bookingId: number; scheduledStart: string; minimumStart: string; note: string } | null>(null);
   const [rescheduleSaving, setRescheduleSaving] = useState(false);
   function localDateTime(value: Date) {
     const offset = value.getTimezoneOffset() * 60_000;
     return new Date(value.getTime() - offset).toISOString().slice(0, 16);
   }
-  function beginReschedule(booking: ServiceBooking) {
+  function beginReschedule(booking: ServiceBooking, requestedAt: number) {
     const existing = booking.scheduledStart ? new Date(booking.scheduledStart) : new Date(booking.requestedStart);
-    const minimum = new Date(Date.now() + 30 * 60_000);
+    const minimum = new Date(requestedAt + 30 * 60_000);
     setRescheduleDraft({
       bookingId: booking.id,
       scheduledStart: localDateTime(existing.getTime() > minimum.getTime() ? existing : minimum),
+      minimumStart: localDateTime(minimum),
       note: booking.merchantNote ?? "",
     });
   }
-  async function update(booking: ServiceBooking, status: string, proposal?: { scheduledStart: string; note: string }) {
+  async function update(booking: ServiceBooking, status: string, proposal?: { scheduledStart: string; minimumStart: string; note: string }, requestedAt?: number) {
     let quotePrice: number | undefined;
     if (status === "confirmed" && ["quote", "from"].includes(booking.pricingModel)) {
       const entered = window.prompt("Enter the final service price in Namibian dollars", booking.priceSnapshot ? String(booking.priceSnapshot) : "")?.trim();
@@ -2354,11 +2355,11 @@ function ServiceBookingsPanel({
     }
     let scheduledStart: string | undefined;
     if (status === "reschedule_proposed") {
-      if (!proposal) return beginReschedule(booking);
+      if (!proposal) return beginReschedule(booking, requestedAt ?? 0);
       const parsed = new Date(proposal.scheduledStart);
       if (Number.isNaN(parsed.getTime()))
         return setMessage("Enter a valid appointment date and time.");
-      if (parsed.getTime() <= Date.now())
+      if (parsed.getTime() < new Date(proposal.minimumStart).getTime())
         return setMessage("Choose an appointment time in the future.");
       scheduledStart = parsed.toISOString();
     }
@@ -2475,7 +2476,7 @@ function ServiceBookingsPanel({
                 <button type="button" onClick={() => setRescheduleDraft(null)} aria-label="Close reschedule form">×</button>
               </header>
               <div>
-                <label>New appointment date and time<input required type="datetime-local" min={localDateTime(new Date(Date.now() + 30 * 60_000))} value={rescheduleDraft.scheduledStart} onChange={(event) => setRescheduleDraft({ ...rescheduleDraft, scheduledStart: event.target.value })} /></label>
+                <label>New appointment date and time<input required type="datetime-local" min={rescheduleDraft.minimumStart} value={rescheduleDraft.scheduledStart} onChange={(event) => setRescheduleDraft({ ...rescheduleDraft, scheduledStart: event.target.value })} /></label>
                 <label>Message to customer<textarea required maxLength={1000} placeholder="Explain the proposed change and any relevant details" value={rescheduleDraft.note} onChange={(event) => setRescheduleDraft({ ...rescheduleDraft, note: event.target.value })} /></label>
               </div>
               <footer><button type="button" className="secondary" onClick={() => setRescheduleDraft(null)}>Cancel</button><button disabled={rescheduleSaving}>{rescheduleSaving ? "Sending…" : "Send reschedule proposal"}</button></footer>
@@ -2490,7 +2491,7 @@ function ServiceBookingsPanel({
                     : ""
                 }
                 key={status}
-                onClick={() => update(booking, status)}
+                onClick={() => update(booking, status, undefined, Date.now())}
               >
                 {pretty(status)}
               </button>
@@ -2513,9 +2514,15 @@ function MerchantOrderCard({
   const [open, setOpen] = useState(
     order.status === "pending_merchant_confirmation",
   );
-  const [clock, setClock] = useState(Date.now());
-  useEffect(() => { if (order.status !== "pending_merchant_confirmation" || !order.confirmationExpiresAt) return; const timer = window.setInterval(() => setClock(Date.now()), 1000); return () => window.clearInterval(timer); }, [order.status, order.confirmationExpiresAt]);
-  const confirmationSeconds = order.confirmationExpiresAt ? Math.max(0, Math.ceil((new Date(order.confirmationExpiresAt).getTime() - clock) / 1000)) : null;
+  const [clock, setClock] = useState(0);
+  useEffect(() => {
+    if (order.status !== "pending_merchant_confirmation" || !order.confirmationExpiresAt) return;
+    const updateClock = () => setClock(Date.now());
+    updateClock();
+    const timer = window.setInterval(updateClock, 1000);
+    return () => window.clearInterval(timer);
+  }, [order.status, order.confirmationExpiresAt]);
+  const confirmationSeconds = order.confirmationExpiresAt && clock > 0 ? Math.max(0, Math.ceil((new Date(order.confirmationExpiresAt).getTime() - clock) / 1000)) : null;
   function transition(status: string) {
     const needsReason = ["rejected", "cancelled", "delivery_failed"].includes(
       status,

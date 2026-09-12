@@ -589,7 +589,7 @@ function StoreProduct({
       ? product.salePrice ?? product.price
       : Number.isFinite(productPrice(product)) ? productPrice(product) : null;
     return (
-      <article
+      <div
         id={`product-${product.id}`}
         className="store-product-v2 store-product-preview"
         aria-labelledby={`product-title-${product.id}`}
@@ -620,7 +620,7 @@ function StoreProduct({
             View {product.itemType === "service" ? "service" : "product"}
           </button>
         </div>
-      </article>
+      </div>
     );
   }
   if (product.itemType === "service") {
